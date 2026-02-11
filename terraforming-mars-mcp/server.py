@@ -10,6 +10,7 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import re
@@ -1303,4 +1304,22 @@ def select_claimed_underground_tokens(selected: list[int]) -> dict[str, Any]:
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Terraforming Mars MCP server")
+    parser.add_argument(
+        "--base-url",
+        default=None,
+        help="Terraforming Mars server base URL (overrides TM_SERVER_URL)",
+    )
+    parser.add_argument(
+        "--player-id",
+        default=None,
+        help="Player ID to use at startup (overrides TM_PLAYER_ID)",
+    )
+    args = parser.parse_args()
+
+    if args.base_url:
+        CFG.base_url = _strip_base_url(args.base_url)
+    if args.player_id:
+        CFG.player_id = args.player_id
+
     mcp.run()
