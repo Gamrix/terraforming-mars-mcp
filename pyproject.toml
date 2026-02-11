@@ -1,0 +1,41 @@
+[build-system]
+requires = ["hatchling>=1.27.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "terraforming-mars-mcp"
+version = "0.1.0"
+description = "Terraforming Mars MCP server"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+authors = [
+  { name = "John Clow" },
+]
+keywords = ["mcp", "terraforming-mars", "ai-agent"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+]
+dependencies = [
+  "mcp",
+]
+
+[project.urls]
+Homepage = "https://github.com/terraforming-mars/terraforming-mars"
+Repository = "https://github.com/terraforming-mars/terraforming-mars"
+
+[dependency-groups]
+dev = [
+  "pytest>=8.3.4",
+  "ruff>=0.9.0",
+]
+
+[tool.uv]
+package = false
+default-groups = ["dev"]

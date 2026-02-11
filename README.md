@@ -14,16 +14,18 @@ of that server is included to help with agentic coding.
 ## Setup
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install mcp
+# Sync runtime + dev dependencies
+uv sync
+
+# Optional: sync runtime deps only
+uv sync --no-dev
 ```
 
 ## Run
 
 ```bash
 TM_SERVER_URL=http://localhost:8080 TM_PLAYER_ID=<playerId> \
-python mcp/terraforming_mars_mcp_server.py
+uv run terraforming-mars-mcp/server.py
 ```
 
 Or set session values at runtime with the `configure_session` tool.

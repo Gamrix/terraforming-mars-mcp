@@ -1,0 +1,3 @@
+[submodule "submodules/tm-oss-server"]
+	path = submodules/tm-oss-server
+	url = https://github.com/terraforming-mars/terraforming-mars
