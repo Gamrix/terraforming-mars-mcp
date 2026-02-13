@@ -271,22 +271,61 @@ def _input_type_name(waiting_for: dict[str, Any] | None) -> str | None:
     return None
 
 
-def _compact_card(card: dict[str, Any]) -> dict[str, Any]:
-    info = _card_info(card.get("name"), include_play_details=True)
+def _best_effect_text(info: dict[str, Any]) -> str | None:
+    on_play = info.get("on_play_effect_text")
+    if isinstance(on_play, str) and on_play.strip():
+        return on_play.strip()
+
+    description = info.get("description_text")
+    if isinstance(description, str) and description.strip():
+        return description.strip()
+
+    for key in ("ongoing_effects", "activated_actions"):
+        values = info.get(key)
+        if not isinstance(values, list):
+            continue
+        for value in values:
+            if not isinstance(value, str):
+                continue
+            normalized = value.strip()
+            if not normalized:
+                continue
+            if normalized.startswith("Effect:") or normalized.startswith("Action:"):
+                _, _, normalized = normalized.partition(":")
+                normalized = normalized.strip() or value.strip()
+            return normalized
+    return None
+
+
+def _compact_card(card: dict[str, Any] | str) -> dict[str, Any]:
+    if isinstance(card, str):
+        info = _card_info(card, include_play_details=True)
+    else:
+        info = _card_info(card.get("name"), include_play_details=True)
     return {
-        "name": card.get("name"),
-        "cost": card.get("calculatedCost", card.get("cost")),
-        "type": card.get("cardType"),
-        "disabled": card.get("isDisabled", False),
-        "warning": card.get("warning"),
-        "resources": card.get("resources"),
+        "name": info.get("name"),
+        "cost": info.get("calculatedCost", info.get("cost")),
+        "type": info.get("cardType"),
+        "disabled": info.get("isDisabled", False),
+        "warning": info.get("warning"),
+        "resources": info.get("resources"),
         "tags": info.get("tags", []),
         "ongoing_effects": info.get("ongoing_effects", []),
         "activated_actions": info.get("activated_actions", []),
         "play_requirements": info.get("play_requirements", []),
         "play_requirements_text": info.get("play_requirements_text"),
         "on_play_effect_text": info.get("on_play_effect_text"),
+        "effect_text": _best_effect_text(info),
     }
+
+
+def _compact_cards(cards: list[Any]) -> list[dict[str, Any]]:
+    compact_cards: list[dict[str, Any]] = []
+    for card in cards:
+        compact = _compact_card(card)
+        if compact:
+            compact_cards.append(compact)
+    return compact_cards
 
 
 def _load_card_info_index() -> dict[str, dict[str, Any]]:
@@ -373,16 +412,17 @@ def _card_info(card_name: Any, include_play_details: bool = False) -> dict[str, 
     tags = card.get("tags") if isinstance(card.get("tags"), list) else []
     metadata = card.get("metadata") if isinstance(card.get("metadata"), dict) else None
     render_data = metadata.get("renderData") if isinstance(metadata, dict) else None
+    description = _description_text(metadata)
     actions, effects = _extract_actions_and_effects(render_data)
 
     info: dict[str, Any] = {
         "tags": tags,
         "ongoing_effects": effects,
         "activated_actions": actions,
+        "description_text": description,
     }
 
     if include_play_details:
-        description = _description_text(metadata)
         req_text, on_play = _split_requirement_and_effect(description)
         requirements = card.get("requirements") if isinstance(card.get("requirements"), list) else []
         info.update(
@@ -418,7 +458,7 @@ def _normalize_waiting_for(waiting_for: dict[str, Any] | None, depth: int = 0) -
 
     cards = waiting_for.get("cards")
     if isinstance(cards, list):
-        normalized["cards"] = [_compact_card(card) for card in cards if isinstance(card, dict)]
+        normalized["cards"] = _compact_cards(cards)
         normalized["card_selection"] = {
             "min": waiting_for.get("min"),
             "max": waiting_for.get("max"),
@@ -451,15 +491,37 @@ def _normalize_waiting_for(waiting_for: dict[str, Any] | None, depth: int = 0) -
         if depth >= 2:
             normalized["options_count"] = len(options)
         else:
-            normalized["options"] = [
-                {
+            normalized_options: list[dict[str, Any]] = []
+            for idx, option in enumerate(options):
+                if not isinstance(option, dict):
+                    normalized_options.append(
+                        {
+                            "index": idx,
+                            "title": None,
+                            "input_type": None,
+                            "detail": None,
+                        }
+                    )
+                    continue
+
+                option_detail = _normalize_waiting_for(option, depth + 1)
+                option_payload: dict[str, Any] = {
                     "index": idx,
-                    "title": option.get("title") if isinstance(option, dict) else None,
-                    "input_type": _input_type_name(option) if isinstance(option, dict) else None,
-                    "detail": _normalize_waiting_for(option, depth + 1) if isinstance(option, dict) else None,
+                    "title": option.get("title"),
+                    "input_type": _input_type_name(option),
+                    "detail": option_detail,
                 }
-                for idx, option in enumerate(options)
-            ]
+
+                # Surface concise option-level card context for setup prompts (e.g., initialCards),
+                # so effect text is visible without extra nested traversal.
+                option_cards = option.get("cards")
+                if isinstance(option_cards, list):
+                    compact_cards = _compact_cards(option_cards)
+                    option_payload["cards_preview"] = compact_cards
+
+                normalized_options.append(option_payload)
+
+            normalized["options"] = normalized_options
 
     return normalized
 
