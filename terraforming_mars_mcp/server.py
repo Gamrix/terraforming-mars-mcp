@@ -251,6 +251,21 @@ class RawInputEntityRequest(BaseModel):
     entity_json: str
 
 
+def _normalize_or_sub_response(value: str | dict[str, Any] | None) -> dict[str, Any]:
+    if value is None or value == "":
+        return {"type": "option"}
+    if isinstance(value, str):
+        decoded = json.loads(value)
+        if not isinstance(decoded, dict):
+            raise ValueError("sub_response_json must decode to an object")
+        value = decoded
+    if isinstance(value, dict):
+        if "type" not in value:
+            return {"type": "option", **value}
+        return value
+    raise ValueError("sub_response_json must be a JSON string or object")
+
+
 def _normalize_raw_input_entity(entity: dict[str, Any]) -> dict[str, Any]:
     normalized = dict(entity)
     entity_type = normalized.get("type")
@@ -1265,10 +1280,52 @@ def submit_raw_entity(request: RawInputEntityRequest) -> dict[str, Any]:
 
 
 @mcp.tool()
-def choose_or_option(request: OrChoiceInputModel) -> dict[str, Any]:
-    """Respond to `type: or` with selected index and nested response object."""
+def choose_or_option(
+    option_index: int | None = None,
+    sub_response_json: str | dict[str, Any] | None = None,
+    request: str | dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Respond to `type: or` with selected index and nested response object.
+
+    Accepts either direct params (`option_index`, `sub_response_json`) or a
+    legacy JSON `request` payload.
+    """
+    if request is not None:
+        parsed_request: dict[str, Any]
+        if isinstance(request, str):
+            decoded = json.loads(request)
+            if not isinstance(decoded, dict):
+                raise ValueError("request must decode to an object")
+            parsed_request = decoded
+        elif isinstance(request, dict):
+            parsed_request = request
+        else:
+            raise ValueError("request must be a JSON string or object")
+
+        if option_index is None:
+            index_value = parsed_request.get("option_index", parsed_request.get("index"))
+            if isinstance(index_value, int):
+                option_index = index_value
+            elif isinstance(index_value, str) and index_value.isdigit():
+                option_index = int(index_value)
+            elif index_value is not None:
+                raise ValueError("request.option_index/index must be an integer")
+
+        if sub_response_json is None:
+            if "sub_response_json" in parsed_request:
+                sub_response_json = parsed_request["sub_response_json"]
+            elif "response" in parsed_request:
+                sub_response_json = parsed_request["response"]
+
+    if option_index is None:
+        raise ValueError("option_index is required")
+
     return _submit_and_return_state(
-        {"type": "or", "index": request.option_index, "response": request.sub_response_json}
+        {
+            "type": "or",
+            "index": int(option_index),
+            "response": _normalize_or_sub_response(sub_response_json),
+        }
     )
 
 
@@ -1287,6 +1344,21 @@ def submit_and_options(responses_json: str) -> dict[str, Any]:
 @mcp.tool()
 def confirm_option() -> dict[str, Any]:
     """Respond to `type: option`."""
+    player_model = _get_player()
+    waiting_for = player_model.get("waitingFor")
+    if isinstance(waiting_for, dict) and waiting_for.get("type") == InputType.OR_OPTIONS.value:
+        index = 0
+        initial_idx = waiting_for.get("initialIdx")
+        if isinstance(initial_idx, int) and initial_idx >= 0:
+            index = initial_idx
+        else:
+            options = waiting_for.get("options")
+            if isinstance(options, list):
+                for idx, option in enumerate(options):
+                    if isinstance(option, dict) and option.get("type") == InputType.SELECT_OPTION.value:
+                        index = idx
+                        break
+        return _submit_and_return_state({"type": "or", "index": index, "response": {"type": "option"}})
     return _submit_and_return_state({"type": "option"})
 
 
