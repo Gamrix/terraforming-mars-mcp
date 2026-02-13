@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class TMBaseModel(BaseModel):
@@ -10,7 +10,7 @@ class TMBaseModel(BaseModel):
 
 
 class CardModel(TMBaseModel):
-    name: str | None = None
+    name: str
     resources: int | None = None
     calculatedCost: int | None = None
     isDisabled: bool | None = None
@@ -20,7 +20,7 @@ class CardModel(TMBaseModel):
 
 
 class ColonyInputModel(TMBaseModel):
-    name: str | None = None
+    name: str
 
 
 class ClaimedTokenModel(TMBaseModel):
@@ -29,11 +29,11 @@ class ClaimedTokenModel(TMBaseModel):
 
 
 class WaitingForInputModel(TMBaseModel):
-    type: str | None = None
-    title: Any | None = None
+    type: str
+    title: Any
     warning: Any | None = None
     warnings: list[Any] | None = None
-    buttonLabel: str | None = None
+    buttonLabel: str
 
     min: int | None = None
     max: int | None = None
@@ -66,36 +66,36 @@ WaitingForInputModel.model_rebuild()
 
 
 class MilestoneScoreModel(TMBaseModel):
-    color: str | None = None
-    score: int | None = None
+    color: str
+    score: int
     claimable: bool | None = None
 
 
 class ClaimedMilestoneModel(TMBaseModel):
-    name: str | None = None
+    name: str
     playerName: str | None = None
     color: str | None = None
-    scores: list[MilestoneScoreModel] | None = None
+    scores: list[MilestoneScoreModel] = Field(default_factory=list)
 
 
 class AwardScoreModel(TMBaseModel):
-    color: str | None = None
-    score: int | None = None
+    color: str
+    score: int
 
 
 class FundedAwardModel(TMBaseModel):
-    name: str | None = None
+    name: str
     playerName: str | None = None
     color: str | None = None
-    scores: list[AwardScoreModel] | None = None
+    scores: list[AwardScoreModel] = Field(default_factory=list)
 
 
 class SpaceModel(TMBaseModel):
-    id: str | None = None
-    x: int | None = None
-    y: int | None = None
-    spaceType: str | None = None
-    bonus: list[int] | None = None
+    id: str
+    x: int
+    y: int
+    spaceType: str
+    bonus: list[int]
     color: str | None = None
     tileType: int | None = None
     highlight: str | None = None
@@ -110,63 +110,63 @@ class SpaceModel(TMBaseModel):
 
 class GameModel(TMBaseModel):
     id: str | None = None
-    phase: str | None = None
-    generation: int | None = None
-    temperature: int | None = None
-    oxygenLevel: int | None = None
-    oceans: int | None = None
-    venusScaleLevel: int | None = None
-    isTerraformed: bool | None = None
-    gameAge: int | None = None
-    undoCount: int | None = None
-    passedPlayers: list[str] | None = None
-    spaces: list[SpaceModel] | None = None
-    milestones: list[ClaimedMilestoneModel] | None = None
-    awards: list[FundedAwardModel] | None = None
+    phase: str
+    generation: int
+    temperature: int
+    oxygenLevel: int
+    oceans: int
+    venusScaleLevel: int
+    isTerraformed: bool
+    gameAge: int = 0
+    undoCount: int = 0
+    passedPlayers: list[str] = Field(default_factory=list)
+    spaces: list[SpaceModel] = Field(default_factory=list)
+    milestones: list[ClaimedMilestoneModel] = Field(default_factory=list)
+    awards: list[FundedAwardModel] = Field(default_factory=list)
 
 
 class PublicPlayerModel(TMBaseModel):
-    name: str | None = None
-    color: str | None = None
-    isActive: bool | None = None
+    name: str
+    color: str
+    isActive: bool
 
-    terraformRating: int | None = None
-    megaCredits: int | None = None
-    steel: int | None = None
-    titanium: int | None = None
-    plants: int | None = None
-    energy: int | None = None
-    heat: int | None = None
+    terraformRating: int = 0
+    megaCredits: int = 0
+    steel: int = 0
+    titanium: int = 0
+    plants: int = 0
+    energy: int = 0
+    heat: int = 0
 
-    megaCreditProduction: int | None = None
-    steelProduction: int | None = None
-    titaniumProduction: int | None = None
-    plantProduction: int | None = None
-    energyProduction: int | None = None
-    heatProduction: int | None = None
+    megaCreditProduction: int = 0
+    steelProduction: int = 0
+    titaniumProduction: int = 0
+    plantProduction: int = 0
+    energyProduction: int = 0
+    heatProduction: int = 0
 
-    cardsInHandNbr: int | None = None
-    actionsThisGeneration: list[str] | None = None
-    tableau: list[CardModel] | None = None
+    cardsInHandNbr: int = 0
+    actionsThisGeneration: list[str] = Field(default_factory=list)
+    tableau: list[CardModel] = Field(default_factory=list)
 
 
 class PlayerViewModel(TMBaseModel):
-    id: str | None = None
-    game: GameModel | None = None
-    players: list[PublicPlayerModel] | None = None
-    thisPlayer: PublicPlayerModel | None = None
+    id: str
+    game: GameModel
+    players: list[PublicPlayerModel]
+    thisPlayer: PublicPlayerModel
     waitingFor: WaitingForInputModel | None = None
-    cardsInHand: list[CardModel] | None = None
+    cardsInHand: list[CardModel] = Field(default_factory=list)
 
 
 class WaitingForStatusModel(TMBaseModel):
-    result: str | None = None
-    waitingFor: list[str] | None = None
+    result: str
+    waitingFor: list[str]
 
 
 class GameLogEntryModel(TMBaseModel):
-    timestamp: Any | None = None
-    message: str | None = None
-    data: list[Any] | None = None
+    timestamp: int
+    message: str
+    data: list[Any]
     type: Any | None = None
     playerId: Any | None = None
