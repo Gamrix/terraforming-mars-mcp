@@ -1,0 +1,2 @@
+"""Terraforming Mars MCP package."""
+

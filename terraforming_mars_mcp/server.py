@@ -26,6 +26,31 @@ from urllib import error, parse, request
 from mcp.server.fastmcp import FastMCP
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+try:
+    from .api_response_models import (
+        CardModel as ApiCardModel,
+        ClaimedMilestoneModel as ApiClaimedMilestoneModel,
+        FundedAwardModel as ApiFundedAwardModel,
+        GameLogEntryModel as ApiGameLogEntryModel,
+        PlayerViewModel as ApiPlayerViewModel,
+        PublicPlayerModel as ApiPublicPlayerModel,
+        SpaceModel as ApiSpaceModel,
+        WaitingForInputModel as ApiWaitingForInputModel,
+        WaitingForStatusModel as ApiWaitingForStatusModel,
+    )
+except ImportError:
+    from api_response_models import (  # type: ignore[no-redef]
+        CardModel as ApiCardModel,
+        ClaimedMilestoneModel as ApiClaimedMilestoneModel,
+        FundedAwardModel as ApiFundedAwardModel,
+        GameLogEntryModel as ApiGameLogEntryModel,
+        PlayerViewModel as ApiPlayerViewModel,
+        PublicPlayerModel as ApiPublicPlayerModel,
+        SpaceModel as ApiSpaceModel,
+        WaitingForInputModel as ApiWaitingForInputModel,
+        WaitingForStatusModel as ApiWaitingForStatusModel,
+    )
+
 
 class InputType(StrEnum):
     AND_OPTIONS = "and"
@@ -145,7 +170,7 @@ def _get_player(player_id: str | None = None) -> dict[str, Any]:
     result = _http_json("GET", "/api/player", {"id": pid})
     if not isinstance(result, dict):
         raise RuntimeError("Unexpected /api/player response")
-    return result
+    return ApiPlayerViewModel.model_validate(result).model_dump(exclude_none=False)
 
 
 def _post_input(response: dict[str, Any], player_id: str | None = None) -> dict[str, Any]:
@@ -153,7 +178,7 @@ def _post_input(response: dict[str, Any], player_id: str | None = None) -> dict[
     result = _http_json("POST", "/player/input", {"id": pid}, response)
     if not isinstance(result, dict):
         raise RuntimeError("Unexpected /player/input response")
-    return result
+    return ApiPlayerViewModel.model_validate(result).model_dump(exclude_none=False)
 
 
 def _parse_card_list(value: list[str] | str | None, field_name: str) -> list[str]:
@@ -248,7 +273,7 @@ def _get_waiting_for_state(game_age: int, undo_count: int, player_id: str | None
     )
     if not isinstance(result, dict):
         raise RuntimeError("Unexpected /api/waitingfor response")
-    return result
+    return ApiWaitingForStatusModel.model_validate(result).model_dump(exclude_none=False)
 
 
 def _get_game_logs(player_id: str | None = None) -> list[dict[str, Any]]:
@@ -256,7 +281,12 @@ def _get_game_logs(player_id: str | None = None) -> list[dict[str, Any]]:
     result = _http_json("GET", "/api/game/logs", {"id": pid})
     if not isinstance(result, list):
         raise RuntimeError("Unexpected /api/game/logs response")
-    return [item for item in result if isinstance(item, dict)]
+    normalized_logs: list[dict[str, Any]] = []
+    for item in result:
+        if not isinstance(item, dict):
+            continue
+        normalized_logs.append(ApiGameLogEntryModel.model_validate(item).model_dump(exclude_none=False))
+    return normalized_logs
 
 
 def _input_type_name(waiting_for: dict[str, Any] | None) -> str | None:
@@ -297,7 +327,7 @@ def _best_effect_text(info: dict[str, Any]) -> str | None:
     return None
 
 
-def _compact_card(card: dict[str, Any] | str) -> dict[str, Any]:
+def _compact_card(card: dict[str, Any] | str | ApiCardModel) -> dict[str, Any]:
     if isinstance(card, str):
         card_name = card
         info = _card_info(card_name, include_play_details=True)
@@ -306,18 +336,26 @@ def _compact_card(card: dict[str, Any] | str) -> dict[str, Any]:
         warning = None
         warnings: list[Any] = []
         resources = None
-    else:
-        card_name = card.get("name")
+    elif isinstance(card, ApiCardModel):
+        card_name = card.name
         info = _card_info(card_name, include_play_details=True)
-        cost = card.get("calculatedCost", info.get("base_cost"))
-        disabled = card.get("isDisabled", False)
-        warning = card.get("warning")
-        raw_warnings = card.get("warnings")
-        warnings = raw_warnings if isinstance(raw_warnings, list) else []
-        resources = card.get("resources")
+        cost = card.calculatedCost if card.calculatedCost is not None else info.get("base_cost")
+        disabled = bool(card.isDisabled)
+        warning = card.warning
+        warnings = card.warnings if isinstance(card.warnings, list) else []
+        resources = card.resources
+    else:
+        card_model = ApiCardModel.model_validate(card)
+        card_name = card_model.name
+        info = _card_info(card_name, include_play_details=True)
+        cost = card_model.calculatedCost if card_model.calculatedCost is not None else info.get("base_cost")
+        disabled = bool(card_model.isDisabled)
+        warning = card_model.warning
+        warnings = card_model.warnings if isinstance(card_model.warnings, list) else []
+        resources = card_model.resources
 
     return {
-        "name": card_name,
+        "name": card_name if isinstance(card_name, str) else info.get("name"),
         "cost": cost,
         "type": info.get("cardType"),
         "disabled": disabled,
@@ -431,6 +469,7 @@ def _card_info(card_name: Any, include_play_details: bool = False) -> dict[str, 
     actions, effects = _extract_actions_and_effects(render_data)
 
     info: dict[str, Any] = {
+        "name": card_name,
         "tags": tags,
         "ongoing_effects": effects,
         "activated_actions": actions,
@@ -451,87 +490,99 @@ def _card_info(card_name: Any, include_play_details: bool = False) -> dict[str, 
     return info
 
 
-def _normalize_waiting_for(waiting_for: dict[str, Any] | None, depth: int = 0) -> dict[str, Any] | None:
+def _normalize_waiting_for(
+    waiting_for: dict[str, Any] | ApiWaitingForInputModel | None,
+    depth: int = 0,
+) -> dict[str, Any] | None:
     if waiting_for is None:
         return None
 
+    wf = waiting_for if isinstance(waiting_for, ApiWaitingForInputModel) else ApiWaitingForInputModel.model_validate(waiting_for)
+
     normalized: dict[str, Any] = {
-        "input_type": _input_type_name(waiting_for),
-        "title": waiting_for.get("title"),
-        "button_label": waiting_for.get("buttonLabel"),
+        "input_type": _input_type_name({"type": wf.type}) if wf.type is not None else None,
+        "title": wf.title,
+        "button_label": wf.buttonLabel,
     }
 
-    if "min" in waiting_for or "max" in waiting_for:
+    if wf.warning is not None:
+        normalized["warning"] = wf.warning
+    if isinstance(wf.warnings, list):
+        normalized["warnings"] = wf.warnings
+
+    if wf.initialIdx is not None:
+        normalized["initial_index"] = wf.initialIdx
+
+    if wf.min is not None or wf.max is not None:
         normalized["amount_range"] = {
-            "min": waiting_for.get("min"),
-            "max": waiting_for.get("max"),
-            "max_by_default": waiting_for.get("maxByDefault"),
+            "min": wf.min,
+            "max": wf.max,
+            "max_by_default": wf.maxByDefault,
         }
 
-    if "amount" in waiting_for:
-        normalized["amount"] = waiting_for.get("amount")
+    if wf.amount is not None:
+        normalized["amount"] = wf.amount
 
-    cards = waiting_for.get("cards")
-    if isinstance(cards, list):
-        normalized["cards"] = _compact_cards(cards)
+    if wf.count is not None:
+        normalized["count"] = wf.count
+
+    if isinstance(wf.include, list):
+        normalized["include"] = wf.include
+
+    if isinstance(wf.cards, list):
+        normalized["cards"] = _compact_cards(wf.cards)
         normalized["card_selection"] = {
-            "min": waiting_for.get("min"),
-            "max": waiting_for.get("max"),
-            "select_blue_card_action": waiting_for.get("selectBlueCardAction", False),
+            "min": wf.min,
+            "max": wf.max,
+            "select_blue_card_action": wf.selectBlueCardAction is True,
+            "show_only_in_learner_mode": wf.showOnlyInLearnerMode is True,
+            "show_owner": wf.showOwner is True,
         }
 
-    for key in ("players", "spaces", "parties", "globalEventNames"):
-        value = waiting_for.get(key)
-        if isinstance(value, list):
-            normalized[key] = value
+    if isinstance(wf.players, list):
+        normalized["players"] = wf.players
+    if isinstance(wf.spaces, list):
+        normalized["spaces"] = wf.spaces
+    if isinstance(wf.parties, list):
+        normalized["parties"] = wf.parties
+    if isinstance(wf.globalEventNames, list):
+        normalized["globalEventNames"] = wf.globalEventNames
 
-    colonies_model = waiting_for.get("coloniesModel")
-    if isinstance(colonies_model, list):
-        normalized["colonies"] = [c.get("name") for c in colonies_model if isinstance(c, dict)]
+    if isinstance(wf.tokens, list):
+        normalized["tokens"] = [token.model_dump(exclude_none=False) for token in wf.tokens]
 
-    pay_production = waiting_for.get("payProduction")
-    if isinstance(pay_production, dict):
-        normalized["pay_production"] = pay_production
+    if isinstance(wf.coloniesModel, list):
+        normalized["colonies"] = [colony.name for colony in wf.coloniesModel if isinstance(colony.name, str)]
 
-    payment_options = waiting_for.get("paymentOptions")
-    if isinstance(payment_options, dict):
-        normalized["payment_options"] = payment_options
+    if isinstance(wf.payProduction, dict):
+        normalized["pay_production"] = wf.payProduction
 
-    ares_data = waiting_for.get("aresData")
-    if isinstance(ares_data, dict):
-        normalized["ares_data"] = ares_data.get("hazardData", ares_data)
+    if isinstance(wf.paymentOptions, dict):
+        normalized["payment_options"] = wf.paymentOptions
 
-    options = waiting_for.get("options")
-    if isinstance(options, list):
+    if isinstance(wf.aresData, dict):
+        normalized["ares_data"] = wf.aresData.get("hazardData", wf.aresData)
+
+    if isinstance(wf.options, list):
         if depth >= 2:
-            normalized["options_count"] = len(options)
+            normalized["options_count"] = len(wf.options)
         else:
             normalized_options: list[dict[str, Any]] = []
-            for idx, option in enumerate(options):
-                if not isinstance(option, dict):
-                    normalized_options.append(
-                        {
-                            "index": idx,
-                            "title": None,
-                            "input_type": None,
-                            "detail": None,
-                        }
-                    )
-                    continue
-
+            for idx, option in enumerate(wf.options):
                 option_detail = _normalize_waiting_for(option, depth + 1)
                 option_payload: dict[str, Any] = {
                     "index": idx,
-                    "title": option.get("title"),
-                    "input_type": _input_type_name(option),
+                    "title": option.title,
+                    "input_type": _input_type_name({"type": option.type}) if option.type is not None else None,
                     "detail": option_detail,
                 }
+                if wf.initialIdx is not None:
+                    option_payload["is_initial"] = idx == wf.initialIdx
 
                 # Surface concise option-level card context for setup prompts (e.g., initialCards),
                 # so effect text is visible without extra nested traversal.
-                option_cards = option.get("cards")
-                if isinstance(option_cards, list):
-                    compact_cards = _compact_cards(option_cards)
+                if isinstance(option.cards, list):
+                    compact_cards = _compact_cards(option.cards)
                     option_payload["cards_preview"] = compact_cards
 
                 normalized_options.append(option_payload)
@@ -542,127 +593,119 @@ def _normalize_waiting_for(waiting_for: dict[str, Any] | None, depth: int = 0) -
 
 
 def _summarize_players(player_model: dict[str, Any]) -> tuple[dict[str, Any], list[dict[str, Any]]]:
-    this_player = player_model.get("thisPlayer")
+    parsed_view = ApiPlayerViewModel.model_validate(player_model)
+    this_player = parsed_view.thisPlayer
     player_color = player_model.get("color")
-    if not isinstance(player_color, str) and isinstance(this_player, dict):
-        this_color = this_player.get("color")
+    if not isinstance(player_color, str) and isinstance(this_player, ApiPublicPlayerModel):
+        this_color = this_player.color
         if isinstance(this_color, str):
             player_color = this_color
 
     you: dict[str, Any] = {}
     others: list[dict[str, Any]] = []
-    all_players = player_model.get("players", [])
-    if isinstance(all_players, list):
-        for p in all_players:
-            if not isinstance(p, dict):
-                continue
-            compact = {
-                "name": p.get("name"),
-                "color": p.get("color"),
-                "active": p.get("isActive"),
-                "tr": p.get("terraformRating"),
-                "mc": p.get("megaCredits"),
-                "steel": p.get("steel"),
-                "titanium": p.get("titanium"),
-                "plants": p.get("plants"),
-                "energy": p.get("energy"),
-                "heat": p.get("heat"),
-                "prod": {
-                    "mc": p.get("megaCreditProduction"),
-                    "steel": p.get("steelProduction"),
-                    "titanium": p.get("titaniumProduction"),
-                    "plants": p.get("plantProduction"),
-                    "energy": p.get("energyProduction"),
-                    "heat": p.get("heatProduction"),
-                },
-                "cards_in_hand_count": p.get("cardsInHandNbr"),
-                "actions_this_generation": p.get("actionsThisGeneration"),
-            }
-            if p.get("color") == player_color:
-                you = compact
-            else:
-                others.append(compact)
-
-    if not you and isinstance(this_player, dict):
-        you = {
-            "name": this_player.get("name"),
-            "color": this_player.get("color"),
-            "active": this_player.get("isActive"),
-            "tr": this_player.get("terraformRating"),
-            "mc": this_player.get("megaCredits"),
-            "steel": this_player.get("steel"),
-            "titanium": this_player.get("titanium"),
-            "plants": this_player.get("plants"),
-            "energy": this_player.get("energy"),
-            "heat": this_player.get("heat"),
+    all_players = parsed_view.players or []
+    for p in all_players:
+        if not isinstance(p, ApiPublicPlayerModel):
+            continue
+        compact = {
+            "name": p.name,
+            "color": p.color,
+            "active": p.isActive,
+            "tr": p.terraformRating,
+            "mc": p.megaCredits,
+            "steel": p.steel,
+            "titanium": p.titanium,
+            "plants": p.plants,
+            "energy": p.energy,
+            "heat": p.heat,
             "prod": {
-                "mc": this_player.get("megaCreditProduction"),
-                "steel": this_player.get("steelProduction"),
-                "titanium": this_player.get("titaniumProduction"),
-                "plants": this_player.get("plantProduction"),
-                "energy": this_player.get("energyProduction"),
-                "heat": this_player.get("heatProduction"),
+                "mc": p.megaCreditProduction,
+                "steel": p.steelProduction,
+                "titanium": p.titaniumProduction,
+                "plants": p.plantProduction,
+                "energy": p.energyProduction,
+                "heat": p.heatProduction,
             },
-            "cards_in_hand_count": this_player.get("cardsInHandNbr"),
-            "actions_this_generation": this_player.get("actionsThisGeneration"),
+            "cards_in_hand_count": p.cardsInHandNbr,
+            "actions_this_generation": p.actionsThisGeneration,
+        }
+        if p.color == player_color:
+            you = compact
+        else:
+            others.append(compact)
+
+    if not you and isinstance(this_player, ApiPublicPlayerModel):
+        you = {
+            "name": this_player.name,
+            "color": this_player.color,
+            "active": this_player.isActive,
+            "tr": this_player.terraformRating,
+            "mc": this_player.megaCredits,
+            "steel": this_player.steel,
+            "titanium": this_player.titanium,
+            "plants": this_player.plants,
+            "energy": this_player.energy,
+            "heat": this_player.heat,
+            "prod": {
+                "mc": this_player.megaCreditProduction,
+                "steel": this_player.steelProduction,
+                "titanium": this_player.titaniumProduction,
+                "plants": this_player.plantProduction,
+                "energy": this_player.energyProduction,
+                "heat": this_player.heatProduction,
+            },
+            "cards_in_hand_count": this_player.cardsInHandNbr,
+            "actions_this_generation": this_player.actionsThisGeneration,
         }
     return you, others
 
 
 def _summarize_board(game: dict[str, Any]) -> dict[str, Any]:
-    spaces = game.get("spaces")
+    parsed_game = game if isinstance(game, dict) else {}
+    spaces_raw = parsed_game.get("spaces")
+    spaces = [ApiSpaceModel.model_validate(space) for space in spaces_raw] if isinstance(spaces_raw, list) else []
     occupied = 0
     by_tile: dict[str, int] = {}
-    if isinstance(spaces, list):
-        for space in spaces:
-            if not isinstance(space, dict):
-                continue
-            tile_type = space.get("tileType")
-            if tile_type is not None:
-                occupied += 1
-                key = str(tile_type)
-                by_tile[key] = by_tile.get(key, 0) + 1
+    for space in spaces:
+        tile_type = space.tileType
+        if tile_type is not None:
+            occupied += 1
+            key = str(tile_type)
+            by_tile[key] = by_tile.get(key, 0) + 1
     return {
-        "total_spaces": len(spaces) if isinstance(spaces, list) else None,
+        "total_spaces": len(spaces) if spaces else (len(spaces_raw) if isinstance(spaces_raw, list) else None),
         "occupied_spaces": occupied,
         "tile_counts": by_tile,
     }
 
 
 def _summarize_milestones(game: dict[str, Any]) -> list[dict[str, Any]]:
-    milestones = game.get("milestones")
-    if not isinstance(milestones, list):
+    milestones_raw = game.get("milestones")
+    if not isinstance(milestones_raw, list):
         return []
 
     summarized: list[dict[str, Any]] = []
-    for milestone in milestones:
-        if not isinstance(milestone, dict):
-            continue
-        owner_color = milestone.get("color")
-        owner_name = milestone.get("playerName")
+    for raw_milestone in milestones_raw:
+        milestone = ApiClaimedMilestoneModel.model_validate(raw_milestone)
+        owner_color = milestone.color
+        owner_name = milestone.playerName
         status = "claimed" if owner_color or owner_name else "available"
 
         scores: list[dict[str, Any]] = []
         claimable_by: list[str] = []
-        raw_scores = milestone.get("scores")
-        if isinstance(raw_scores, list):
-            for score in raw_scores:
-                if not isinstance(score, dict):
-                    continue
-                color = score.get("color")
-                claimable = score.get("claimable")
-                score_payload = {
-                    "color": color,
-                    "score": score.get("score"),
-                    "claimable": claimable is True,
-                }
-                scores.append(score_payload)
-                if claimable is True and isinstance(color, str):
-                    claimable_by.append(color)
+        for score in milestone.scores or []:
+            compact = {
+                "color": score.color,
+                "score": score.score,
+                "claimable": score.claimable is True,
+            }
+            scores.append(compact)
+            if score.claimable is True and isinstance(score.color, str):
+                claimable_by.append(score.color)
 
         summarized.append(
             {
-                "name": milestone.get("name"),
+                "name": milestone.name,
                 "status": status,
                 "owner_color": owner_color,
                 "owner_name": owner_name,
@@ -674,34 +717,29 @@ def _summarize_milestones(game: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def _summarize_awards(game: dict[str, Any]) -> list[dict[str, Any]]:
-    awards = game.get("awards")
-    if not isinstance(awards, list):
+    awards_raw = game.get("awards")
+    if not isinstance(awards_raw, list):
         return []
 
     summarized: list[dict[str, Any]] = []
-    for award in awards:
-        if not isinstance(award, dict):
-            continue
-        funder_color = award.get("color")
-        funder_name = award.get("playerName")
+    for raw_award in awards_raw:
+        award = ApiFundedAwardModel.model_validate(raw_award)
+        funder_color = award.color
+        funder_name = award.playerName
         status = "funded" if funder_color or funder_name else "unfunded"
 
         scores: list[dict[str, Any]] = []
-        raw_scores = award.get("scores")
-        if isinstance(raw_scores, list):
-            for score in raw_scores:
-                if not isinstance(score, dict):
-                    continue
-                scores.append(
-                    {
-                        "color": score.get("color"),
-                        "score": score.get("score"),
-                    }
-                )
+        for score in award.scores or []:
+            scores.append(
+                {
+                    "color": score.color,
+                    "score": score.score,
+                }
+            )
 
         summarized.append(
             {
-                "name": award.get("name"),
+                "name": award.name,
                 "status": status,
                 "funder_color": funder_color,
                 "funder_name": funder_name,
@@ -718,28 +756,29 @@ def _full_board_state(game: dict[str, Any], include_empty_spaces: bool = False) 
     spaces = game.get("spaces")
     mars_spaces: list[dict[str, Any]] = []
     if isinstance(spaces, list):
-        for space in spaces:
-            if not isinstance(space, dict):
+        for raw_space in spaces:
+            if not isinstance(raw_space, dict):
                 continue
-            if not include_empty_spaces and space.get("tileType") is None:
+            space = ApiSpaceModel.model_validate(raw_space)
+            if not include_empty_spaces and space.tileType is None:
                 continue
             mars_spaces.append(
                 {
-                    "id": space.get("id"),
-                    "x": space.get("x"),
-                    "y": space.get("y"),
-                    "space_type": space.get("spaceType"),
-                    "bonus": space.get("bonus"),
-                    "tile_type": space.get("tileType"),
-                    "owner_color": space.get("color"),
-                    "co_owner_color": space.get("coOwner"),
-                    "highlight": space.get("highlight"),
-                    "gagarin": space.get("gagarin"),
-                    "rotated": space.get("rotated"),
-                    "cathedral": space.get("cathedral"),
-                    "nomads": space.get("nomads"),
-                    "underground_resource": space.get("undergroundResource"),
-                    "excavator": space.get("excavator"),
+                    "id": space.id,
+                    "x": space.x,
+                    "y": space.y,
+                    "space_type": space.spaceType,
+                    "bonus": space.bonus,
+                    "tile_type": space.tileType,
+                    "owner_color": space.color,
+                    "co_owner_color": space.coOwner,
+                    "highlight": space.highlight,
+                    "gagarin": space.gagarin,
+                    "rotated": space.rotated,
+                    "cathedral": space.cathedral,
+                    "nomads": space.nomads,
+                    "underground_resource": space.undergroundResource,
+                    "excavator": space.excavator,
                 }
             )
 
@@ -760,18 +799,17 @@ def _full_board_state(game: dict[str, Any], include_empty_spaces: bool = False) 
 
 
 def _extract_played_cards(player: dict[str, Any], include_play_details: bool = False) -> list[dict[str, Any]]:
-    tableau = player.get("tableau")
+    parsed_player = ApiPublicPlayerModel.model_validate(player)
+    tableau = parsed_player.tableau
     cards: list[dict[str, Any]] = []
     if isinstance(tableau, list):
         for card in tableau:
-            if not isinstance(card, dict):
-                continue
-            info = _card_info(card.get("name"), include_play_details=include_play_details)
+            info = _card_info(card.name, include_play_details=include_play_details)
             payload = {
-                "name": card.get("name"),
-                "resources": card.get("resources"),
-                "is_disabled": card.get("isDisabled", False),
-                "clone_tag": card.get("cloneTag"),
+                "name": card.name,
+                "resources": card.resources,
+                "is_disabled": card.isDisabled is True,
+                "clone_tag": card.cloneTag,
                 "tags": info.get("tags", []),
                 "ongoing_effects": info.get("ongoing_effects", []),
                 "activated_actions": info.get("activated_actions", []),
@@ -782,7 +820,7 @@ def _extract_played_cards(player: dict[str, Any], include_play_details: bool = F
                         "play_requirements": info.get("play_requirements", []),
                         "play_requirements_text": info.get("play_requirements_text"),
                         "on_play_effect_text": info.get("on_play_effect_text"),
-                        "cost": card.get("calculatedCost", info.get("base_cost")),
+                        "cost": card.calculatedCost if card.calculatedCost is not None else info.get("base_cost"),
                     }
                 )
             cards.append(payload)
@@ -790,45 +828,32 @@ def _extract_played_cards(player: dict[str, Any], include_play_details: bool = F
 
 
 def _detect_new_opponent_cards(player_model: dict[str, Any]) -> list[dict[str, Any]]:
-    game = player_model.get("game")
-    if not isinstance(game, dict):
+    parsed_view = ApiPlayerViewModel.model_validate(player_model)
+    if parsed_view.game is None:
         return []
-    game_id = game.get("id")
-    pid = player_model.get("id", CFG.player_id)
+    game_id = parsed_view.game.id
+    pid = parsed_view.id or CFG.player_id
     if not isinstance(game_id, str) or not isinstance(pid, str):
         return []
     key = f"{game_id}:{pid}"
 
-    this_player = player_model.get("thisPlayer")
-    this_color = this_player.get("color") if isinstance(this_player, dict) else None
-    players = player_model.get("players")
-    if not isinstance(players, list):
-        return []
+    this_color = parsed_view.thisPlayer.color if isinstance(parsed_view.thisPlayer, ApiPublicPlayerModel) else None
+    players = parsed_view.players or []
 
     current: dict[str, Counter[str]] = {}
     for player in players:
-        if not isinstance(player, dict):
-            continue
-        color = player.get("color")
+        color = player.color
         if color == this_color:
             continue
-        tableau = player.get("tableau")
-        names: list[str] = []
-        if isinstance(tableau, list):
-            for card in tableau:
-                if isinstance(card, dict):
-                    name = card.get("name")
-                    if isinstance(name, str):
-                        names.append(name)
+        tableau = player.tableau or []
+        names = [card.name for card in tableau if isinstance(card.name, str)]
         if isinstance(color, str):
             current[color] = Counter(names)
 
     previous = _LAST_OPPONENT_TABLEAU.get(key, {})
     events: list[dict[str, Any]] = []
     for player in players:
-        if not isinstance(player, dict):
-            continue
-        color = player.get("color")
+        color = player.color
         if not isinstance(color, str) or color == this_color:
             continue
         old_counts = previous.get(color, Counter())
@@ -839,7 +864,7 @@ def _detect_new_opponent_cards(player_model: dict[str, Any]) -> list[dict[str, A
                 info = _card_info(card_name, include_play_details=True)
                 events.append(
                     {
-                        "player_name": player.get("name"),
+                        "player_name": player.name,
                         "player_color": color,
                         "card_name": card_name,
                         "tags": info.get("tags", []),
@@ -1559,7 +1584,7 @@ def select_claimed_underground_tokens(selected: list[int]) -> dict[str, Any]:
     return _submit_and_return_state({"type": "claimedUndergroundToken", "selected": selected})
 
 
-if __name__ == "__main__":
+def main() -> None:
     parser = argparse.ArgumentParser(description="Terraforming Mars MCP server")
     parser.add_argument(
         "--base-url",
@@ -1579,3 +1604,7 @@ if __name__ == "__main__":
         CFG.player_id = args.player_id
 
     mcp.run()
+
+
+if __name__ == "__main__":
+    main()

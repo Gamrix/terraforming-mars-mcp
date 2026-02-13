@@ -23,7 +23,7 @@ uv sync
 
 ```bash
 TM_SERVER_URL=http://localhost:8080 \
-uv run terraforming-mars-mcp/server.py
+uv run python -m terraforming_mars_mcp.server
 ```
 
 `--player-id` is optional. Agents can also set it later with the `configure_session` tool.
@@ -35,7 +35,7 @@ Register this MCP server with Codex (stdio transport):
 ```bash
 codex mcp add terraforming-mars \
   --env TM_SERVER_URL=http://localhost:8080 \
-  -- uv run --directory "$PWD" terraforming-mars-mcp/server.py
+  -- uv run --directory "$PWD" python -m terraforming_mars_mcp.server
 ```
 
 Verify it was added:

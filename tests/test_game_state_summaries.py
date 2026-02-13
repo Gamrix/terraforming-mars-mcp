@@ -1,20 +1,17 @@
 from __future__ import annotations
 
-import importlib.util
+import importlib
 import sys
 from pathlib import Path
 from typing import Any
 
 
 def _load_server_module() -> Any:
-    module_path = Path(__file__).resolve().parents[1] / "terraforming-mars-mcp" / "server.py"
-    spec = importlib.util.spec_from_file_location("tm_mcp_server_summary_tests", module_path)
-    if spec is None or spec.loader is None:
-        raise RuntimeError(f"Unable to load module from {module_path}")
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module
-    spec.loader.exec_module(module)
-    return module
+    repo_root = Path(__file__).resolve().parents[1]
+    if str(repo_root) not in sys.path:
+        sys.path.insert(0, str(repo_root))
+    module = importlib.import_module("terraforming_mars_mcp.server")
+    return importlib.reload(module)
 
 
 def test_get_game_state_surfaces_milestones_and_awards() -> None:
