@@ -8,6 +8,7 @@ Make sure to continue playing until the current game is over.
 A game guide written by a deep researching AI Agent is available at `GUIDE.md`.
 It has critical information on how the game of Terraforming Mars works and
 core strategies for playing well. Read through it before playing a game.
+Board square information is in `tharsis_board_shape.md`.
 
 ## Core Tools
 
@@ -15,6 +16,7 @@ core strategies for playing well. Read through it before playing a game.
 - `get_game_state`: compact agent view of game status and legal current action context.
 - `get_opponents_played_cards`: all cards currently in each opponent's tableau.
 - `get_my_played_cards`: all cards currently in your tableau.
+- `get_my_hand_cards`: all cards currently in your hand.
 - `get_mars_board_state`: detailed Mars board state (occupied spaces by default).
 - `wait_for_turn`: manually wait until your turn (fixed 2-hour timeout, fixed poll interval).
 - `submit_raw_entity`: submit any raw `InputResponse` JSON object.

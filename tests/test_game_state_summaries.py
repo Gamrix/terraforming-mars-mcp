@@ -1,0 +1,129 @@
+from __future__ import annotations
+
+import importlib.util
+import sys
+from pathlib import Path
+from typing import Any
+
+
+def _load_server_module() -> Any:
+    module_path = Path(__file__).resolve().parents[1] / "terraforming-mars-mcp" / "server.py"
+    spec = importlib.util.spec_from_file_location("tm_mcp_server_summary_tests", module_path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"Unable to load module from {module_path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_get_game_state_surfaces_milestones_and_awards() -> None:
+    server = _load_server_module()
+    player_model = {
+        "id": "player-1",
+        "game": {
+            "id": "game-1",
+            "phase": "action",
+            "generation": 4,
+            "temperature": -20,
+            "oxygenLevel": 6,
+            "oceans": 3,
+            "venusScaleLevel": 2,
+            "isTerraformed": False,
+            "gameAge": 123,
+            "undoCount": 0,
+            "passedPlayers": [],
+            "spaces": [],
+            "milestones": [
+                {
+                    "name": "Builder",
+                    "playerName": "Alice",
+                    "color": "red",
+                    "scores": [
+                        {"color": "red", "score": 8, "claimable": True},
+                        {"color": "blue", "score": 6, "claimable": False},
+                    ],
+                },
+                {
+                    "name": "Mayor",
+                    "playerName": None,
+                    "color": None,
+                    "scores": [
+                        {"color": "red", "score": 2, "claimable": False},
+                        {"color": "blue", "score": 3, "claimable": True},
+                    ],
+                },
+            ],
+            "awards": [
+                {
+                    "name": "Banker",
+                    "playerName": "Bob",
+                    "color": "blue",
+                    "scores": [
+                        {"color": "red", "score": 6},
+                        {"color": "blue", "score": 8},
+                    ],
+                },
+                {
+                    "name": "Scientist",
+                    "playerName": None,
+                    "color": None,
+                    "scores": [
+                        {"color": "red", "score": 1},
+                        {"color": "blue", "score": 0},
+                    ],
+                },
+            ],
+        },
+        "players": [
+            {"name": "Alice", "color": "red", "isActive": True},
+            {"name": "Bob", "color": "blue", "isActive": False},
+        ],
+        "thisPlayer": {"name": "Alice", "color": "red", "isActive": True},
+    }
+
+    server._get_player = lambda player_id=None: player_model
+    state = server.get_game_state()
+
+    assert state["game"]["milestones"][0]["name"] == "Builder"
+    assert state["game"]["milestones"][0]["status"] == "claimed"
+    assert state["game"]["milestones"][0]["owner_name"] == "Alice"
+    assert state["game"]["milestones"][0]["claimable_by"] == ["red"]
+    assert state["game"]["milestones"][1]["status"] == "available"
+    assert state["game"]["milestones"][1]["claimable_by"] == ["blue"]
+
+    assert state["game"]["awards"][0]["name"] == "Banker"
+    assert state["game"]["awards"][0]["status"] == "funded"
+    assert state["game"]["awards"][0]["funder_name"] == "Bob"
+    assert state["game"]["awards"][1]["status"] == "unfunded"
+
+
+def test_get_my_hand_cards_returns_cards_in_hand() -> None:
+    server = _load_server_module()
+    player_model = {
+        "id": "player-1",
+        "game": {
+            "id": "game-1",
+            "phase": "action",
+            "generation": 2,
+            "temperature": -26,
+            "oxygenLevel": 3,
+            "oceans": 1,
+            "venusScaleLevel": 0,
+            "isTerraformed": False,
+            "spaces": [],
+        },
+        "players": [{"name": "Alice", "color": "red", "isActive": True}],
+        "thisPlayer": {"name": "Alice", "color": "red", "isActive": True},
+        "cardsInHand": [
+            {"name": "Comet", "calculatedCost": 21},
+            {"name": "Asteroid", "calculatedCost": 14},
+        ],
+    }
+
+    server._get_player = lambda player_id=None: player_model
+    hand = server.get_my_hand_cards()
+
+    assert hand["cards_in_hand_count"] == 2
+    assert {card["name"] for card in hand["cards_in_hand"]} == {"Comet", "Asteroid"}
+    assert all(isinstance(card["tags"], list) for card in hand["cards_in_hand"])

@@ -299,16 +299,31 @@ def _best_effect_text(info: dict[str, Any]) -> str | None:
 
 def _compact_card(card: dict[str, Any] | str) -> dict[str, Any]:
     if isinstance(card, str):
-        info = _card_info(card, include_play_details=True)
+        card_name = card
+        info = _card_info(card_name, include_play_details=True)
+        cost = info.get("base_cost")
+        disabled = False
+        warning = None
+        warnings: list[Any] = []
+        resources = None
     else:
-        info = _card_info(card.get("name"), include_play_details=True)
+        card_name = card.get("name")
+        info = _card_info(card_name, include_play_details=True)
+        cost = card.get("calculatedCost", info.get("base_cost"))
+        disabled = card.get("isDisabled", False)
+        warning = card.get("warning")
+        raw_warnings = card.get("warnings")
+        warnings = raw_warnings if isinstance(raw_warnings, list) else []
+        resources = card.get("resources")
+
     return {
-        "name": info.get("name"),
-        "cost": info.get("calculatedCost", info.get("cost")),
+        "name": card_name,
+        "cost": cost,
         "type": info.get("cardType"),
-        "disabled": info.get("isDisabled", False),
-        "warning": info.get("warning"),
-        "resources": info.get("resources"),
+        "disabled": disabled,
+        "warning": warning,
+        "warnings": warnings,
+        "resources": resources,
         "tags": info.get("tags", []),
         "ongoing_effects": info.get("ongoing_effects", []),
         "activated_actions": info.get("activated_actions", []),
@@ -614,6 +629,88 @@ def _summarize_board(game: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _summarize_milestones(game: dict[str, Any]) -> list[dict[str, Any]]:
+    milestones = game.get("milestones")
+    if not isinstance(milestones, list):
+        return []
+
+    summarized: list[dict[str, Any]] = []
+    for milestone in milestones:
+        if not isinstance(milestone, dict):
+            continue
+        owner_color = milestone.get("color")
+        owner_name = milestone.get("playerName")
+        status = "claimed" if owner_color or owner_name else "available"
+
+        scores: list[dict[str, Any]] = []
+        claimable_by: list[str] = []
+        raw_scores = milestone.get("scores")
+        if isinstance(raw_scores, list):
+            for score in raw_scores:
+                if not isinstance(score, dict):
+                    continue
+                color = score.get("color")
+                claimable = score.get("claimable")
+                score_payload = {
+                    "color": color,
+                    "score": score.get("score"),
+                    "claimable": claimable is True,
+                }
+                scores.append(score_payload)
+                if claimable is True and isinstance(color, str):
+                    claimable_by.append(color)
+
+        summarized.append(
+            {
+                "name": milestone.get("name"),
+                "status": status,
+                "owner_color": owner_color,
+                "owner_name": owner_name,
+                "scores": scores,
+                "claimable_by": claimable_by,
+            }
+        )
+    return summarized
+
+
+def _summarize_awards(game: dict[str, Any]) -> list[dict[str, Any]]:
+    awards = game.get("awards")
+    if not isinstance(awards, list):
+        return []
+
+    summarized: list[dict[str, Any]] = []
+    for award in awards:
+        if not isinstance(award, dict):
+            continue
+        funder_color = award.get("color")
+        funder_name = award.get("playerName")
+        status = "funded" if funder_color or funder_name else "unfunded"
+
+        scores: list[dict[str, Any]] = []
+        raw_scores = award.get("scores")
+        if isinstance(raw_scores, list):
+            for score in raw_scores:
+                if not isinstance(score, dict):
+                    continue
+                scores.append(
+                    {
+                        "color": score.get("color"),
+                        "score": score.get("score"),
+                    }
+                )
+
+        summarized.append(
+            {
+                "name": award.get("name"),
+                "status": status,
+                "funder_color": funder_color,
+                "funder_name": funder_name,
+                "scores": scores,
+            }
+        )
+    return summarized
+
+
 END_OF_GENERATION_PHASES = {"production", "solar", "intergeneration", "end"}
 
 
@@ -846,6 +943,8 @@ def _build_agent_state(
             "game_age": game.get("gameAge"),
             "undo_count": game.get("undoCount"),
             "passed_players": game.get("passedPlayers"),
+            "milestones": _summarize_milestones(game),
+            "awards": _summarize_awards(game),
             "board": _summarize_board(game) if show_board else None,
             "board_visible": show_board,
         },
@@ -1093,6 +1192,27 @@ def get_mars_board_state(include_empty_spaces: bool = False) -> dict[str, Any]:
     if not isinstance(game, dict):
         raise RuntimeError("Missing game object in /api/player response")
     return _full_board_state(game, include_empty_spaces=include_empty_spaces)
+
+
+@mcp.tool()
+def get_my_hand_cards() -> dict[str, Any]:
+    """Return all cards currently in your hand."""
+    player_model = _get_player()
+    this_player = player_model.get("thisPlayer")
+    if not isinstance(this_player, dict):
+        raise RuntimeError("Missing thisPlayer in /api/player response")
+
+    raw_cards = player_model.get("cardsInHand")
+    cards = _compact_cards(raw_cards) if isinstance(raw_cards, list) else []
+    game = player_model.get("game", {}) if isinstance(player_model.get("game"), dict) else {}
+    return {
+        "generation": game.get("generation"),
+        "phase": game.get("phase"),
+        "player": this_player.get("name"),
+        "color": this_player.get("color"),
+        "cards_in_hand_count": len(cards),
+        "cards_in_hand": cards,
+    }
 
 
 @mcp.tool()
