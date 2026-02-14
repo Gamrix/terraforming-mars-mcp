@@ -343,35 +343,28 @@ def _best_effect_text(info: dict[str, Any]) -> str | None:
 
 
 def _compact_card(card: dict[str, Any] | str | ApiCardModel) -> dict[str, Any]:
+    card_model: ApiCardModel | None = None
     if isinstance(card, str):
         card_name = card
-        info = _card_info(card_name, include_play_details=True)
-        cost = info.get("base_cost")
-        disabled = False
-        warning = None
-        warnings: list[Any] = []
-        resources = None
     elif isinstance(card, ApiCardModel):
-        card_name = card.name
-        info = _card_info(card_name, include_play_details=True)
-        cost = card.calculatedCost if card.calculatedCost is not None else info.get("base_cost")
-        disabled = bool(card.isDisabled)
-        warning = card.warning
-        warnings = card.warnings if isinstance(card.warnings, list) else []
-        resources = card.resources
+        card_model = card
+        card_name = card_model.name
     else:
         card_model = ApiCardModel.model_validate(card)
         card_name = card_model.name
-        info = _card_info(card_name, include_play_details=True)
-        cost = card_model.calculatedCost if card_model.calculatedCost is not None else info.get("base_cost")
-        disabled = bool(card_model.isDisabled)
-        warning = card_model.warning
-        warnings = card_model.warnings if isinstance(card_model.warnings, list) else []
-        resources = card_model.resources
+
+    info = _card_info(card_name, include_play_details=True)
+    base_cost = info.get("base_cost")
+    discounted_cost = card_model.calculatedCost if card_model and card_model.calculatedCost is not None else base_cost
+    disabled = bool(card_model.isDisabled) if card_model else False
+    warning = card_model.warning if card_model else None
+    warnings = card_model.warnings if card_model else []
+    resources = card_model.resources if card_model else None
 
     return {
-        "name": card_name if isinstance(card_name, str) else info.get("name"),
-        "cost": cost,
+        "name": card_name,
+        "cost": base_cost if base_cost is not None else discounted_cost,
+        "discounted_cost": discounted_cost,
         "type": info.get("cardType"),
         "disabled": disabled,
         "warning": warning,
@@ -830,12 +823,15 @@ def _extract_played_cards(player: dict[str, Any], include_play_details: bool = F
                 "activated_actions": info.get("activated_actions", []),
             }
             if include_play_details:
+                base_cost = info.get("base_cost")
+                discounted_cost = card.calculatedCost if card.calculatedCost is not None else base_cost
                 payload.update(
                     {
                         "play_requirements": info.get("play_requirements", []),
                         "play_requirements_text": info.get("play_requirements_text"),
                         "on_play_effect_text": info.get("on_play_effect_text"),
-                        "cost": card.calculatedCost if card.calculatedCost is not None else info.get("base_cost"),
+                        "cost": base_cost if base_cost is not None else discounted_cost,
+                        "discounted_cost": discounted_cost,
                     }
                 )
             cards.append(payload)
@@ -889,6 +885,7 @@ def _detect_new_opponent_cards(player_model: dict[str, Any]) -> list[dict[str, A
                         "play_requirements_text": info.get("play_requirements_text"),
                         "on_play_effect_text": info.get("on_play_effect_text"),
                         "cost": info.get("base_cost"),
+                        "discounted_cost": info.get("base_cost"),
                     }
                 )
 

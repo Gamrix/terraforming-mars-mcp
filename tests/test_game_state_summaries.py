@@ -124,3 +124,5 @@ def test_get_my_hand_cards_returns_cards_in_hand() -> None:
     assert hand["cards_in_hand_count"] == 2
     assert {card["name"] for card in hand["cards_in_hand"]} == {"Comet", "Asteroid"}
     assert all(isinstance(card["tags"], list) for card in hand["cards_in_hand"])
+    assert all("cost" in card for card in hand["cards_in_hand"])
+    assert all("discounted_cost" in card for card in hand["cards_in_hand"])

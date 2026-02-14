@@ -112,9 +112,39 @@ def test_waiting_for_card_preserves_name_cost_and_disabled_state() -> None:
 
     assert card["name"] == "Power Plant:SP"
     assert card["cost"] == 11
+    assert card["discounted_cost"] == 11
     assert card["disabled"] is True
     assert card_selection["show_only_in_learner_mode"] is True
     assert card_selection["show_owner"] is False
+
+
+def test_waiting_for_card_surfaces_base_and_discounted_cost() -> None:
+    server = _load_server_module()
+    server._card_info = lambda card_name, include_play_details=False: {
+        "name": card_name,
+        "base_cost": 10,
+        "tags": [],
+        "ongoing_effects": [],
+        "activated_actions": [],
+        "play_requirements": [],
+        "play_requirements_text": None,
+        "on_play_effect_text": None,
+    }
+
+    waiting_for = {
+        "type": "card",
+        "title": "Play project card",
+        "buttonLabel": "Confirm",
+        "min": 1,
+        "max": 1,
+        "cards": [{"name": "Birds", "calculatedCost": 7}],
+    }
+
+    normalized = server._normalize_waiting_for(waiting_for)
+    card = normalized["cards"][0]
+
+    assert card["cost"] == 10
+    assert card["discounted_cost"] == 7
 
 
 def test_waiting_for_surfaces_warnings_and_branch_metadata() -> None:
