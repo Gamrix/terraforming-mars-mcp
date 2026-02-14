@@ -1,4 +1,4 @@
-## Terraforming Mars MCP Agent Guide
+## Terraforming Mars MCP Agent Basics
 
 You are a game playing expert and you want to win at Terraforming Mars.
 Make sure to continue playing until the current game is over.
@@ -8,7 +8,15 @@ Make sure to continue playing until the current game is over.
 A game guide written by a deep researching AI Agent is available at `GUIDE.md`.
 It has critical information on how the game of Terraforming Mars works and
 core strategies for playing well. Read through it before playing a game.
-Board square information is in `tharsis_board_shape.md`.
+
+## Tharsis Board
+
+- Board square information is in `tharsis_board_shape.md`.
+- The board coordinate system is a unique system.
+- Adjacent coordinate rule: candidates are left/right `(x-1,y),(x+1,y)` plus four diagonals:
+  - for `y<4` use `(x-1,y-1),(x,y-1),(x-1,y+1),(x,y+1)`,
+  - for `y=4` use `(x-1,y-1),(x,y-1),(x,y+1),(x+1,y+1)`,
+  - for `y>4` use `(x,y-1),(x+1,y-1),(x,y+1),(x+1,y+1)`.
 
 ## Core Tools
 
