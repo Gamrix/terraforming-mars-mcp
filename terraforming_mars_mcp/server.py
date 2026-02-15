@@ -251,6 +251,15 @@ class RawInputEntityRequest(BaseModel):
     entity_json: str
 
 
+def _get_waiting_for_model(player_model: dict[str, Any]) -> ApiWaitingForInputModel | None:
+    raw_waiting_for = player_model.get("waitingFor")
+    if isinstance(raw_waiting_for, ApiWaitingForInputModel):
+        return raw_waiting_for
+    if isinstance(raw_waiting_for, dict):
+        return ApiWaitingForInputModel.model_validate(raw_waiting_for)
+    return None
+
+
 def _normalize_or_sub_response(value: str | dict[str, Any] | None) -> dict[str, Any]:
     if value is None or value == "":
         return {"type": "option"}
@@ -264,6 +273,24 @@ def _normalize_or_sub_response(value: str | dict[str, Any] | None) -> dict[str, 
             return {"type": "option", **value}
         return value
     raise ValueError("sub_response_json must be a JSON string or object")
+
+
+def _find_or_option_index(waiting_for: ApiWaitingForInputModel, expected_type: str) -> int:
+    options = waiting_for.options
+    if not isinstance(options, list):
+        raise RuntimeError("Current waitingFor has no options for an 'or' prompt")
+
+    initial_idx = waiting_for.initialIdx
+    if isinstance(initial_idx, int) and 0 <= initial_idx < len(options):
+        initial_option = options[initial_idx]
+        if isinstance(initial_option, ApiWaitingForInputModel) and initial_option.type == expected_type:
+            return initial_idx
+
+    for idx, option in enumerate(options):
+        if isinstance(option, ApiWaitingForInputModel) and option.type == expected_type:
+            return idx
+
+    raise RuntimeError(f"No outer 'or' option of type '{expected_type}' is currently available")
 
 
 def _normalize_raw_input_entity(entity: dict[str, Any]) -> dict[str, Any]:
@@ -304,10 +331,10 @@ def _get_game_logs(player_id: str | None = None) -> list[dict[str, Any]]:
     return normalized_logs
 
 
-def _input_type_name(waiting_for: dict[str, Any] | None) -> str | None:
+def _input_type_name(waiting_for: ApiWaitingForInputModel | None) -> str | None:
     if not waiting_for:
         return None
-    value = waiting_for.get("type")
+    value = waiting_for.type
     if isinstance(value, str):
         try:
             return InputType(value).value
@@ -499,16 +526,16 @@ def _card_info(card_name: Any, include_play_details: bool = False) -> dict[str, 
 
 
 def _normalize_waiting_for(
-    waiting_for: dict[str, Any] | ApiWaitingForInputModel | None,
+    waiting_for: ApiWaitingForInputModel | None,
     depth: int = 0,
 ) -> dict[str, Any] | None:
     if waiting_for is None:
         return None
 
-    wf = waiting_for if isinstance(waiting_for, ApiWaitingForInputModel) else ApiWaitingForInputModel.model_validate(waiting_for)
+    wf = waiting_for
 
     normalized: dict[str, Any] = {
-        "input_type": _input_type_name({"type": wf.type}) if wf.type is not None else None,
+        "input_type": _input_type_name(wf),
         "title": wf.title,
         "button_label": wf.buttonLabel,
     }
@@ -581,7 +608,7 @@ def _normalize_waiting_for(
                 option_payload: dict[str, Any] = {
                     "index": idx,
                     "title": option.title,
-                    "input_type": _input_type_name({"type": option.type}) if option.type is not None else None,
+                    "input_type": _input_type_name(option),
                     "detail": option_detail,
                 }
                 if wf.initialIdx is not None:
@@ -954,7 +981,7 @@ def _build_agent_state(
     include_board_state: bool = False,
 ) -> dict[str, Any]:
     game = player_model.get("game", {}) if isinstance(player_model.get("game"), dict) else {}
-    waiting_for = player_model.get("waitingFor") if isinstance(player_model.get("waitingFor"), dict) else None
+    waiting_for = _get_waiting_for_model(player_model)
     input_type = _input_type_name(waiting_for)
     you, opponents = _summarize_players(player_model)
 
@@ -998,7 +1025,7 @@ def _build_agent_state(
 
 
 def _has_waiting_input(player_model: dict[str, Any]) -> bool:
-    return isinstance(player_model.get("waitingFor"), dict)
+    return _get_waiting_for_model(player_model) is not None
 
 
 def _log_signature(entry: dict[str, Any]) -> str:
@@ -1342,17 +1369,17 @@ def submit_and_options(responses_json: str) -> dict[str, Any]:
 def confirm_option() -> dict[str, Any]:
     """Respond to `type: option`."""
     player_model = _get_player()
-    waiting_for = player_model.get("waitingFor")
-    if isinstance(waiting_for, dict) and waiting_for.get("type") == InputType.OR_OPTIONS.value:
+    waiting_for = _get_waiting_for_model(player_model)
+    if waiting_for is not None and waiting_for.type == InputType.OR_OPTIONS.value:
         index = 0
-        initial_idx = waiting_for.get("initialIdx")
+        initial_idx = waiting_for.initialIdx
         if isinstance(initial_idx, int) and initial_idx >= 0:
             index = initial_idx
         else:
-            options = waiting_for.get("options")
+            options = waiting_for.options
             if isinstance(options, list):
                 for idx, option in enumerate(options):
-                    if isinstance(option, dict) and option.get("type") == InputType.SELECT_OPTION.value:
+                    if isinstance(option, ApiWaitingForInputModel) and option.type == InputType.SELECT_OPTION.value:
                         index = idx
                         break
         return _submit_and_return_state({"type": "or", "index": index, "response": {"type": "option"}})
@@ -1502,43 +1529,55 @@ def pay_for_project_card(
     """Respond to `type: projectCard`."""
     if not card_name:
         raise ValueError("card_name is required")
-    return _submit_and_return_state(
-        {
-            "type": "projectCard",
-            "card": card_name,
-            "payment": _encode_payment(
-                mega_credits=mega_credits,
-                steel=steel,
-                titanium=titanium,
-                heat=heat,
-                plants=plants,
-                microbes=microbes,
-                floaters=floaters,
-                luna_archives_science=luna_archives_science,
-                spire_science=spire_science,
-                seeds=seeds,
-                aurorai_data=aurorai_data,
-                graphene=graphene,
-                kuiper_asteroids=kuiper_asteroids,
-            ),
-        }
-    )
+    project_card_response = {
+        "type": "projectCard",
+        "card": card_name,
+        "payment": _encode_payment(
+            mega_credits=mega_credits,
+            steel=steel,
+            titanium=titanium,
+            heat=heat,
+            plants=plants,
+            microbes=microbes,
+            floaters=floaters,
+            luna_archives_science=luna_archives_science,
+            spire_science=spire_science,
+            seeds=seeds,
+            aurorai_data=aurorai_data,
+            graphene=graphene,
+            kuiper_asteroids=kuiper_asteroids,
+        ),
+    }
+
+    player_model = _get_player()
+    waiting_for = _get_waiting_for_model(player_model)
+    if waiting_for is not None and waiting_for.type == InputType.OR_OPTIONS.value:
+        option_index = _find_or_option_index(waiting_for, InputType.SELECT_PROJECT_CARD_TO_PLAY.value)
+        return _submit_and_return_state(
+            {
+                "type": "or",
+                "index": option_index,
+                "response": project_card_response,
+            }
+        )
+
+    return _submit_and_return_state(project_card_response)
 
 
 @mcp.tool()
 def select_initial_cards(request: InitialCardsSelectionModel) -> dict[str, Any]:
     """Respond to `type: initialCards` using current waiting-for option order."""
     player_model = _get_player()
-    waiting_for = player_model.get("waitingFor")
-    options = waiting_for.get("options") if isinstance(waiting_for, dict) else None
+    waiting_for = _get_waiting_for_model(player_model)
+    options = waiting_for.options if waiting_for is not None else None
     if not isinstance(options, list):
         raise RuntimeError("Current waitingFor has no options for initialCards")
 
     responses: list[dict[str, Any]] = []
     for option in options:
-        if not isinstance(option, dict):
+        if not isinstance(option, ApiWaitingForInputModel):
             raise RuntimeError("Invalid option in initialCards")
-        title = str(option.get("title", "")).lower()
+        title = str(option.title or "").lower()
         if "corporation" in title:
             cards = [request.corporation_card] if request.corporation_card else []
         elif "prelude" in title:

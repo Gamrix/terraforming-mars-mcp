@@ -87,3 +87,75 @@ def test_confirm_option_submits_option_for_option_prompt() -> None:
     assert result == {"ok": True}
     assert captured == {"type": "option"}
 
+
+def test_pay_for_project_card_submits_direct_project_card_payload() -> None:
+    server = _load_server_module()
+    captured: dict[str, Any] = {}
+
+    server._get_player = lambda player_id=None: {"waitingFor": {"type": "projectCard"}}
+
+    def _fake_submit(payload: dict[str, Any]) -> dict[str, Any]:
+        captured.update(payload)
+        return {"ok": True}
+
+    server._submit_and_return_state = _fake_submit
+
+    result = server.pay_for_project_card(card_name="Noctis City", mega_credits=18)
+
+    assert result == {"ok": True}
+    assert captured["type"] == "projectCard"
+    assert captured["card"] == "Noctis City"
+    assert captured["payment"]["megaCredits"] == 18
+
+
+def test_pay_for_project_card_wraps_outer_or_menu() -> None:
+    server = _load_server_module()
+    captured: dict[str, Any] = {}
+
+    server._get_player = lambda player_id=None: {
+        "waitingFor": {
+            "type": "or",
+            "initialIdx": 0,
+            "options": [
+                {"type": "projectCard"},
+                {"type": "option"},
+            ],
+        }
+    }
+
+    def _fake_submit(payload: dict[str, Any]) -> dict[str, Any]:
+        captured.update(payload)
+        return {"ok": True}
+
+    server._submit_and_return_state = _fake_submit
+
+    result = server.pay_for_project_card(card_name="Noctis City", mega_credits=18)
+
+    assert result == {"ok": True}
+    assert captured["type"] == "or"
+    assert captured["index"] == 0
+    assert captured["response"]["type"] == "projectCard"
+    assert captured["response"]["card"] == "Noctis City"
+    assert captured["response"]["payment"]["megaCredits"] == 18
+
+
+def test_pay_for_project_card_errors_when_outer_or_has_no_project_card_branch() -> None:
+    server = _load_server_module()
+
+    server._get_player = lambda player_id=None: {
+        "waitingFor": {
+            "type": "or",
+            "options": [
+                {"type": "option"},
+                {"type": "card"},
+            ],
+        }
+    }
+
+    server._submit_and_return_state = lambda payload: {"ok": True}
+
+    try:
+        server.pay_for_project_card(card_name="Noctis City", mega_credits=18)
+        assert False, "Expected RuntimeError for missing projectCard branch"
+    except RuntimeError as exc:
+        assert "projectCard" in str(exc)

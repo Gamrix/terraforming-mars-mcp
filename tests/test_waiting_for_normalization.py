@@ -14,6 +14,13 @@ def _load_server_module() -> Any:
     return importlib.reload(module)
 
 
+def _normalize_waiting_for(server: Any, waiting_for: dict[str, Any]) -> dict[str, Any]:
+    wf_model = server.ApiWaitingForInputModel.model_validate(waiting_for)
+    normalized = server._normalize_waiting_for(wf_model)
+    assert normalized is not None
+    return normalized
+
+
 def test_initial_cards_options_include_effect_text_previews() -> None:
     server = _load_server_module()
     waiting_for = {
@@ -48,7 +55,7 @@ def test_initial_cards_options_include_effect_text_previews() -> None:
         ],
     }
 
-    normalized = server._normalize_waiting_for(waiting_for)
+    normalized = _normalize_waiting_for(server, waiting_for)
     options = normalized["options"]
 
     assert options[0]["cards_preview"][0]["name"] == "Helion"
@@ -79,7 +86,7 @@ def test_waiting_for_card_lists_accept_string_card_names() -> None:
         "cards": ["Helion", "Comet"],
     }
 
-    normalized = server._normalize_waiting_for(waiting_for)
+    normalized = _normalize_waiting_for(server, waiting_for)
     cards = normalized["cards"]
 
     assert [card["name"] for card in cards] == ["Helion", "Comet"]
@@ -106,7 +113,7 @@ def test_waiting_for_card_preserves_name_cost_and_disabled_state() -> None:
         ],
     }
 
-    normalized = server._normalize_waiting_for(waiting_for)
+    normalized = _normalize_waiting_for(server, waiting_for)
     card = normalized["cards"][0]
     card_selection = normalized["card_selection"]
 
@@ -140,7 +147,7 @@ def test_waiting_for_card_surfaces_base_and_discounted_cost() -> None:
         "cards": [{"name": "Birds", "calculatedCost": 7}],
     }
 
-    normalized = server._normalize_waiting_for(waiting_for)
+    normalized = _normalize_waiting_for(server, waiting_for)
     card = normalized["cards"][0]
 
     assert card["cost"] == 10
@@ -173,7 +180,7 @@ def test_waiting_for_surfaces_warnings_and_branch_metadata() -> None:
         ],
     }
 
-    normalized = server._normalize_waiting_for(waiting_for)
+    normalized = _normalize_waiting_for(server, waiting_for)
 
     assert normalized["warning"] == "Some context warning"
     assert normalized["initial_index"] == 1
@@ -185,27 +192,30 @@ def test_waiting_for_surfaces_warnings_and_branch_metadata() -> None:
 def test_waiting_for_surfaces_resource_and_token_selectors() -> None:
     server = _load_server_module()
 
-    normalized_resource = server._normalize_waiting_for(
+    normalized_resource = _normalize_waiting_for(
+        server,
         {
             "type": "resource",
             "title": "Select a resource",
             "buttonLabel": "Confirm",
             "include": ["steel", "titanium"],
-        }
+        },
     )
     assert normalized_resource["include"] == ["steel", "titanium"]
 
-    normalized_resources = server._normalize_waiting_for(
+    normalized_resources = _normalize_waiting_for(
+        server,
         {
             "type": "resources",
             "title": "Select resources",
             "buttonLabel": "Confirm",
             "count": 2,
-        }
+        },
     )
     assert normalized_resources["count"] == 2
 
-    normalized_tokens = server._normalize_waiting_for(
+    normalized_tokens = _normalize_waiting_for(
+        server,
         {
             "type": "claimedUndergroundToken",
             "title": "Select tokens",
@@ -213,7 +223,7 @@ def test_waiting_for_surfaces_resource_and_token_selectors() -> None:
             "min": 1,
             "max": 2,
             "tokens": [{"id": 0, "label": "A"}, {"id": 1, "label": "B"}],
-        }
+        },
     )
     assert normalized_tokens["tokens"][0]["id"] == 0
     assert normalized_tokens["tokens"][1]["label"] == "B"
