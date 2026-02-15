@@ -333,3 +333,28 @@ Use this decision loop each action phase:
 Terraforming Mars is won by converting resources into final-score categories earlier and more efficiently than opponents.
 The best player is not the one with the prettiest engine.
 The best player is the one who ends the game when their point-conversion profile is strongest.
+
+## 17. Post-Game Learning Loop (Required)
+
+Every finished game should update the shared learning dataset.
+
+Core files:
+- `agent-prompts/codex_from_gameplay/postmortem-template.md`
+- `agent-prompts/codex_from_gameplay/game-summary-template.json`
+- `agent-prompts/codex_from_gameplay/decision-taxonomy.md`
+- `agent-prompts/codex_from_gameplay/game-learning-dataset.jsonl`
+- `agent-prompts/codex_from_gameplay/game-learning-rollup.md`
+- `scripts/tm_learning.py`
+
+Workflow:
+1. Write a full postmortem using the template.
+2. Fill one summary JSON record for the game.
+3. Append it to the dataset:
+- `python3 scripts/tm_learning.py append --summary <summary-path>`
+4. Review the updated rollup and add 1-3 actionable rule updates.
+
+Minimum quality bar per game record:
+- Include complete score breakdown fields.
+- Tag mistakes with taxonomy labels.
+- Include counterfactuals with VP swing estimates.
+- Include concrete rule updates that can be applied in the next game.

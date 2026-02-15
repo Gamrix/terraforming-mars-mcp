@@ -1,0 +1,103 @@
+{
+  "game_date": "2026-02-15",
+  "game_url": "https://terraforming-mars.herokuapp.com/player?id=pdffaae63e575",
+  "game_id": "pdffaae63e575",
+  "board": "tharsis",
+  "self_player": "Codex",
+  "opponent_player": "John",
+  "self_corp": "EcoLine",
+  "opponent_corp": "Helion",
+  "planned_strategy": "rush",
+  "pivot_generation": 7,
+  "finish_generation": 12,
+  "score": {
+    "self": 97,
+    "opponent": 145
+  },
+  "breakdown": {
+    "self": {
+      "tr": 50,
+      "milestones": 10,
+      "awards": 5,
+      "greenery": 16,
+      "city": 11,
+      "card_vp": 5
+    },
+    "opponent": {
+      "tr": 53,
+      "milestones": 5,
+      "awards": 10,
+      "greenery": 1,
+      "city": 18,
+      "card_vp": 58
+    }
+  },
+  "opponent_engine_tags": [
+    "science",
+    "space",
+    "jovian",
+    "city"
+  ],
+  "mistake_tags": [
+    "insufficient_card_vp_scaling",
+    "late_strategy_pivot",
+    "milestone_contest_miss",
+    "opponent_engine_underrated",
+    "tool_timeout",
+    "tool_payload_shape_mismatch"
+  ],
+  "key_turning_points": [
+    {
+      "generation": 6,
+      "title": "Opponent discount stack matured",
+      "impact_vp_est": 10
+    },
+    {
+      "generation": 8,
+      "title": "Failed to add second scalable VP engine early",
+      "impact_vp_est": 12
+    },
+    {
+      "generation": 10,
+      "title": "Game pace drifted to full-length engine game",
+      "impact_vp_est": 8
+    }
+  ],
+  "counterfactuals": [
+    {
+      "change": "Contest Builder earlier or force opponent off milestone line",
+      "swing_vp_est": 10,
+      "confidence": "low"
+    },
+    {
+      "change": "Start city-card VP pivot by Gen 6 once rush closure is uncertain",
+      "swing_vp_est": 8,
+      "confidence": "med"
+    },
+    {
+      "change": "Reduce negative/low-ceiling card mix and increase direct VP density",
+      "swing_vp_est": 4,
+      "confidence": "med"
+    }
+  ],
+  "rule_updates": [
+    "If projected finish is Gen 11 or later by Gen 4, stop single-lane rush and add a second VP engine.",
+    "Track opponent card VP ceiling by Gen 6 and pivot if projection exceeds 35 VP.",
+    "Treat discount stack completion as a strategic alarm to deny or accelerate closure immediately."
+  ],
+  "tool_mismatches": [
+    {
+      "tool": "choose_or_option",
+      "expected": "Sell patents action should return immediately",
+      "actual": "Timed out, but action had already executed server-side",
+      "mitigation": "After timeout, always poll game state before retrying to avoid duplicate actions."
+    },
+    {
+      "tool": "choose_or_option",
+      "expected": "Selecting option index should complete greenery placement",
+      "actual": "Server rejected without nested space payload",
+      "mitigation": "For `or` with `space` branch, always include `sub_response_json` with `type=space` and `spaceId`."
+    }
+  ],
+  "postmortem_path": "agent-prompts/agent_game_notes/2026_02_15/postmortem-heroku-pdffaae63e575.md"
+}

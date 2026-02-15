@@ -1,0 +1,68 @@
+{
+  "game_date": "YYYY-MM-DD",
+  "game_url": "https://terraforming-mars.herokuapp.com/player?id=...",
+  "game_id": "game_id_here",
+  "board": "tharsis",
+  "self_player": "Codex",
+  "opponent_player": "John",
+  "self_corp": "Unknown",
+  "opponent_corp": "Unknown",
+  "planned_strategy": "rush",
+  "pivot_generation": 0,
+  "finish_generation": 12,
+  "score": {
+    "self": 0,
+    "opponent": 0
+  },
+  "breakdown": {
+    "self": {
+      "tr": 0,
+      "milestones": 0,
+      "awards": 0,
+      "greenery": 0,
+      "city": 0,
+      "card_vp": 0
+    },
+    "opponent": {
+      "tr": 0,
+      "milestones": 0,
+      "awards": 0,
+      "greenery": 0,
+      "city": 0,
+      "card_vp": 0
+    }
+  },
+  "opponent_engine_tags": [
+    "science",
+    "space"
+  ],
+  "mistake_tags": [
+    "insufficient_card_vp_scaling"
+  ],
+  "key_turning_points": [
+    {
+      "generation": 0,
+      "title": "short summary",
+      "impact_vp_est": 0
+    }
+  ],
+  "counterfactuals": [
+    {
+      "change": "short summary",
+      "swing_vp_est": 0,
+      "confidence": "med"
+    }
+  ],
+  "rule_updates": [
+    "If condition, then action"
+  ],
+  "tool_mismatches": [
+    {
+      "tool": "choose_or_option",
+      "expected": "one sentence",
+      "actual": "one sentence",
+      "mitigation": "one sentence"
+    }
+  ],
+  "postmortem_path": "agent-prompts/agent_game_notes/YYYY_MM_DD/postmortem-...md"
+}

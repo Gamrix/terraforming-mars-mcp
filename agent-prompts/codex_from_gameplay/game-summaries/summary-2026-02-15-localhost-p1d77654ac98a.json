@@ -1,0 +1,87 @@
+{
+  "game_date": "2026-02-15",
+  "game_url": "http://localhost:8080/player?id=p1d77654ac98a",
+  "game_id": "p1d77654ac98a",
+  "board": "tharsis",
+  "self_player": "Codex",
+  "opponent_player": "John",
+  "self_corp": "Mining Guild",
+  "opponent_corp": "Unknown",
+  "planned_strategy": "rush",
+  "pivot_generation": 8,
+  "finish_generation": 10,
+  "score": {
+    "self": 72,
+    "opponent": 104
+  },
+  "breakdown": {
+    "self": {
+      "tr": 55,
+      "milestones": 5,
+      "awards": 5,
+      "greenery": 8,
+      "city": 0,
+      "card_vp": -1
+    },
+    "opponent": {
+      "tr": 31,
+      "milestones": 10,
+      "awards": 10,
+      "greenery": 11,
+      "city": 13,
+      "card_vp": 29
+    }
+  },
+  "opponent_engine_tags": [
+    "science",
+    "plant",
+    "city"
+  ],
+  "mistake_tags": [
+    "insufficient_card_vp_scaling",
+    "award_funding_mislock",
+    "endgame_conversion_miss",
+    "resource_stranding"
+  ],
+  "key_turning_points": [
+    {
+      "generation": 8,
+      "title": "Rush line did not close by first global max",
+      "impact_vp_est": 8
+    },
+    {
+      "generation": 9,
+      "title": "Thermalist funded but not won",
+      "impact_vp_est": 5
+    },
+    {
+      "generation": 10,
+      "title": "Late board VP conversion underused",
+      "impact_vp_est": 5
+    }
+  ],
+  "counterfactuals": [
+    {
+      "change": "Do not fund Thermalist unless lock is durable",
+      "swing_vp_est": 5,
+      "confidence": "high"
+    },
+    {
+      "change": "Use one extra high-adjacency city line in final action cycle",
+      "swing_vp_est": 5,
+      "confidence": "med"
+    },
+    {
+      "change": "Play direct TR card instead of selling in final generation",
+      "swing_vp_est": 2,
+      "confidence": "high"
+    }
+  ],
+  "rule_updates": [
+    "If award lock confidence is not high, do not fund it even when tempo feels good.",
+    "If first global maxes and finish is not imminent, pivot immediately to VP floor lanes.",
+    "In final generation, convert MC to immediate VP before passing whenever legal."
+  ],
+  "tool_mismatches": [],
+  "postmortem_path": "agent-prompts/agent_game_notes/2026_02_15/postmortem-localhost-p1d77654ac98a.md"
+}
