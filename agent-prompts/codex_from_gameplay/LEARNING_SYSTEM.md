@@ -55,3 +55,68 @@ python3 scripts/tm_learning.py rollup
 - Include at least one `counterfactual` with estimated VP swing.
 - Include at least one concrete `rule_update`.
 - Keep breakdown values consistent with final score.
+
+## Payload Format Notes
+
+Use these exact payload shapes when `waiting_for.input_type` is `or`.
+
+- Raw `or` wrapper (strict keys only):
+
+```json
+{
+  "type": "or",
+  "index": 2,
+  "response": { "type": "option" }
+}
+```
+
+- `or` -> `projectCard` branch (must use `card`, not `cards`; must include full `payment` object):
+
+```json
+{
+  "type": "or",
+  "index": 2,
+  "response": {
+    "type": "projectCard",
+    "card": "Anti-Gravity Technology",
+    "payment": {
+      "megaCredits": 13,
+      "steel": 0,
+      "titanium": 0,
+      "heat": 0,
+      "plants": 0,
+      "microbes": 0,
+      "floaters": 0,
+      "lunaArchivesScience": 0,
+      "spireScience": 0,
+      "seeds": 0,
+      "auroraiData": 0,
+      "graphene": 0,
+      "kuiperAsteroids": 0
+    }
+  }
+}
+```
+
+- `or` -> `card` branch:
+
+```json
+{
+  "type": "or",
+  "index": 1,
+  "response": { "type": "card", "cards": ["Security Fleet"] }
+}
+```
+
+- `card` prompt with `min=0,max=0` (for example Inventors' Guild when card cannot be bought):
+
+```json
+{ "type": "card", "cards": [] }
+```
+
+### Known Mismatch (2026-02-15, game `pedaac22da042`)
+
+- `Open City` appeared in `waiting_for.options[*].detail.cards` and in hand, but `or -> projectCard` submit returned:
+  - `HTTP 400 POST /player/input: Unknown card name Open City`
+- This failed across multiple payload encodings (direct params and legacy `request` wrapper).
+- Workaround used in-game: pivot to standard project city / other legal actions.

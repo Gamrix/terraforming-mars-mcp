@@ -86,15 +86,101 @@ core strategies for playing well. Read through it before playing a game.
 - `or`:
 - Nested response must match the selected branch’s expected type.
 - If branch 0 is `projectCard`, sending nested `{"type":"option"}` will fail validation.
+- Raw `OrOptionsResponse` shape is strict:
+- `{"type":"or","index":<number>,"response":<InputResponse>}`
+- Keys must be exactly `type`, `index`, `response` (extra keys fail validation).
 
 - Milestones and awards:
 - Milestone claim and award funding are selected as branches of an `or` prompt.
 - Find the matching option title in `waiting_for.options`, then call `choose_or_option` with that index and nested `{"type":"option"}`.
+- If the selected branch itself is another `or`, your nested payload must also be an `or` response, not `option`.
 - If the server then returns `input_type: payment`, finish with `pay_for_action(...)`.
 
 - `initialCards`:
 - The helper reads the server’s current setup option order and maps your corp/prelude/CEO/project picks into `responses`.
 - This avoids hard-coding option positions.
+
+## Payload Formats (Copy/Paste)
+
+Use these exact shapes when you are unsure about setup or nested prompts.
+
+- `select_initial_cards` tool payload:
+- The MCP tool expects a single string field named `request` that contains JSON.
+- JSON keys are snake_case and list-typed fields must be arrays (not comma-separated strings).
+- Minimal example:
+```json
+{
+  "request": "{\"corporation_card\":\"Thorgate\",\"prelude_cards\":[\"Martian Industries\",\"Loan\"],\"project_cards\":[\"Noctis City\",\"Mining Area\"],\"ceo_cards\":[]}"
+}
+```
+
+- Raw entity that `select_initial_cards` constructs:
+```json
+{
+  "type": "initialCards",
+  "responses": [
+    { "type": "card", "cards": ["Thorgate"] },
+    { "type": "card", "cards": ["Martian Industries", "Loan"] },
+    { "type": "card", "cards": ["Noctis City", "Mining Area"] }
+  ]
+}
+```
+
+- `choose_or_option` with nested `space` response:
+- `sub_response_json` must be a JSON string, not an object.
+- Example:
+```json
+{
+  "option_index": "1",
+  "sub_response_json": "{\"type\":\"space\",\"spaceId\":\"04\"}"
+}
+```
+
+- `choose_or_option` with nested `projectCard` response:
+- Do not send `{"type":"option"}` for a project-card branch.
+- Use full nested `projectCard` + payment payload.
+- Example:
+```json
+{
+  "option_index": "0",
+  "sub_response_json": "{\"type\":\"projectCard\",\"card\":\"Noctis City\",\"payment\":{\"megaCredits\":18,\"steel\":0,\"titanium\":0,\"plants\":0,\"heat\":0,\"microbes\":0,\"floaters\":0,\"lunaArchivesScience\":0,\"spireScience\":0,\"seeds\":0,\"auroraiData\":0,\"graphene\":0,\"kuiperAsteroids\":0}}"
+}
+```
+
+- `choose_or_option` for nested `or` (example: claim Mayor milestone):
+- Outer action menu branch is `or`, and that branch contains a second `or` with milestone choices.
+- Use nested `or` response:
+```json
+{
+  "option_index": "0",
+  "sub_response_json": "{\"type\":\"or\",\"index\":0,\"response\":{\"type\":\"option\"}}"
+}
+```
+
+- Equivalent raw payload (when bypassing helpers) for the same Mayor claim:
+```json
+{
+  "type": "or",
+  "index": 0,
+  "response": {
+    "type": "or",
+    "index": 0,
+    "response": { "type": "option" }
+  }
+}
+```
+
+- `select_cards` with empty list (Inventors' Guild "cannot afford any cards"):
+- If prompt shows `input_type: card` with `amount_range.min=0` and `max=0`, confirm with no card names.
+```json
+{
+  "card_names": []
+}
+```
+
+- Timeout recovery rule:
+- If a write call times out, call `get_game_state` before retrying.
+- Some actions execute server-side even when the MCP call times out.
 
 ## Game State for Agents
 

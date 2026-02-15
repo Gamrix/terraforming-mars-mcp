@@ -1,0 +1,103 @@
+{
+  "game_date": "2026-02-15",
+  "game_url": "http://localhost:8080/player?id=pedaac22da042",
+  "game_id": "pedaac22da042",
+  "board": "tharsis",
+  "self_player": "Codex",
+  "opponent_player": "John",
+  "self_corp": "Thorgate",
+  "opponent_corp": "Mining Guild",
+  "planned_strategy": "hybrid",
+  "pivot_generation": 11,
+  "finish_generation": 11,
+  "score": {
+    "self": 81,
+    "opponent": 112
+  },
+  "breakdown": {
+    "self": {
+      "tr": 39,
+      "milestones": 5,
+      "awards": 5,
+      "greenery": 2,
+      "city": 4,
+      "card_vp": 26
+    },
+    "opponent": {
+      "tr": 56,
+      "milestones": 10,
+      "awards": 10,
+      "greenery": 6,
+      "city": 9,
+      "card_vp": 21
+    }
+  },
+  "opponent_engine_tags": [
+    "building",
+    "science",
+    "city",
+    "plant"
+  ],
+  "mistake_tags": [
+    "award_funding_mislock",
+    "milestone_contest_miss",
+    "endgame_conversion_miss",
+    "resource_stranding",
+    "opponent_engine_underrated",
+    "tool_payload_shape_mismatch"
+  ],
+  "key_turning_points": [
+    {
+      "generation": 9,
+      "title": "Funded awards without durable lock on Banker/Landlord trajectories",
+      "impact_vp_est": 8
+    },
+    {
+      "generation": 11,
+      "title": "Open City project-card submission failed on server mismatch",
+      "impact_vp_est": 4
+    },
+    {
+      "generation": 11,
+      "title": "Opponent final public-point conversion after Mars completion",
+      "impact_vp_est": 10
+    }
+  ],
+  "counterfactuals": [
+    {
+      "change": "Avoid funding awards unless win projection is durable",
+      "swing_vp_est": 5,
+      "confidence": "high"
+    },
+    {
+      "change": "Pre-plan fallback VP line when project-card submit fails in endgame",
+      "swing_vp_est": 4,
+      "confidence": "med"
+    },
+    {
+      "change": "Contest or deny Builder/Planner by midgame before opponent lock",
+      "swing_vp_est": 8,
+      "confidence": "low"
+    }
+  ],
+  "rule_updates": [
+    "If award lock confidence is not durable, do not fund the award and convert actions into direct VP or denial.",
+    "If opponent has two live milestone races by Gen 6, make an explicit contest-or-concede decision immediately.",
+    "If a project-card submit fails twice in endgame, stop retrying and execute a known fallback VP action path."
+  ],
+  "tool_mismatches": [
+    {
+      "tool": "choose_or_option",
+      "expected": "Project-card branch accepts nested payload and resolves card play",
+      "actual": "Rejected with invalid SelectProjectCardToPlayResponse when nested shape used cards instead of card plus full payment",
+      "mitigation": "Use strict nested projectCard response with card and full payment object including all spendable keys."
+    },
+    {
+      "tool": "choose_or_option",
+      "expected": "Open City plays normally because it appears in waiting_for project card list",
+      "actual": "Rejected with Unknown card name Open City across multiple payload encodings",
+      "mitigation": "Treat as known server mismatch and pivot immediately to legal fallback action while logging the mismatch."
+    }
+  ],
+  "postmortem_path": "agent-prompts/agent_game_notes/2026_02_15/postmortem-localhost-pedaac22da042.md"
+}

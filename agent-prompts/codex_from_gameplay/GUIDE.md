@@ -328,6 +328,47 @@ Use this decision loop each action phase:
 5. Re-evaluate after every opponent action:
 - Update races and adjust.
 
+## 15A. Opponent-Modeling Tasks (Required Every Game)
+
+These are mandatory tasks, not optional heuristics.
+
+At the start of each generation (from Gen 3 onward), record a quick opponent forecast:
+- Projected final TR.
+- Projected final card VP.
+- Projected final city VP.
+- Projected final greenery VP.
+- Expected milestone split.
+- Expected award split.
+
+Then update your own forecast in the same lanes and compute where you are behind.
+
+Per action, rank candidate plays with this priority score:
+- `Immediate VP gained + VP denied to opponent + end-timer control value`.
+
+Never choose a lower-priority action unless it is required for legality sequencing.
+
+## 15B. Hard Decision Gates (Use Exact Triggers)
+
+1. Milestone gate (by Gen 4):
+- For each live milestone, explicitly choose `contest` or `concede`.
+- Do not stay in an ambiguous middle line.
+
+2. Opponent VP ceiling gate (by Gen 6):
+- If opponent projected `card_vp >= 35`, or projected `(card_vp + city_vp) >= 45`,
+  then stop pure tempo play.
+- Switch immediately to one of:
+- Fast-close line (force remaining globals down quickly), or
+- Mirror VP line (city/card VP engine with immediate payoff).
+
+3. Award funding gate:
+- Fund an award only if first-place hold is durable under reasonable opponent lines.
+- If lock is not durable, convert the same action/economy into direct VP or denial.
+
+4. Endgame protocol gate (Gen 10+ or when all globals are within ~3 steps):
+- Before first action, write a concrete 3-action finish plan.
+- Recompute after each opponent action.
+- Prefer guaranteed VP swing over setup value.
+
 ## 16. Final Strategic Principle
 
 Terraforming Mars is won by converting resources into final-score categories earlier and more efficiently than opponents.
