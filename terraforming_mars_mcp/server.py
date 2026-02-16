@@ -13,8 +13,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import os
 import re
+import tempfile
 import time
 from collections import Counter
 from dataclasses import dataclass
@@ -109,12 +111,37 @@ class SessionConfig:
 
 
 CFG = SessionConfig()
-mcp = FastMCP("terraforming-mars")
+mcp = FastMCP("terraforming-mars", log_level="DEBUG", debug=True)
+
+DEFAULT_LOG_LEVEL = os.environ.get("TM_MCP_LOG_LEVEL", "DEBUG").upper()
+DEFAULT_LOG_FILE = os.environ.get(
+    "TM_MCP_LOG_FILE",
+    str(Path(__file__).parent / "tmp" / "terraforming-mars-mcp.log"),
+)
 
 _CARD_INFO_INDEX: dict[str, dict[str, Any]] | None = None
 _LAST_OPPONENT_TABLEAU: dict[str, dict[str, Counter[str]]] = {}
 TURN_WAIT_TIMEOUT_SECONDS = 2 * 60 * 60
 TURN_WAIT_POLL_INTERVAL_SECONDS = 2
+
+
+def _configure_server_logging(log_level: str, log_file: str) -> Path:
+    normalized_level = log_level.upper()
+    if normalized_level not in {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}:
+        raise ValueError(f"Unsupported log level: {log_level}")
+
+    log_path = Path(log_file).expanduser()
+    if not log_path.is_absolute():
+        log_path = (Path.cwd() / log_path).resolve()
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+
+    logging.basicConfig(
+        level=getattr(logging, normalized_level),
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+        handlers=[logging.FileHandler(log_path, encoding="utf-8")],
+        force=True,
+    )
+    return log_path
 
 
 def _strip_base_url(base_url: str) -> str:
@@ -1704,7 +1731,20 @@ def main() -> None:
         default=None,
         help="Player ID to use at startup (overrides TM_PLAYER_ID)",
     )
+    parser.add_argument(
+        "--log-level",
+        default=DEFAULT_LOG_LEVEL,
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        help="Log level for server logging (overrides TM_MCP_LOG_LEVEL)",
+    )
+    parser.add_argument(
+        "--log-file",
+        default=DEFAULT_LOG_FILE,
+        help="Path to log file (overrides TM_MCP_LOG_FILE)",
+    )
     args = parser.parse_args()
+
+    _configure_server_logging(args.log_level, args.log_file)
 
     if args.base_url:
         CFG.base_url = _strip_base_url(args.base_url)
