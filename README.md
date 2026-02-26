@@ -28,6 +28,39 @@ uv run python -m terraforming_mars_mcp.server
 
 `--player-id` is optional. Agents can also set it later with the `configure_session` tool.
 
+## Add to Claude
+
+Register this MCP server with Claude Code (stdio transport):
+
+```bash
+claude mcp add terraforming-mars \
+  --env TM_SERVER_URL=http://localhost:8080 \
+  -- uv run --directory "$PWD" python -m terraforming_mars_mcp.server
+```
+
+Verify it was added:
+
+```bash
+claude mcp list
+claude mcp get terraforming-mars
+```
+
+For Claude Desktop, add the following to your `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "terraforming-mars": {
+      "command": "uv",
+      "args": ["run", "--directory", "/path/to/terraforming-mars-mcp", "python", "-m", "terraforming_mars_mcp.server"],
+      "env": {
+        "TM_SERVER_URL": "http://localhost:8080"
+      }
+    }
+  }
+}
+```
+
 ## Add to Codex
 
 Register this MCP server with Codex (stdio transport):
