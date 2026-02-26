@@ -22,7 +22,7 @@ from collections import Counter
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 from urllib import error, parse, request
 
 from mcp.server.fastmcp import FastMCP
@@ -123,6 +123,9 @@ _CARD_INFO_INDEX: dict[str, dict[str, Any]] | None = None
 _LAST_OPPONENT_TABLEAU: dict[str, dict[str, Counter[str]]] = {}
 TURN_WAIT_TIMEOUT_SECONDS = 2 * 60 * 60
 TURN_WAIT_POLL_INTERVAL_SECONDS = 2
+DETAIL_LEVEL_FULL = "full"
+DETAIL_LEVEL_MINIMAL = "minimal"
+VALID_DETAIL_LEVELS = {DETAIL_LEVEL_FULL, DETAIL_LEVEL_MINIMAL}
 
 
 def _configure_server_logging(log_level: str, log_file: str) -> Path:
@@ -396,7 +399,19 @@ def _best_effect_text(info: dict[str, Any]) -> str | None:
     return None
 
 
-def _compact_card(card: dict[str, Any] | str | ApiCardModel) -> dict[str, Any]:
+def _normalize_detail_level(detail_level: str) -> str:
+    normalized = str(detail_level).strip().lower()
+    if normalized not in VALID_DETAIL_LEVELS:
+        raise ValueError(f"detail_level must be one of {sorted(VALID_DETAIL_LEVELS)}")
+    return normalized
+
+
+def _compact_card(
+    card: dict[str, Any] | str | ApiCardModel,
+    detail_level: str = DETAIL_LEVEL_FULL,
+) -> dict[str, Any]:
+    normalized_detail_level = _normalize_detail_level(detail_level)
+
     card_model: ApiCardModel | None = None
     if isinstance(card, str):
         card_name = card
@@ -415,29 +430,62 @@ def _compact_card(card: dict[str, Any] | str | ApiCardModel) -> dict[str, Any]:
     warnings = card_model.warnings if card_model else []
     resources = card_model.resources if card_model else None
 
-    return {
+    payload: dict[str, Any] = {
         "name": card_name,
-        "cost": base_cost if base_cost is not None else discounted_cost,
-        "discounted_cost": discounted_cost,
-        "type": info.get("cardType"),
-        "disabled": disabled,
-        "warning": warning,
-        "warnings": warnings,
-        "resources": resources,
-        "tags": info.get("tags", []),
-        "ongoing_effects": info.get("ongoing_effects", []),
-        "activated_actions": info.get("activated_actions", []),
-        "play_requirements": info.get("play_requirements", []),
-        "play_requirements_text": info.get("play_requirements_text"),
-        "on_play_effect_text": info.get("on_play_effect_text"),
-        "effect_text": _best_effect_text(info),
     }
+    cost = base_cost if base_cost is not None else discounted_cost
+    if cost is not None:
+        payload["cost"] = cost
+    if discounted_cost is not None and discounted_cost != cost:
+        payload["discounted_cost"] = discounted_cost
+    if disabled:
+        payload["disabled"] = True
+    if isinstance(warning, str) and warning.strip():
+        payload["warning"] = warning
+    if isinstance(warnings, list) and warnings:
+        payload["warnings"] = warnings
+    if resources is not None:
+        payload["resources"] = resources
+
+    if normalized_detail_level == DETAIL_LEVEL_FULL:
+        tags = info.get("tags")
+        if isinstance(tags, list) and tags:
+            payload["tags"] = tags
+
+        ongoing_effects = info.get("ongoing_effects")
+        if isinstance(ongoing_effects, list) and ongoing_effects:
+            payload["ongoing_effects"] = ongoing_effects
+
+        activated_actions = info.get("activated_actions")
+        if isinstance(activated_actions, list) and activated_actions:
+            payload["activated_actions"] = activated_actions
+
+        play_requirements = info.get("play_requirements")
+        if isinstance(play_requirements, list) and play_requirements:
+            payload["play_requirements"] = play_requirements
+
+        play_requirements_text = info.get("play_requirements_text")
+        if isinstance(play_requirements_text, str) and play_requirements_text.strip():
+            payload["play_requirements_text"] = play_requirements_text
+
+        on_play_effect_text = info.get("on_play_effect_text")
+        if isinstance(on_play_effect_text, str) and on_play_effect_text.strip():
+            payload["on_play_effect_text"] = on_play_effect_text
+
+        effect_text = _best_effect_text(info)
+        if isinstance(effect_text, str) and effect_text.strip():
+            payload["effect_text"] = effect_text
+
+    return payload
 
 
-def _compact_cards(cards: list[Any]) -> list[dict[str, Any]]:
+def _compact_cards(
+    cards: list[Any],
+    detail_level: str = DETAIL_LEVEL_FULL,
+) -> list[dict[str, Any]]:
     compact_cards: list[dict[str, Any]] = []
     for card in cards:
-        compact = _compact_card(card)
+        compact = _compact_card(card, detail_level=detail_level)
         if compact:
             compact_cards.append(compact)
     return compact_cards
@@ -555,6 +603,7 @@ def _card_info(card_name: Any, include_play_details: bool = False) -> dict[str, 
 def _normalize_waiting_for(
     waiting_for: ApiWaitingForInputModel | None,
     depth: int = 0,
+    detail_level: str = DETAIL_LEVEL_FULL,
 ) -> dict[str, Any] | None:
     if waiting_for is None:
         return None
@@ -569,18 +618,21 @@ def _normalize_waiting_for(
 
     if wf.warning is not None:
         normalized["warning"] = wf.warning
-    if isinstance(wf.warnings, list):
+    if isinstance(wf.warnings, list) and wf.warnings:
         normalized["warnings"] = wf.warnings
 
     if wf.initialIdx is not None:
         normalized["initial_index"] = wf.initialIdx
 
     if wf.min is not None or wf.max is not None:
-        normalized["amount_range"] = {
-            "min": wf.min,
-            "max": wf.max,
-            "max_by_default": wf.maxByDefault,
-        }
+        amount_range: dict[str, Any] = {}
+        if wf.min is not None:
+            amount_range["min"] = wf.min
+        if wf.max is not None:
+            amount_range["max"] = wf.max
+        if wf.maxByDefault is not None:
+            amount_range["max_by_default"] = wf.maxByDefault
+        normalized["amount_range"] = amount_range
 
     if wf.amount is not None:
         normalized["amount"] = wf.amount
@@ -588,29 +640,35 @@ def _normalize_waiting_for(
     if wf.count is not None:
         normalized["count"] = wf.count
 
-    if isinstance(wf.include, list):
+    if isinstance(wf.include, list) and wf.include:
         normalized["include"] = wf.include
 
     if isinstance(wf.cards, list):
-        normalized["cards"] = _compact_cards(wf.cards)
-        normalized["card_selection"] = {
-            "min": wf.min,
-            "max": wf.max,
-            "select_blue_card_action": wf.selectBlueCardAction is True,
-            "show_only_in_learner_mode": wf.showOnlyInLearnerMode is True,
-            "show_owner": wf.showOwner is True,
-        }
+        normalized["cards"] = _compact_cards(wf.cards, detail_level=detail_level)
+        card_selection: dict[str, Any] = {}
+        if wf.min is not None:
+            card_selection["min"] = wf.min
+        if wf.max is not None:
+            card_selection["max"] = wf.max
+        if wf.selectBlueCardAction is True:
+            card_selection["select_blue_card_action"] = True
+        if wf.showOnlyInLearnerMode is True:
+            card_selection["show_only_in_learner_mode"] = True
+        if wf.showOwner is True:
+            card_selection["show_owner"] = True
+        if card_selection:
+            normalized["card_selection"] = card_selection
 
-    if isinstance(wf.players, list):
+    if isinstance(wf.players, list) and wf.players:
         normalized["players"] = wf.players
-    if isinstance(wf.spaces, list):
+    if isinstance(wf.spaces, list) and wf.spaces:
         normalized["spaces"] = wf.spaces
-    if isinstance(wf.parties, list):
+    if isinstance(wf.parties, list) and wf.parties:
         normalized["parties"] = wf.parties
-    if isinstance(wf.globalEventNames, list):
+    if isinstance(wf.globalEventNames, list) and wf.globalEventNames:
         normalized["globalEventNames"] = wf.globalEventNames
 
-    if isinstance(wf.tokens, list):
+    if isinstance(wf.tokens, list) and wf.tokens:
         normalized["tokens"] = [token.model_dump(exclude_none=False) for token in wf.tokens]
 
     if isinstance(wf.coloniesModel, list):
@@ -631,21 +689,16 @@ def _normalize_waiting_for(
         else:
             normalized_options: list[dict[str, Any]] = []
             for idx, option in enumerate(wf.options):
-                option_detail = _normalize_waiting_for(option, depth + 1)
+                option_detail = _normalize_waiting_for(option, depth + 1, detail_level=detail_level)
                 option_payload: dict[str, Any] = {
                     "index": idx,
                     "title": option.title,
                     "input_type": _input_type_name(option),
-                    "detail": option_detail,
                 }
+                if option_detail is not None:
+                    option_payload["detail"] = option_detail
                 if wf.initialIdx is not None:
                     option_payload["is_initial"] = idx == wf.initialIdx
-
-                # Surface concise option-level card context for setup prompts (e.g., initialCards),
-                # so effect text is visible without extra nested traversal.
-                if isinstance(option.cards, list):
-                    compact_cards = _compact_cards(option.cards)
-                    option_payload["cards_preview"] = compact_cards
 
                 normalized_options.append(option_payload)
 
@@ -1006,44 +1059,81 @@ def _build_agent_state(
     player_model: dict[str, Any],
     include_full_model: bool = False,
     include_board_state: bool = False,
+    detail_level: str = DETAIL_LEVEL_FULL,
 ) -> dict[str, Any]:
+    normalized_detail_level = _normalize_detail_level(detail_level)
     game = player_model.get("game", {}) if isinstance(player_model.get("game"), dict) else {}
     waiting_for = _get_waiting_for_model(player_model)
     input_type = _input_type_name(waiting_for)
     you, opponents = _summarize_players(player_model)
 
     phase = game.get("phase")
-    show_board = include_board_state or (isinstance(phase, str) and phase in END_OF_GENERATION_PHASES)
+    show_board = include_board_state or (
+        normalized_detail_level == DETAIL_LEVEL_FULL
+        and isinstance(phase, str)
+        and phase in END_OF_GENERATION_PHASES
+    )
+
+    session: dict[str, Any] = {
+        "player_id": player_model.get("id", CFG.player_id),
+    }
+    if normalized_detail_level == DETAIL_LEVEL_FULL:
+        session["base_url"] = CFG.base_url
+
+    game_state: dict[str, Any] = {
+        "id": game.get("id"),
+        "phase": game.get("phase"),
+        "generation": game.get("generation"),
+        "terraforming": {
+            "temperature": game.get("temperature"),
+            "oxygen": game.get("oxygenLevel"),
+            "oceans": game.get("oceans"),
+            "venus": game.get("venusScaleLevel"),
+            "terraformed": game.get("isTerraformed"),
+        },
+        "game_age": game.get("gameAge"),
+        "undo_count": game.get("undoCount"),
+        "passed_players": game.get("passedPlayers"),
+    }
+
+    if normalized_detail_level == DETAIL_LEVEL_FULL:
+        game_state.update(
+            {
+                "milestones": _summarize_milestones(game),
+                "awards": _summarize_awards(game),
+            }
+        )
+    if show_board:
+        game_state["board"] = _summarize_board(game)
+        game_state["board_visible"] = True
+    elif normalized_detail_level == DETAIL_LEVEL_FULL:
+        game_state["board"] = None
+        game_state["board_visible"] = False
+
+    if normalized_detail_level == DETAIL_LEVEL_FULL:
+        opponents_state = opponents
+        opponent_card_events = _detect_new_opponent_cards(player_model)
+    else:
+        opponents_state = [
+            {
+                "name": p.get("name"),
+                "color": p.get("color"),
+                "active": p.get("active"),
+                "tr": p.get("tr"),
+                "cards_in_hand_count": p.get("cards_in_hand_count"),
+            }
+            for p in opponents
+        ]
+        opponent_card_events = []
 
     result: dict[str, Any] = {
-        "session": {
-            "base_url": CFG.base_url,
-            "player_id": player_model.get("id", CFG.player_id),
-        },
-        "game": {
-            "id": game.get("id"),
-            "phase": game.get("phase"),
-            "generation": game.get("generation"),
-            "terraforming": {
-                "temperature": game.get("temperature"),
-                "oxygen": game.get("oxygenLevel"),
-                "oceans": game.get("oceans"),
-                "venus": game.get("venusScaleLevel"),
-                "terraformed": game.get("isTerraformed"),
-            },
-            "game_age": game.get("gameAge"),
-            "undo_count": game.get("undoCount"),
-            "passed_players": game.get("passedPlayers"),
-            "milestones": _summarize_milestones(game),
-            "awards": _summarize_awards(game),
-            "board": _summarize_board(game) if show_board else None,
-            "board_visible": show_board,
-        },
+        "session": session,
+        "game": game_state,
         "you": you,
-        "opponents": opponents,
-        "waiting_for": _normalize_waiting_for(waiting_for),
+        "opponents": opponents_state,
+        "waiting_for": _normalize_waiting_for(waiting_for, detail_level=normalized_detail_level),
         "suggested_tools": _action_tools_for_input_type(input_type),
-        "opponent_card_events": _detect_new_opponent_cards(player_model),
+        "opponent_card_events": opponent_card_events,
     }
 
     if include_full_model:
@@ -1216,13 +1306,18 @@ def configure_session(base_url: str | None = None, player_id: str | None = None)
 
 
 @mcp.tool()
-def get_game_state(include_full_model: bool = False, include_board_state: bool = False) -> dict[str, Any]:
+def get_game_state(
+    include_full_model: bool = False,
+    include_board_state: bool = False,
+    detail_level: Literal["full", "minimal"] = "full",
+) -> dict[str, Any]:
     """Fetch current player state plus compact, agent-friendly action/game summary."""
     player_model = _get_player()
     return _build_agent_state(
         player_model,
         include_full_model=include_full_model,
         include_board_state=include_board_state,
+        detail_level=detail_level,
     )
 
 
