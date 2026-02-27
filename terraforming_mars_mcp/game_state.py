@@ -11,7 +11,7 @@ try:
         PublicPlayerModel as ApiPublicPlayerModel,
         SpaceModel as ApiSpaceModel,
     )
-    from ._enums import InputType, ToolName
+    from ._enums import _action_tools_for_input_type
     from .card_info import DETAIL_LEVEL_FULL, _card_info, _normalize_detail_level
     from .waiting_for import (
         _get_waiting_for_model,
@@ -26,7 +26,7 @@ except ImportError:
         PublicPlayerModel as ApiPublicPlayerModel,
         SpaceModel as ApiSpaceModel,
     )
-    from _enums import InputType, ToolName  # type: ignore[no-redef]
+    from _enums import _action_tools_for_input_type  # type: ignore[no-redef]
     from card_info import (
         DETAIL_LEVEL_FULL,
         _card_info,
@@ -378,60 +378,6 @@ def _detect_new_opponent_cards(player_model: dict[str, Any]) -> list[dict[str, A
     _LAST_OPPONENT_TABLEAU[key] = current
     return events
 
-
-def _action_tools_for_input_type(input_type: str | None) -> list[str]:
-    if input_type is None:
-        return []
-    try:
-        input_type_enum = InputType(input_type)
-    except ValueError:
-        return [ToolName.SUBMIT_RAW_ENTITY.value]
-
-    match input_type_enum:
-        case InputType.AND_OPTIONS:
-            tools = [ToolName.SUBMIT_AND_OPTIONS.value]
-        case InputType.OR_OPTIONS:
-            tools = [ToolName.CHOOSE_OR_OPTION.value]
-        case InputType.SELECT_AMOUNT:
-            tools = [ToolName.SELECT_AMOUNT.value]
-        case InputType.SELECT_CARD:
-            tools = [ToolName.SELECT_CARDS.value]
-        case InputType.SELECT_DELEGATE:
-            tools = [ToolName.SELECT_DELEGATE_TARGET.value]
-        case InputType.SELECT_PAYMENT:
-            tools = [ToolName.PAY_FOR_ACTION.value]
-        case InputType.SELECT_PROJECT_CARD_TO_PLAY:
-            tools = [ToolName.PAY_FOR_PROJECT_CARD.value]
-        case InputType.SELECT_INITIAL_CARDS:
-            tools = [ToolName.SELECT_INITIAL_CARDS.value]
-        case InputType.SELECT_OPTION:
-            tools = [ToolName.CONFIRM_OPTION.value]
-        case InputType.SELECT_PARTY:
-            tools = [ToolName.SELECT_PARTY.value]
-        case InputType.SELECT_PLAYER:
-            tools = [ToolName.SELECT_PLAYER.value]
-        case InputType.SELECT_SPACE:
-            tools = [ToolName.SELECT_SPACE.value]
-        case InputType.SELECT_COLONY:
-            tools = [ToolName.SELECT_COLONY.value]
-        case InputType.SELECT_PRODUCTION_TO_LOSE:
-            tools = [ToolName.SELECT_PRODUCTION_TO_LOSE.value]
-        case InputType.SHIFT_ARES_GLOBAL_PARAMETERS:
-            tools = [ToolName.SHIFT_ARES_GLOBAL_PARAMETERS.value]
-        case InputType.SELECT_GLOBAL_EVENT:
-            tools = [ToolName.SELECT_GLOBAL_EVENT.value]
-        case InputType.SELECT_POLICY:
-            tools = [ToolName.SELECT_POLICY.value]
-        case InputType.SELECT_RESOURCE:
-            tools = [ToolName.SELECT_RESOURCE.value]
-        case InputType.SELECT_RESOURCES:
-            tools = [ToolName.SELECT_RESOURCES.value]
-        case InputType.SELECT_CLAIMED_UNDERGROUND_TOKEN:
-            tools = [ToolName.SELECT_CLAIMED_UNDERGROUND_TOKEN.value]
-
-    if ToolName.SUBMIT_RAW_ENTITY.value not in tools:
-        tools.append(ToolName.SUBMIT_RAW_ENTITY.value)
-    return tools
 
 
 def _build_agent_state(
