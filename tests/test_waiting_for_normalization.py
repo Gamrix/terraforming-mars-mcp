@@ -21,7 +21,7 @@ def _load_card_info_module() -> Any:
     return importlib.import_module("terraforming_mars_mcp.card_info")
 
 
-def _normalize_waiting_for(server: Any, waiting_for: dict[str, Any]) -> dict[str, Any]:
+def _normalize_waiting_for(server: Any, waiting_for: dict[str, object]) -> dict[str, object]:
     wf_model = server.ApiWaitingForInputModel.model_validate(waiting_for)
     normalized = server._normalize_waiting_for(wf_model)
     assert normalized is not None

@@ -16,10 +16,11 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import Any, Literal
+from typing import Literal
 
 from ._app import mcp
 from ._enums import InputType
+from .api_response_models import PlayerViewModel as ApiPlayerViewModel
 from .api_response_models import WaitingForInputModel as ApiWaitingForInputModel
 from .card_info import _compact_cards
 from .game_state import _build_agent_state
@@ -36,6 +37,14 @@ DEFAULT_LOG_FILE = os.environ.get(
     "TM_MCP_LOG_FILE",
     str(Path(__file__).parent / "tmp" / "terraforming-mars-mcp.log"),
 )
+
+
+def _normalize_player_view(
+    player_model: ApiPlayerViewModel | dict[str, object],
+) -> ApiPlayerViewModel:
+    if isinstance(player_model, ApiPlayerViewModel):
+        return player_model
+    return ApiPlayerViewModel.model_validate(player_model)
 
 
 def _configure_server_logging(log_level: str, log_file: str) -> Path:
@@ -60,7 +69,7 @@ def _configure_server_logging(log_level: str, log_file: str) -> Path:
 @mcp.tool()
 def configure_session(
     base_url: str | None = None, player_id: str | None = None
-) -> dict[str, Any]:
+) -> dict[str, object]:
     """Set or update Terraforming Mars server URL and player ID for later tools."""
     if base_url:
         CFG.base_url = _strip_base_url(base_url)
@@ -74,7 +83,7 @@ def get_game_state(
     include_full_model: bool = False,
     include_board_state: bool = False,
     detail_level: Literal["full", "minimal"] = "full",
-) -> dict[str, Any]:
+) -> dict[str, object]:
     """Fetch current player state plus compact, agent-friendly action/game summary."""
     player_model = _get_player()
     return _build_agent_state(
@@ -88,25 +97,17 @@ def get_game_state(
 
 
 @mcp.tool()
-def get_my_hand_cards() -> dict[str, Any]:
+def get_my_hand_cards() -> dict[str, object]:
     """Return all cards currently in your hand."""
-    player_model = _get_player()
-    this_player = player_model.get("thisPlayer")
-    if not isinstance(this_player, dict):
-        raise RuntimeError("Missing thisPlayer in /api/player response")
-
-    raw_cards = player_model.get("cardsInHand")
-    cards = _compact_cards(raw_cards) if isinstance(raw_cards, list) else []
-    game = (
-        player_model.get("game", {})
-        if isinstance(player_model.get("game"), dict)
-        else {}
-    )
+    player_model = _normalize_player_view(_get_player())
+    this_player = player_model.thisPlayer
+    cards = _compact_cards(player_model.cardsInHand)
+    game = player_model.game
     return {
-        "generation": game.get("generation"),
-        "phase": game.get("phase"),
-        "player": this_player.get("name"),
-        "color": this_player.get("color"),
+        "generation": game.generation,
+        "phase": game.phase,
+        "player": this_player.name,
+        "color": this_player.color,
         "cards_in_hand_count": len(cards),
         "cards_in_hand": cards,
     }
@@ -115,16 +116,16 @@ def get_my_hand_cards() -> dict[str, Any]:
 @mcp.tool()
 def choose_or_option(
     option_index: int | None = None,
-    sub_response_json: str | dict[str, Any] | None = None,
-    request: str | dict[str, Any] | None = None,
-) -> dict[str, Any]:
+    sub_response_json: str | dict[str, object] | None = None,
+    request: str | dict[str, object] | None = None,
+) -> dict[str, object]:
     """Respond to `type: or` with selected index and nested response object.
 
     Accepts either direct params (`option_index`, `sub_response_json`) or a
     legacy JSON `request` payload.
     """
     if request is not None:
-        parsed_request: dict[str, Any]
+        parsed_request: dict[str, object]
         if isinstance(request, str):
             decoded = json.loads(request)
             if not isinstance(decoded, dict):
@@ -165,7 +166,7 @@ def choose_or_option(
 
 
 @mcp.tool()
-def confirm_option() -> dict[str, Any]:
+def confirm_option() -> dict[str, object]:
     """Respond to `type: option`."""
     player_model = _get_player()
     waiting_for = _get_waiting_for_model(player_model)
@@ -206,7 +207,7 @@ def pay_for_project_card(
     aurorai_data: int = 0,
     graphene: int = 0,
     kuiper_asteroids: int = 0,
-) -> dict[str, Any]:
+) -> dict[str, object]:
     """Respond to `type: projectCard`."""
     if not card_name:
         raise ValueError("card_name is required")

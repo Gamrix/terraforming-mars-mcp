@@ -16,9 +16,9 @@ def _load_server_module() -> Any:
 
 def test_choose_or_option_defaults_nested_option_response() -> None:
     server = _load_server_module()
-    captured: dict[str, Any] = {}
+    captured: dict[str, object] = {}
 
-    def _fake_submit(payload: dict[str, Any]) -> dict[str, Any]:
+    def _fake_submit(payload: dict[str, object]) -> dict[str, object]:
         captured.update(payload)
         return {"ok": True}
 
@@ -32,9 +32,9 @@ def test_choose_or_option_defaults_nested_option_response() -> None:
 
 def test_choose_or_option_accepts_legacy_request_payload() -> None:
     server = _load_server_module()
-    captured: dict[str, Any] = {}
+    captured: dict[str, object] = {}
 
-    def _fake_submit(payload: dict[str, Any]) -> dict[str, Any]:
+    def _fake_submit(payload: dict[str, object]) -> dict[str, object]:
         captured.update(payload)
         return {"ok": True}
 
@@ -48,7 +48,7 @@ def test_choose_or_option_accepts_legacy_request_payload() -> None:
 
 def test_confirm_option_submits_or_response_when_waiting_for_or() -> None:
     server = _load_server_module()
-    captured: dict[str, Any] = {}
+    captured: dict[str, object] = {}
 
     server._get_player = lambda player_id=None: {
         "waitingFor": {
@@ -63,7 +63,7 @@ def test_confirm_option_submits_or_response_when_waiting_for_or() -> None:
         }
     }
 
-    def _fake_submit(payload: dict[str, Any]) -> dict[str, Any]:
+    def _fake_submit(payload: dict[str, object]) -> dict[str, object]:
         captured.update(payload)
         return {"ok": True}
 
@@ -77,11 +77,11 @@ def test_confirm_option_submits_or_response_when_waiting_for_or() -> None:
 
 def test_confirm_option_submits_option_for_option_prompt() -> None:
     server = _load_server_module()
-    captured: dict[str, Any] = {}
+    captured: dict[str, object] = {}
 
     server._get_player = lambda player_id=None: {"waitingFor": {"type": "option", "title": "Confirm", "buttonLabel": "OK"}}
 
-    def _fake_submit(payload: dict[str, Any]) -> dict[str, Any]:
+    def _fake_submit(payload: dict[str, object]) -> dict[str, object]:
         captured.update(payload)
         return {"ok": True}
 
@@ -95,11 +95,11 @@ def test_confirm_option_submits_option_for_option_prompt() -> None:
 
 def test_pay_for_project_card_submits_direct_project_card_payload() -> None:
     server = _load_server_module()
-    captured: dict[str, Any] = {}
+    captured: dict[str, object] = {}
 
     server._get_player = lambda player_id=None: {"waitingFor": {"type": "projectCard", "title": "Play", "buttonLabel": "OK"}}
 
-    def _fake_submit(payload: dict[str, Any]) -> dict[str, Any]:
+    def _fake_submit(payload: dict[str, object]) -> dict[str, object]:
         captured.update(payload)
         return {"ok": True}
 
@@ -115,7 +115,7 @@ def test_pay_for_project_card_submits_direct_project_card_payload() -> None:
 
 def test_pay_for_project_card_wraps_outer_or_menu() -> None:
     server = _load_server_module()
-    captured: dict[str, Any] = {}
+    captured: dict[str, object] = {}
 
     server._get_player = lambda player_id=None: {
         "waitingFor": {
@@ -130,7 +130,7 @@ def test_pay_for_project_card_wraps_outer_or_menu() -> None:
         }
     }
 
-    def _fake_submit(payload: dict[str, Any]) -> dict[str, Any]:
+    def _fake_submit(payload: dict[str, object]) -> dict[str, object]:
         captured.update(payload)
         return {"ok": True}
 

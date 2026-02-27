@@ -57,13 +57,13 @@ class InitialCardsSelectionModel(BaseModel):
 
 class OrChoiceInputModel(BaseModel):
     option_index: int = Field(ge=0)
-    sub_response_json: str | dict[str, Any] | None = None
+    sub_response_json: str | dict[str, object] | None = None
 
     @field_validator("sub_response_json", mode="before")
     @classmethod
     def _normalize_nested_response(
-        cls, value: str | dict[str, Any] | None
-    ) -> dict[str, Any]:
+        cls, value: str | dict[str, object] | None
+    ) -> dict[str, object]:
         if value is None or value == "":
             return {"type": "option"}
         if isinstance(value, str):
@@ -80,7 +80,7 @@ class RawInputEntityRequest(BaseModel):
     entity_json: str
 
 
-def _normalize_raw_input_entity(entity: dict[str, Any]) -> dict[str, Any]:
+def _normalize_raw_input_entity(entity: dict[str, object]) -> dict[str, object]:
     normalized = dict(entity)
     entity_type = normalized.get("type")
 

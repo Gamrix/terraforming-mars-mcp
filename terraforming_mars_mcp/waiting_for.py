@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import json
-from typing import Any
 
+from .api_response_models import PlayerViewModel as ApiPlayerViewModel
 from .api_response_models import WaitingForInputModel as ApiWaitingForInputModel
 from ._enums import InputType
 from .card_info import DETAIL_LEVEL_FULL, _compact_cards
@@ -21,9 +21,12 @@ def _input_type_name(waiting_for: ApiWaitingForInputModel | None) -> str | None:
 
 
 def _get_waiting_for_model(
-    player_model: dict[str, Any],
+    player_model: ApiPlayerViewModel | dict[str, object],
 ) -> ApiWaitingForInputModel | None:
-    raw_waiting_for = player_model.get("waitingFor")
+    if isinstance(player_model, ApiPlayerViewModel):
+        raw_waiting_for = player_model.waitingFor
+    else:
+        raw_waiting_for = player_model.get("waitingFor")
     if isinstance(raw_waiting_for, ApiWaitingForInputModel):
         return raw_waiting_for
     if isinstance(raw_waiting_for, dict):
@@ -31,7 +34,7 @@ def _get_waiting_for_model(
     return None
 
 
-def _normalize_or_sub_response(value: str | dict[str, Any] | None) -> dict[str, Any]:
+def _normalize_or_sub_response(value: str | dict[str, object] | None) -> dict[str, object]:
     if value is None or value == "":
         return {"type": "option"}
     if isinstance(value, str):
@@ -75,13 +78,13 @@ def _normalize_waiting_for(
     waiting_for: ApiWaitingForInputModel | None,
     depth: int = 0,
     detail_level: str = DETAIL_LEVEL_FULL,
-) -> dict[str, Any] | None:
+) -> dict[str, object] | None:
     if waiting_for is None:
         return None
 
     wf = waiting_for
 
-    normalized: dict[str, Any] = {
+    normalized: dict[str, object] = {
         "input_type": _input_type_name(wf),
         "title": wf.title,
         "button_label": wf.buttonLabel,
@@ -96,7 +99,7 @@ def _normalize_waiting_for(
         normalized["initial_index"] = wf.initialIdx
 
     if wf.min is not None or wf.max is not None:
-        amount_range: dict[str, Any] = {}
+        amount_range: dict[str, object] = {}
         if wf.min is not None:
             amount_range["min"] = wf.min
         if wf.max is not None:
@@ -116,7 +119,7 @@ def _normalize_waiting_for(
 
     if isinstance(wf.cards, list):
         normalized["cards"] = _compact_cards(wf.cards, detail_level=detail_level)
-        card_selection: dict[str, Any] = {}
+        card_selection: dict[str, object] = {}
         if wf.min is not None:
             card_selection["min"] = wf.min
         if wf.max is not None:
@@ -162,12 +165,12 @@ def _normalize_waiting_for(
         if depth >= 2:
             normalized["options_count"] = len(wf.options)
         else:
-            normalized_options: list[dict[str, Any]] = []
+            normalized_options: list[dict[str, object]] = []
             for idx, option in enumerate(wf.options):
                 option_detail = _normalize_waiting_for(
                     option, depth + 1, detail_level=detail_level
                 )
-                option_payload: dict[str, Any] = {
+                option_payload: dict[str, object] = {
                     "index": idx,
                     "title": option.title,
                     "input_type": _input_type_name(option),

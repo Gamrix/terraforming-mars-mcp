@@ -56,9 +56,9 @@ class WaitingForInputModel(TMBaseModel):
     include: list[str] | None = None
 
     coloniesModel: list[ColonyInputModel] | None = None
-    payProduction: dict[str, Any] | None = None
-    paymentOptions: dict[str, Any] | None = None
-    aresData: dict[str, Any] | None = None
+    payProduction: dict[str, object] | None = None
+    paymentOptions: dict[str, object] | None = None
+    aresData: dict[str, object] | None = None
     tokens: list[ClaimedTokenModel] | None = None
 
 

@@ -14,7 +14,7 @@ DETAIL_LEVEL_FULL = "full"
 DETAIL_LEVEL_MINIMAL = "minimal"
 VALID_DETAIL_LEVELS = {DETAIL_LEVEL_FULL, DETAIL_LEVEL_MINIMAL}
 
-_CARD_INFO_INDEX: dict[str, dict[str, Any]] | None = None
+_CARD_INFO_INDEX: dict[str, dict[str, object]] | None = None
 
 
 def _normalize_detail_level(detail_level: str) -> str:
@@ -24,7 +24,7 @@ def _normalize_detail_level(detail_level: str) -> str:
     return normalized
 
 
-def _load_card_info_index() -> dict[str, dict[str, Any]]:
+def _load_card_info_index() -> dict[str, dict[str, object]]:
     global _CARD_INFO_INDEX
     if _CARD_INFO_INDEX is not None:
         return _CARD_INFO_INDEX
@@ -42,7 +42,7 @@ def _load_card_info_index() -> dict[str, dict[str, Any]]:
         return _CARD_INFO_INDEX
 
     raw = json.loads(cards_file.read_text(encoding="utf-8"))
-    index: dict[str, dict[str, Any]] = {}
+    index: dict[str, dict[str, object]] = {}
     if isinstance(raw, list):
         for item in raw:
             if isinstance(item, dict):
@@ -66,7 +66,7 @@ def _extract_strings(node: Any) -> list[str]:
     return strings
 
 
-def _description_text(metadata: dict[str, Any] | None) -> str | None:
+def _description_text(metadata: dict[str, object] | None) -> str | None:
     if not isinstance(metadata, dict):
         return None
     description = metadata.get("description")
@@ -151,7 +151,7 @@ def _format_vp(vp: Any) -> int | str | None:
     return None
 
 
-def _card_info(card_name: Any, include_play_details: bool = False) -> dict[str, Any]:
+def _card_info(card_name: Any, include_play_details: bool = False) -> dict[str, object]:
     if not isinstance(card_name, str):
         return {}
     card = _load_card_info_index().get(card_name)
@@ -165,7 +165,7 @@ def _card_info(card_name: Any, include_play_details: bool = False) -> dict[str, 
     actions, effects = _extract_actions_and_effects(render_data)
     vp = _format_vp(card.get("victoryPoints"))
 
-    info: dict[str, Any] = {
+    info: dict[str, object] = {
         "name": card_name,
         "tags": tags,
         "ongoing_effects": effects,
@@ -192,7 +192,7 @@ def _card_info(card_name: Any, include_play_details: bool = False) -> dict[str, 
     return info
 
 
-def _best_effect_text(info: dict[str, Any]) -> str | None:
+def _best_effect_text(info: dict[str, object]) -> str | None:
     on_play = info.get("on_play_effect_text")
     if isinstance(on_play, str) and on_play.strip():
         return on_play.strip()
@@ -219,9 +219,9 @@ def _best_effect_text(info: dict[str, Any]) -> str | None:
 
 
 def _compact_card(
-    card: dict[str, Any] | str | ApiCardModel,
+    card: dict[str, object] | str | ApiCardModel,
     detail_level: str = DETAIL_LEVEL_FULL,
-) -> dict[str, Any]:
+) -> dict[str, object]:
     normalized_detail_level = _normalize_detail_level(detail_level)
 
     card_model: ApiCardModel | None = None
@@ -246,7 +246,7 @@ def _compact_card(
     warnings = card_model.warnings if card_model else []
     resources = card_model.resources if card_model else None
 
-    payload: dict[str, Any] = {
+    payload: dict[str, object] = {
         "name": card_name,
     }
     cost = base_cost if base_cost is not None else discounted_cost
@@ -289,8 +289,8 @@ def _compact_card(
 def _compact_cards(
     cards: list[Any],
     detail_level: str = DETAIL_LEVEL_FULL,
-) -> list[dict[str, Any]]:
-    compact_cards: list[dict[str, Any]] = []
+) -> list[dict[str, object]]:
+    compact_cards: list[dict[str, object]] = []
     for card in cards:
         compact = _compact_card(card, detail_level=detail_level)
         if compact:
@@ -299,15 +299,19 @@ def _compact_cards(
 
 
 def _extract_played_cards(
-    player: dict[str, Any], include_play_details: bool = False
-) -> list[dict[str, Any]]:
-    parsed_player = ApiPublicPlayerModel.model_validate(player)
+    player: ApiPublicPlayerModel | dict[str, object], include_play_details: bool = False
+) -> list[dict[str, object]]:
+    parsed_player = (
+        player
+        if isinstance(player, ApiPublicPlayerModel)
+        else ApiPublicPlayerModel.model_validate(player)
+    )
     tableau = parsed_player.tableau
-    cards: list[dict[str, Any]] = []
+    cards: list[dict[str, object]] = []
     if isinstance(tableau, list):
         for card in tableau:
             info = _card_info(card.name, include_play_details=include_play_details)
-            payload: dict[str, Any] = {
+            payload: dict[str, object] = {
                 "name": card.name,
                 "resources": card.resources,
                 "is_disabled": card.isDisabled is True,

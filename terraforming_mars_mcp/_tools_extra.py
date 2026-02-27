@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from ._app import mcp
 from ._models import (
     InitialCardsSelectionModel,
     RawInputEntityRequest,
     _normalize_raw_input_entity,
 )
+from .api_response_models import PlayerViewModel as ApiPlayerViewModel
 from .api_response_models import WaitingForInputModel as ApiWaitingForInputModel
 from .card_info import _extract_played_cards
 from .game_state import _build_agent_state, _full_board_state
@@ -23,81 +22,70 @@ from .turn_flow import (
 from .waiting_for import _get_waiting_for_model
 
 
+def _normalize_player_view(
+    player_model: ApiPlayerViewModel | dict[str, object],
+) -> ApiPlayerViewModel:
+    if isinstance(player_model, ApiPlayerViewModel):
+        return player_model
+    return ApiPlayerViewModel.model_validate(player_model)
+
+
 @mcp.tool()
-def get_opponents_played_cards() -> dict[str, Any]:
+def get_opponents_played_cards() -> dict[str, object]:
     """Return all cards currently in each opponent's tableau (played cards)."""
-    player_model = _get_player()
-    this_player = player_model.get("thisPlayer")
-    this_color = this_player.get("color") if isinstance(this_player, dict) else None
-    players = player_model.get("players")
+    player_model = _normalize_player_view(_get_player())
+    this_color = player_model.thisPlayer.color
 
-    opponents: list[dict[str, Any]] = []
-    if isinstance(players, list):
-        for player in players:
-            if not isinstance(player, dict):
-                continue
-            if player.get("color") == this_color:
-                continue
-            played_cards = _extract_played_cards(player, include_play_details=True)
-            opponents.append(
-                {
-                    "name": player.get("name"),
-                    "color": player.get("color"),
-                    "played_cards_count": len(played_cards),
-                    "played_cards": played_cards,
-                }
-            )
+    opponents: list[dict[str, object]] = []
+    for player in player_model.players:
+        if player.color == this_color:
+            continue
+        played_cards = _extract_played_cards(player, include_play_details=True)
+        opponents.append(
+            {
+                "name": player.name,
+                "color": player.color,
+                "played_cards_count": len(played_cards),
+                "played_cards": played_cards,
+            }
+        )
 
-    game = (
-        player_model.get("game", {})
-        if isinstance(player_model.get("game"), dict)
-        else {}
-    )
+    game = player_model.game
     return {
-        "generation": game.get("generation"),
-        "phase": game.get("phase"),
+        "generation": game.generation,
+        "phase": game.phase,
         "opponents": opponents,
     }
 
 
 @mcp.tool()
-def get_my_played_cards() -> dict[str, Any]:
+def get_my_played_cards() -> dict[str, object]:
     """Return all cards currently in your tableau (played cards)."""
-    player_model = _get_player()
-    this_player = player_model.get("thisPlayer")
-    if not isinstance(this_player, dict):
-        raise RuntimeError("Missing thisPlayer in /api/player response")
-
+    player_model = _normalize_player_view(_get_player())
+    this_player = player_model.thisPlayer
     cards = _extract_played_cards(this_player)
-    game = (
-        player_model.get("game", {})
-        if isinstance(player_model.get("game"), dict)
-        else {}
-    )
+    game = player_model.game
     return {
-        "generation": game.get("generation"),
-        "phase": game.get("phase"),
-        "player": this_player.get("name"),
-        "color": this_player.get("color"),
+        "generation": game.generation,
+        "phase": game.phase,
+        "player": this_player.name,
+        "color": this_player.color,
         "played_cards_count": len(cards),
         "played_cards": cards,
     }
 
 
 @mcp.tool()
-def get_mars_board_state(include_empty_spaces: bool = False) -> dict[str, Any]:
+def get_mars_board_state(include_empty_spaces: bool = False) -> dict[str, object]:
     """Return detailed Mars board state. This is the explicit board-inspection tool."""
-    player_model = _get_player()
-    game = player_model.get("game", {})
-    if not isinstance(game, dict):
-        raise RuntimeError("Missing game object in /api/player response")
-    return _full_board_state(game, include_empty_spaces=include_empty_spaces)
+    player_model = _normalize_player_view(_get_player())
+    return _full_board_state(player_model.game, include_empty_spaces=include_empty_spaces)
 
 
 @mcp.tool()
-def wait_for_turn() -> dict[str, Any]:
+def wait_for_turn() -> dict[str, object]:
     """Poll /api/waitingfor until it's your turn using fixed server defaults."""
-    player_model = _get_player()
+    player_model = _normalize_player_view(_get_player())
     if _has_waiting_input(player_model):
         return {
             "status": "GO",
@@ -118,7 +106,7 @@ def wait_for_turn() -> dict[str, Any]:
 
 
 @mcp.tool()
-def submit_raw_entity(request: RawInputEntityRequest) -> dict[str, Any]:
+def submit_raw_entity(request: RawInputEntityRequest) -> dict[str, object]:
     """Submit any raw /player/input payload as a JSON object with `type`."""
     import json as _json
 
@@ -131,7 +119,7 @@ def submit_raw_entity(request: RawInputEntityRequest) -> dict[str, Any]:
 
 
 @mcp.tool()
-def submit_and_options(responses_json: str) -> dict[str, Any]:
+def submit_and_options(responses_json: str) -> dict[str, object]:
     """Respond to `type: and` with JSON list of InputResponse objects."""
     import json as _json
 
@@ -145,19 +133,19 @@ def submit_and_options(responses_json: str) -> dict[str, Any]:
 
 
 @mcp.tool()
-def select_amount(amount: int) -> dict[str, Any]:
+def select_amount(amount: int) -> dict[str, object]:
     """Respond to `type: amount`."""
     return _submit_and_return_state({"type": "amount", "amount": int(amount)})
 
 
 @mcp.tool()
-def select_cards(card_names: list[str]) -> dict[str, Any]:
+def select_cards(card_names: list[str]) -> dict[str, object]:
     """Respond to `type: card` with chosen card names."""
     return _submit_and_return_state({"type": "card", "cards": card_names})
 
 
 @mcp.tool()
-def select_player(player_color: str) -> dict[str, Any]:
+def select_player(player_color: str) -> dict[str, object]:
     """Respond to `type: player`."""
     if not player_color:
         raise ValueError("player_color is required")
@@ -165,7 +153,7 @@ def select_player(player_color: str) -> dict[str, Any]:
 
 
 @mcp.tool()
-def select_delegate_target(player_color_or_neutral: str) -> dict[str, Any]:
+def select_delegate_target(player_color_or_neutral: str) -> dict[str, object]:
     """Respond to `type: delegate` with a player color or `NEUTRAL`."""
     if not player_color_or_neutral:
         raise ValueError("player_color_or_neutral is required")
@@ -175,7 +163,7 @@ def select_delegate_target(player_color_or_neutral: str) -> dict[str, Any]:
 
 
 @mcp.tool()
-def select_space(space_id: str) -> dict[str, Any]:
+def select_space(space_id: str) -> dict[str, object]:
     """Respond to `type: space` using a board space ID from `waiting_for.spaces`."""
     if not space_id:
         raise ValueError("space_id is required")
@@ -183,7 +171,7 @@ def select_space(space_id: str) -> dict[str, Any]:
 
 
 @mcp.tool()
-def select_party(party_name: str) -> dict[str, Any]:
+def select_party(party_name: str) -> dict[str, object]:
     """Respond to `type: party`."""
     if not party_name:
         raise ValueError("party_name is required")
@@ -191,7 +179,7 @@ def select_party(party_name: str) -> dict[str, Any]:
 
 
 @mcp.tool()
-def select_colony(colony_name: str) -> dict[str, Any]:
+def select_colony(colony_name: str) -> dict[str, object]:
     """Respond to `type: colony`."""
     if not colony_name:
         raise ValueError("colony_name is required")
@@ -213,7 +201,7 @@ def pay_for_action(
     aurorai_data: int = 0,
     graphene: int = 0,
     kuiper_asteroids: int = 0,
-) -> dict[str, Any]:
+) -> dict[str, object]:
     """Respond to `type: payment`."""
     return _submit_and_return_state(
         {
@@ -238,15 +226,15 @@ def pay_for_action(
 
 
 @mcp.tool()
-def select_initial_cards(request: InitialCardsSelectionModel) -> dict[str, Any]:
+def select_initial_cards(request: InitialCardsSelectionModel) -> dict[str, object]:
     """Respond to `type: initialCards` using current waiting-for option order."""
-    player_model = _get_player()
+    player_model = _normalize_player_view(_get_player())
     waiting_for = _get_waiting_for_model(player_model)
     options = waiting_for.options if waiting_for is not None else None
     if not isinstance(options, list):
         raise RuntimeError("Current waitingFor has no options for initialCards")
 
-    responses: list[dict[str, Any]] = []
+    responses: list[dict[str, object]] = []
     for option in options:
         if not isinstance(option, ApiWaitingForInputModel):
             raise RuntimeError("Invalid option in initialCards")
@@ -272,7 +260,7 @@ def select_production_to_lose(
     plants: int = 0,
     energy: int = 0,
     heat: int = 0,
-) -> dict[str, Any]:
+) -> dict[str, object]:
     """Respond to `type: productionToLose`."""
     return _submit_and_return_state(
         {
@@ -295,7 +283,7 @@ def shift_ares_global_parameters(
     high_ocean_delta: int = 0,
     temperature_delta: int = 0,
     oxygen_delta: int = 0,
-) -> dict[str, Any]:
+) -> dict[str, object]:
     """Respond to `type: aresGlobalParameters`. Values are expected in {-1,0,1}."""
     return _submit_and_return_state(
         {
@@ -311,7 +299,7 @@ def shift_ares_global_parameters(
 
 
 @mcp.tool()
-def select_global_event(global_event_name: str) -> dict[str, Any]:
+def select_global_event(global_event_name: str) -> dict[str, object]:
     """Respond to `type: globalEvent`."""
     if not global_event_name:
         raise ValueError("global_event_name is required")
@@ -321,7 +309,7 @@ def select_global_event(global_event_name: str) -> dict[str, Any]:
 
 
 @mcp.tool()
-def select_policy(policy_id: str) -> dict[str, Any]:
+def select_policy(policy_id: str) -> dict[str, object]:
     """Respond to `type: policy`."""
     if not policy_id:
         raise ValueError("policy_id is required")
@@ -329,7 +317,7 @@ def select_policy(policy_id: str) -> dict[str, Any]:
 
 
 @mcp.tool()
-def select_resource(resource: str) -> dict[str, Any]:
+def select_resource(resource: str) -> dict[str, object]:
     """Respond to `type: resource`."""
     if not resource:
         raise ValueError("resource is required")
@@ -344,7 +332,7 @@ def select_resources(
     plants: int = 0,
     energy: int = 0,
     heat: int = 0,
-) -> dict[str, Any]:
+) -> dict[str, object]:
     """Respond to `type: resources`."""
     return _submit_and_return_state(
         {
@@ -362,7 +350,7 @@ def select_resources(
 
 
 @mcp.tool()
-def select_claimed_underground_tokens(selected: list[int]) -> dict[str, Any]:
+def select_claimed_underground_tokens(selected: list[int]) -> dict[str, object]:
     """Respond to `type: claimedUndergroundToken`."""
     return _submit_and_return_state(
         {"type": "claimedUndergroundToken", "selected": selected}
