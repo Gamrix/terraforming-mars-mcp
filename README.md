@@ -19,6 +19,12 @@ uv sync
 
 ```
 
+## Type Checking
+
+```bash
+uv run zuban check
+```
+
 ## Run
 
 ```bash

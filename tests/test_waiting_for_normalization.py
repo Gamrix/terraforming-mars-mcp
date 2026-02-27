@@ -3,7 +3,7 @@ from __future__ import annotations
 import importlib
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping, cast
 
 
 def _load_server_module() -> Any:
@@ -21,11 +21,14 @@ def _load_card_info_module() -> Any:
     return importlib.import_module("terraforming_mars_mcp.card_info")
 
 
-def _normalize_waiting_for(server: Any, waiting_for: dict[str, object]) -> dict[str, object]:
-    wf_model = server.ApiWaitingForInputModel.model_validate(waiting_for)
+def _normalize_waiting_for(
+    server: Any, waiting_for: Mapping[str, Any]
+) -> dict[str, Any]:
+    api_models = importlib.import_module("terraforming_mars_mcp.api_response_models")
+    wf_model = api_models.WaitingForInputModel.model_validate(dict(waiting_for))
     normalized = server._normalize_waiting_for(wf_model)
-    assert normalized is not None
-    return normalized
+    assert isinstance(normalized, dict)
+    return cast(dict[str, Any], normalized)
 
 
 def test_initial_cards_options_include_effect_text_previews() -> None:

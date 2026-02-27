@@ -2,14 +2,12 @@ from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass
+from typing import Literal, TypedDict
 
 from .api_response_models import (
-    ClaimedMilestoneModel as ApiClaimedMilestoneModel,
-    FundedAwardModel as ApiFundedAwardModel,
     GameModel as ApiGameModel,
     PlayerViewModel as ApiPlayerViewModel,
     PublicPlayerModel as ApiPublicPlayerModel,
-    SpaceModel as ApiSpaceModel,
 )
 from ._enums import _action_tools_for_input_type
 from .card_info import DETAIL_LEVEL_FULL, _card_info, _normalize_detail_level
@@ -97,6 +95,34 @@ class _PlayerSummary:
 
 _LAST_MA_SNAPSHOT: dict[str, _MilestonesAwardsSnapshot] = {}
 
+
+class _MilestoneScorePayload(TypedDict):
+    color: str
+    score: int
+    claimable: bool
+
+
+class _MilestonePayload(TypedDict):
+    name: str
+    status: Literal["claimed", "available"]
+    owner_color: str | None
+    owner_name: str | None
+    scores: list[_MilestoneScorePayload]
+    claimable_by: list[str]
+
+
+class _AwardScorePayload(TypedDict):
+    color: str
+    score: int
+
+
+class _AwardPayload(TypedDict):
+    name: str
+    status: Literal["funded", "unfunded"]
+    funder_color: str | None
+    funder_name: str | None
+    scores: list[_AwardScorePayload]
+
 _TILE_TYPE_LABELS = (
     "greenery",
     "ocean",
@@ -151,37 +177,6 @@ def _tile_type_name(tile_type: int) -> str:
     return str(tile_type)
 
 
-def _normalize_player_view(
-    player_model: ApiPlayerViewModel | dict[str, object],
-) -> ApiPlayerViewModel:
-    if isinstance(player_model, ApiPlayerViewModel):
-        return player_model
-    return ApiPlayerViewModel.model_validate(player_model)
-
-
-def _normalize_game_model(game: ApiGameModel | dict[str, object]) -> ApiGameModel:
-    if isinstance(game, ApiGameModel):
-        return game
-    return ApiGameModel.model_validate(
-        {
-            "id": game.get("id"),
-            "phase": game.get("phase", ""),
-            "generation": game.get("generation", 0),
-            "temperature": game.get("temperature", 0),
-            "oxygenLevel": game.get("oxygenLevel", 0),
-            "oceans": game.get("oceans", 0),
-            "venusScaleLevel": game.get("venusScaleLevel", 0),
-            "isTerraformed": game.get("isTerraformed", False),
-            "gameAge": game.get("gameAge", 0),
-            "undoCount": game.get("undoCount", 0),
-            "passedPlayers": game.get("passedPlayers", []),
-            "spaces": game.get("spaces", []),
-            "milestones": game.get("milestones", []),
-            "awards": game.get("awards", []),
-        }
-    )
-
-
 def _player_summary(player: ApiPublicPlayerModel) -> _PlayerSummary:
     return _PlayerSummary(
         name=player.name,
@@ -208,17 +203,14 @@ def _player_summary(player: ApiPublicPlayerModel) -> _PlayerSummary:
 
 
 def _summarize_players(
-    player_model: ApiPlayerViewModel | dict[str, object],
+    player_model: ApiPlayerViewModel,
 ) -> tuple[_PlayerSummary, list[_PlayerSummary]]:
-    parsed_view = _normalize_player_view(player_model)
-    this_player = parsed_view.thisPlayer
-    player_color = player_model.get("color") if isinstance(player_model, dict) else None
-    if not isinstance(player_color, str):
-        player_color = this_player.color
+    this_player = player_model.thisPlayer
+    player_color = this_player.color
 
     you: _PlayerSummary | None = None
     others: list[_PlayerSummary] = []
-    for player in parsed_view.players:
+    for player in player_model.players:
         summary = _player_summary(player)
         if player.color == player_color:
             you = summary
@@ -228,9 +220,8 @@ def _summarize_players(
     return (you or _player_summary(this_player)), others
 
 
-def _summarize_board(game: ApiGameModel | dict[str, object]) -> dict[str, object]:
-    parsed_game = _normalize_game_model(game)
-    spaces = parsed_game.spaces
+def _summarize_board(game: ApiGameModel) -> dict[str, object]:
+    spaces = game.spaces
     occupied = 0
     by_tile: dict[str, int] = {}
     for space in spaces:
@@ -246,26 +237,25 @@ def _summarize_board(game: ApiGameModel | dict[str, object]) -> dict[str, object
     }
 
 
-def _summarize_milestones(game: ApiGameModel | dict[str, object]) -> list[dict[str, object]]:
-    parsed_game = _normalize_game_model(game)
-    summarized: list[dict[str, object]] = []
-    for milestone in parsed_game.milestones:
-        if not isinstance(milestone, ApiClaimedMilestoneModel):
-            continue
+def _summarize_milestones(game: ApiGameModel) -> list[_MilestonePayload]:
+    summarized: list[_MilestonePayload] = []
+    for milestone in game.milestones:
         owner_color = milestone.color
         owner_name = milestone.playerName
-        status = "claimed" if owner_color or owner_name else "available"
+        status: Literal["claimed", "available"] = (
+            "claimed" if owner_color or owner_name else "available"
+        )
 
-        scores: list[dict[str, object]] = []
+        scores: list[_MilestoneScorePayload] = []
         claimable_by: list[str] = []
         for score in milestone.scores or []:
-            compact = {
+            compact: _MilestoneScorePayload = {
                 "color": score.color,
                 "score": score.score,
                 "claimable": score.claimable is True,
             }
             scores.append(compact)
-            if score.claimable is True and isinstance(score.color, str):
+            if score.claimable is True:
                 claimable_by.append(score.color)
 
         summarized.append(
@@ -281,24 +271,18 @@ def _summarize_milestones(game: ApiGameModel | dict[str, object]) -> list[dict[s
     return summarized
 
 
-def _summarize_awards(game: ApiGameModel | dict[str, object]) -> list[dict[str, object]]:
-    parsed_game = _normalize_game_model(game)
-    summarized: list[dict[str, object]] = []
-    for award in parsed_game.awards:
-        if not isinstance(award, ApiFundedAwardModel):
-            continue
+def _summarize_awards(game: ApiGameModel) -> list[_AwardPayload]:
+    summarized: list[_AwardPayload] = []
+    for award in game.awards:
         funder_color = award.color
         funder_name = award.playerName
-        status = "funded" if funder_color or funder_name else "unfunded"
+        status: Literal["funded", "unfunded"] = (
+            "funded" if funder_color or funder_name else "unfunded"
+        )
 
-        scores: list[dict[str, object]] = []
+        scores: list[_AwardScorePayload] = []
         for score in award.scores or []:
-            scores.append(
-                {
-                    "color": score.color,
-                    "score": score.score,
-                }
-            )
+            scores.append({"color": score.color, "score": score.score})
 
         summarized.append(
             {
@@ -313,9 +297,9 @@ def _summarize_awards(game: ApiGameModel | dict[str, object]) -> list[dict[str, 
 
 
 def _should_include_milestones_awards(
-    game: ApiGameModel | dict[str, object],
-    milestones: list[dict[str, object]],
-    awards: list[dict[str, object]],
+    game: ApiGameModel,
+    milestones: list[_MilestonePayload],
+    awards: list[_AwardPayload],
     player_id: str,
 ) -> bool:
     """Include milestones/awards once per generation or when a critical change occurs.
@@ -327,8 +311,7 @@ def _should_include_milestones_awards(
     - Generation changed (show once at start of each generation)
     - First call for this game (no previous snapshot)
     """
-    parsed_game = _normalize_game_model(game)
-    game_id = parsed_game.id or ""
+    game_id = game.id or ""
     ma_key = f"{game_id}:{player_id}"
     prev = _LAST_MA_SNAPSHOT.get(ma_key)
 
@@ -337,7 +320,7 @@ def _should_include_milestones_awards(
     claimable_set = frozenset(
         (m["name"], c) for m in milestones for c in m.get("claimable_by", [])
     )
-    generation = parsed_game.generation
+    generation = game.generation
     current = _MilestonesAwardsSnapshot(
         generation=generation,
         claimed=claimed_set,
@@ -362,13 +345,10 @@ def _should_include_milestones_awards(
 
 
 def _full_board_state(
-    game: ApiGameModel | dict[str, object], include_empty_spaces: bool = False
+    game: ApiGameModel, include_empty_spaces: bool = False
 ) -> dict[str, object]:
-    parsed_game = _normalize_game_model(game)
     mars_spaces: list[dict[str, object]] = []
-    for space in parsed_game.spaces:
-        if not isinstance(space, ApiSpaceModel):
-            continue
+    for space in game.spaces:
         if not include_empty_spaces and space.tileType is None:
             continue
         space_data: dict[str, object] = {
@@ -402,33 +382,32 @@ def _full_board_state(
         mars_spaces.append(space_data)
 
     return {
-        "game_id": parsed_game.id,
-        "phase": parsed_game.phase,
-        "generation": parsed_game.generation,
+        "game_id": game.id,
+        "phase": game.phase,
+        "generation": game.generation,
         "globals": {
-            "temperature": parsed_game.temperature,
-            "oxygen": parsed_game.oxygenLevel,
-            "oceans": parsed_game.oceans,
-            "venus": parsed_game.venusScaleLevel,
-            "terraformed": parsed_game.isTerraformed,
+            "temperature": game.temperature,
+            "oxygen": game.oxygenLevel,
+            "oceans": game.oceans,
+            "venus": game.venusScaleLevel,
+            "terraformed": game.isTerraformed,
         },
-        "summary": _summarize_board(parsed_game),
+        "summary": _summarize_board(game),
         "spaces": mars_spaces,
     }
 
 
 def _detect_new_opponent_cards(
-    player_model: ApiPlayerViewModel | dict[str, object],
+    player_model: ApiPlayerViewModel,
 ) -> list[dict[str, object]]:
-    parsed_view = _normalize_player_view(player_model)
-    game_id = parsed_view.game.id
-    pid = parsed_view.id or ""
+    game_id = player_model.game.id
+    pid = player_model.id or ""
     if not isinstance(game_id, str) or not isinstance(pid, str):
         return []
     key = f"{game_id}:{pid}"
 
-    this_color = parsed_view.thisPlayer.color
-    players = parsed_view.players
+    this_color = player_model.thisPlayer.color
+    players = player_model.players
 
     current: dict[str, Counter[str]] = {}
     for player in players:
@@ -436,15 +415,14 @@ def _detect_new_opponent_cards(
         if color == this_color:
             continue
         tableau = player.tableau or []
-        names = [card.name for card in tableau if isinstance(card.name, str)]
-        if isinstance(color, str):
-            current[color] = Counter(names)
+        names = [card.name for card in tableau]
+        current[color] = Counter(names)
 
     previous = _LAST_OPPONENT_TABLEAU.get(key, {})
     events: list[dict[str, object]] = []
     for player in players:
         color = player.color
-        if not isinstance(color, str) or color == this_color:
+        if color == this_color:
             continue
         old_counts = previous.get(color, Counter())
         new_counts = current.get(color, Counter())
@@ -475,19 +453,18 @@ def _detect_new_opponent_cards(
 
 
 def _build_agent_state(
-    player_model: ApiPlayerViewModel | dict[str, object],
+    player_model: ApiPlayerViewModel,
     include_full_model: bool = False,
     include_board_state: bool = False,
     detail_level: str = DETAIL_LEVEL_FULL,
     base_url: str | None = None,
     player_id_fallback: str | None = None,
 ) -> dict[str, object]:
-    parsed_player = _normalize_player_view(player_model)
-    game = parsed_player.game
+    game = player_model.game
     normalized_detail_level = _normalize_detail_level(detail_level)
-    waiting_for = _get_waiting_for_model(parsed_player)
+    waiting_for = _get_waiting_for_model(player_model)
     input_type = _input_type_name(waiting_for)
-    you, opponents = _summarize_players(parsed_player)
+    you, opponents = _summarize_players(player_model)
 
     phase = game.phase
     show_board = include_board_state or (
@@ -496,7 +473,7 @@ def _build_agent_state(
     )
 
     session: dict[str, object] = {
-        "player_id": parsed_player.id or player_id_fallback or "",
+        "player_id": player_model.id or player_id_fallback or "",
     }
     if normalized_detail_level == DETAIL_LEVEL_FULL and base_url is not None:
         session["base_url"] = base_url
@@ -524,7 +501,7 @@ def _build_agent_state(
             game,
             milestones,
             awards,
-            parsed_player.id,
+            player_model.id,
         )
         if include_ma:
             game_state["milestones"] = milestones
@@ -540,7 +517,7 @@ def _build_agent_state(
 
     if normalized_detail_level == DETAIL_LEVEL_FULL:
         opponents_state = [summary.to_full_payload() for summary in opponents]
-        opponent_card_events = _detect_new_opponent_cards(parsed_player)
+        opponent_card_events = _detect_new_opponent_cards(player_model)
     else:
         opponents_state = [summary.to_minimal_payload() for summary in opponents]
         opponent_card_events = []
@@ -558,5 +535,5 @@ def _build_agent_state(
     }
 
     if include_full_model:
-        result["raw_player_model"] = parsed_player.model_dump(exclude_none=True)
+        result["raw_player_model"] = player_model.model_dump(exclude_none=True)
     return result

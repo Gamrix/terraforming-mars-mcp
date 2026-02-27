@@ -16,11 +16,16 @@ def _load_game_state_module() -> Any:
 
 def test_full_board_state_translates_tile_type_labels() -> None:
     game_state = _load_game_state_module()
-    board_state = game_state._full_board_state(
+    game_model = game_state.ApiGameModel.model_validate(
         {
             "id": "game-1",
             "phase": "action",
             "generation": 1,
+            "temperature": -30,
+            "oxygenLevel": 0,
+            "oceans": 0,
+            "venusScaleLevel": 0,
+            "isTerraformed": False,
             "spaces": [
                 {
                     "id": "03",
@@ -43,6 +48,7 @@ def test_full_board_state_translates_tile_type_labels() -> None:
             ],
         }
     )
+    board_state = game_state._full_board_state(game_model)
 
     assert board_state["spaces"][0]["tile_type"] == "greenery"
     assert board_state["spaces"][1]["tile_type"] == "ocean"
@@ -50,8 +56,16 @@ def test_full_board_state_translates_tile_type_labels() -> None:
 
 def test_board_summary_uses_tile_type_labels() -> None:
     game_state = _load_game_state_module()
-    summary = game_state._summarize_board(
+    game_model = game_state.ApiGameModel.model_validate(
         {
+            "id": "game-1",
+            "phase": "action",
+            "generation": 1,
+            "temperature": -30,
+            "oxygenLevel": 0,
+            "oceans": 0,
+            "venusScaleLevel": 0,
+            "isTerraformed": False,
             "spaces": [
                 {
                     "id": "03",
@@ -80,6 +94,7 @@ def test_board_summary_uses_tile_type_labels() -> None:
             ]
         }
     )
+    summary = game_state._summarize_board(game_model)
 
     assert summary["tile_counts"] == {
         "greenery": 1,

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Literal, TypeAlias
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -9,12 +9,151 @@ class TMBaseModel(BaseModel):
     model_config = ConfigDict(extra="allow")
 
 
+JsonScalar: TypeAlias = str | int | float | bool | None
+JsonValue: TypeAlias = JsonScalar | list["JsonValue"] | dict[str, "JsonValue"]
+
+WarningLiteral: TypeAlias = Literal[
+    "pass",
+    "undoBestEffort",
+    "maxtemp",
+    "maxoxygen",
+    "maxoceans",
+    "maxvenus",
+    "maxHabitatRate",
+    "maxMiningRate",
+    "maxLogisticsRate",
+    "decreaseOwnProduction",
+    "removeOwnPlants",
+    "buildOnLuna",
+    "preludeFizzle",
+    "deckTooSmall",
+    "cannotAffordBoardOfDirectors",
+    "marsIsTerraformed",
+    "ineffectiveDoubleDown",
+    "noMatchingCards",
+    "unusableEventsForAstraMechanica",
+    "noEffect",
+    "selfTarget",
+    "pharmacyUnion",
+    "kaguyaTech",
+    "underworldtokendiscard",
+]
+
+SpaceHighlightLiteral: TypeAlias = Literal["noctis", "volcanic"]
+
+UndergroundResourceTokenLiteral: TypeAlias = Literal[
+    "data1pertemp",
+    "mcprod1pertemp",
+    "microbe1pertemp",
+    "microbe2pertemp",
+    "plant2pertemp",
+    "steel2pertemp",
+    "titanium1pertemp",
+    "oceanrequirementmod",
+    "oxygenrequirementmod",
+    "temprequirementmod",
+    "nothing",
+    "card1",
+    "card2",
+    "corruption1",
+    "corruption2",
+    "data1",
+    "data2",
+    "data3",
+    "steel2plant",
+    "steel2",
+    "steel1production",
+    "titanium2",
+    "titanium1production",
+    "plant2",
+    "plant3",
+    "plant1production",
+    "titaniumandplant",
+    "energy2",
+    "energy1production",
+    "heat2production",
+    "microbe1",
+    "microbe2",
+    "tr",
+    "ocean",
+    "sciencetag",
+    "planttag",
+    "place6mc",
+    "anyresource1",
+]
+
+LogMessageTypeLiteral: TypeAlias = Literal[0, 1]
+
+
+class LogMessageDataAttrsModel(TMBaseModel):
+    tags: bool | None = None
+    cost: bool | None = None
+
+
+class LogMessageDataModel(TMBaseModel):
+    type: int | str
+    value: JsonScalar
+    attrs: LogMessageDataAttrsModel | None = None
+
+
+class MessageModel(TMBaseModel):
+    message: str
+    data: list[LogMessageDataModel] = Field(default_factory=list)
+
+
+class UnitsModel(TMBaseModel):
+    megacredits: int = 0
+    steel: int = 0
+    titanium: int = 0
+    plants: int = 0
+    energy: int = 0
+    heat: int = 0
+
+
+class PayProductionModel(TMBaseModel):
+    cost: int
+    units: UnitsModel
+
+
+class PaymentOptionsModel(TMBaseModel):
+    heat: bool | None = None
+    steel: bool | None = None
+    titanium: bool | None = None
+    plants: bool | None = None
+    microbes: bool | None = None
+    floaters: bool | None = None
+    lunaArchivesScience: bool | None = None
+    spireScience: bool | None = None
+    seeds: bool | None = None
+    auroraiData: bool | None = None
+    graphene: bool | None = None
+    kuiperAsteroids: bool | None = None
+    lunaTradeFederationTitanium: bool | None = None
+
+
+class HazardConstraintModel(TMBaseModel):
+    threshold: int
+    available: bool
+
+
+class MilestoneCountModel(TMBaseModel):
+    id: str
+    networkerCount: int
+    purifierCount: int
+
+
+class AresDataModel(TMBaseModel):
+    includeHazards: bool | None = None
+    hazardData: dict[str, HazardConstraintModel] | None = None
+    milestoneResults: list[MilestoneCountModel] | None = None
+
+
 class CardModel(TMBaseModel):
     name: str
     resources: int | None = None
     calculatedCost: int | None = None
     isDisabled: bool | None = None
-    warnings: list[Any] | None = None
+    warnings: list[WarningLiteral] | None = None
     warning: str | None = None
     cloneTag: str | None = None
 
@@ -24,15 +163,18 @@ class ColonyInputModel(TMBaseModel):
 
 
 class ClaimedTokenModel(TMBaseModel):
-    # Underworld token payload shape can vary by expansion/version.
-    pass
+    token: UndergroundResourceTokenLiteral | None = None
+    shelter: bool | None = None
+    active: bool | None = None
+    id: int | None = None
+    label: str | None = None
 
 
 class WaitingForInputModel(TMBaseModel):
     type: str
-    title: Any
-    warning: Any | None = None
-    warnings: list[Any] | None = None
+    title: str | MessageModel
+    warning: str | MessageModel | None = None
+    warnings: list[WarningLiteral] | None = None
     buttonLabel: str
 
     min: int | None = None
@@ -56,9 +198,9 @@ class WaitingForInputModel(TMBaseModel):
     include: list[str] | None = None
 
     coloniesModel: list[ColonyInputModel] | None = None
-    payProduction: dict[str, object] | None = None
-    paymentOptions: dict[str, object] | None = None
-    aresData: dict[str, object] | None = None
+    payProduction: PayProductionModel | None = None
+    paymentOptions: PaymentOptionsModel | None = None
+    aresData: AresDataModel | None = None
     tokens: list[ClaimedTokenModel] | None = None
 
 
@@ -98,13 +240,13 @@ class SpaceModel(TMBaseModel):
     bonus: list[int]
     color: str | None = None
     tileType: int | None = None
-    highlight: str | None = None
+    highlight: SpaceHighlightLiteral | None = None
     rotated: bool | None = None
     gagarin: int | None = None
     cathedral: bool | None = None
     nomads: bool | None = None
     coOwner: str | None = None
-    undergroundResource: Any | None = None
+    undergroundResource: UndergroundResourceTokenLiteral | None = None
     excavator: str | None = None
 
 
@@ -160,13 +302,13 @@ class PlayerViewModel(TMBaseModel):
 
 
 class WaitingForStatusModel(TMBaseModel):
-    result: str
+    result: Literal["GO", "REFRESH", "WAIT"]
     waitingFor: list[str]
 
 
 class GameLogEntryModel(TMBaseModel):
     timestamp: int
     message: str
-    data: list[Any]
-    type: Any | None = None
-    playerId: Any | None = None
+    data: list[LogMessageDataModel]
+    type: LogMessageTypeLiteral | None = None
+    playerId: str | None = None

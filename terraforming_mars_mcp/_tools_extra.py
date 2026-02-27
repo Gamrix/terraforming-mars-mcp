@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 from ._app import mcp
 from ._models import (
     InitialCardsSelectionModel,
     RawInputEntityRequest,
     _normalize_raw_input_entity,
 )
-from .api_response_models import PlayerViewModel as ApiPlayerViewModel
-from .api_response_models import WaitingForInputModel as ApiWaitingForInputModel
+from .api_response_models import JsonValue
 from .card_info import _extract_played_cards
 from .game_state import _build_agent_state, _full_board_state
 from .turn_flow import (
@@ -22,18 +23,10 @@ from .turn_flow import (
 from .waiting_for import _get_waiting_for_model
 
 
-def _normalize_player_view(
-    player_model: ApiPlayerViewModel | dict[str, object],
-) -> ApiPlayerViewModel:
-    if isinstance(player_model, ApiPlayerViewModel):
-        return player_model
-    return ApiPlayerViewModel.model_validate(player_model)
-
-
 @mcp.tool()
 def get_opponents_played_cards() -> dict[str, object]:
     """Return all cards currently in each opponent's tableau (played cards)."""
-    player_model = _normalize_player_view(_get_player())
+    player_model = _get_player()
     this_color = player_model.thisPlayer.color
 
     opponents: list[dict[str, object]] = []
@@ -61,7 +54,7 @@ def get_opponents_played_cards() -> dict[str, object]:
 @mcp.tool()
 def get_my_played_cards() -> dict[str, object]:
     """Return all cards currently in your tableau (played cards)."""
-    player_model = _normalize_player_view(_get_player())
+    player_model = _get_player()
     this_player = player_model.thisPlayer
     cards = _extract_played_cards(this_player)
     game = player_model.game
@@ -78,14 +71,14 @@ def get_my_played_cards() -> dict[str, object]:
 @mcp.tool()
 def get_mars_board_state(include_empty_spaces: bool = False) -> dict[str, object]:
     """Return detailed Mars board state. This is the explicit board-inspection tool."""
-    player_model = _normalize_player_view(_get_player())
+    player_model = _get_player()
     return _full_board_state(player_model.game, include_empty_spaces=include_empty_spaces)
 
 
 @mcp.tool()
 def wait_for_turn() -> dict[str, object]:
     """Poll /api/waitingfor until it's your turn using fixed server defaults."""
-    player_model = _normalize_player_view(_get_player())
+    player_model = _get_player()
     if _has_waiting_input(player_model):
         return {
             "status": "GO",
@@ -94,7 +87,7 @@ def wait_for_turn() -> dict[str, object]:
             ),
         }
     refreshed, opponent_actions = _wait_for_turn_from_player_model(player_model)
-    result = {
+    result: dict[str, object] = {
         "status": "GO",
         "state": _build_agent_state(
             refreshed, base_url=CFG.base_url, player_id_fallback=CFG.player_id
@@ -115,7 +108,9 @@ def submit_raw_entity(request: RawInputEntityRequest) -> dict[str, object]:
         raise ValueError("entity_json must decode to an object")
     if "type" not in entity:
         raise ValueError("entity_json must include a 'type' field")
-    return _submit_and_return_state(_normalize_raw_input_entity(entity))
+    return _submit_and_return_state(
+        _normalize_raw_input_entity(cast(dict[str, object], entity))
+    )
 
 
 @mcp.tool()
@@ -126,10 +121,14 @@ def submit_and_options(responses_json: str) -> dict[str, object]:
     responses = _json.loads(responses_json)
     if not isinstance(responses, list):
         raise ValueError("responses_json must decode to a list of objects")
+    normalized_responses: list[dict[str, JsonValue]] = []
     for item in responses:
         if not isinstance(item, dict):
             raise ValueError("Each response must be an object")
-    return _submit_and_return_state({"type": "and", "responses": responses})
+        normalized_responses.append(cast(dict[str, JsonValue], item))
+    return _submit_and_return_state(
+        {"type": "and", "responses": cast(JsonValue, normalized_responses)}
+    )
 
 
 @mcp.tool()
@@ -141,7 +140,9 @@ def select_amount(amount: int) -> dict[str, object]:
 @mcp.tool()
 def select_cards(card_names: list[str]) -> dict[str, object]:
     """Respond to `type: card` with chosen card names."""
-    return _submit_and_return_state({"type": "card", "cards": card_names})
+    return _submit_and_return_state(
+        {"type": "card", "cards": cast(JsonValue, card_names)}
+    )
 
 
 @mcp.tool()
@@ -228,17 +229,16 @@ def pay_for_action(
 @mcp.tool()
 def select_initial_cards(request: InitialCardsSelectionModel) -> dict[str, object]:
     """Respond to `type: initialCards` using current waiting-for option order."""
-    player_model = _normalize_player_view(_get_player())
+    player_model = _get_player()
     waiting_for = _get_waiting_for_model(player_model)
     options = waiting_for.options if waiting_for is not None else None
     if not isinstance(options, list):
         raise RuntimeError("Current waitingFor has no options for initialCards")
 
-    responses: list[dict[str, object]] = []
+    responses: list[dict[str, JsonValue]] = []
     for option in options:
-        if not isinstance(option, ApiWaitingForInputModel):
-            raise RuntimeError("Invalid option in initialCards")
-        title = str(option.title or "").lower()
+        title_text = option.title if isinstance(option.title, str) else option.title.message
+        title = title_text.lower()
         if "corporation" in title:
             cards = [request.corporation_card] if request.corporation_card else []
         elif "prelude" in title:
@@ -247,9 +247,11 @@ def select_initial_cards(request: InitialCardsSelectionModel) -> dict[str, objec
             cards = request.ceo_cards
         else:
             cards = request.project_cards
-        responses.append({"type": "card", "cards": cards})
+        responses.append({"type": "card", "cards": cast(JsonValue, cards)})
 
-    return _submit_and_return_state({"type": "initialCards", "responses": responses})
+    return _submit_and_return_state(
+        {"type": "initialCards", "responses": cast(JsonValue, responses)}
+    )
 
 
 @mcp.tool()
@@ -353,5 +355,5 @@ def select_resources(
 def select_claimed_underground_tokens(selected: list[int]) -> dict[str, object]:
     """Respond to `type: claimedUndergroundToken`."""
     return _submit_and_return_state(
-        {"type": "claimedUndergroundToken", "selected": selected}
+        {"type": "claimedUndergroundToken", "selected": cast(JsonValue, selected)}
     )

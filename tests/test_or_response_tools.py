@@ -14,11 +14,16 @@ def _load_server_module() -> Any:
     return importlib.reload(module)
 
 
+def _waiting_for_model(payload: dict[str, Any]) -> Any:
+    api_models = importlib.import_module("terraforming_mars_mcp.api_response_models")
+    return api_models.WaitingForInputModel.model_validate(payload)
+
+
 def test_choose_or_option_defaults_nested_option_response() -> None:
     server = _load_server_module()
-    captured: dict[str, object] = {}
+    captured: dict[str, Any] = {}
 
-    def _fake_submit(payload: dict[str, object]) -> dict[str, object]:
+    def _fake_submit(payload: dict[str, Any]) -> dict[str, object]:
         captured.update(payload)
         return {"ok": True}
 
@@ -32,9 +37,9 @@ def test_choose_or_option_defaults_nested_option_response() -> None:
 
 def test_choose_or_option_accepts_legacy_request_payload() -> None:
     server = _load_server_module()
-    captured: dict[str, object] = {}
+    captured: dict[str, Any] = {}
 
-    def _fake_submit(payload: dict[str, object]) -> dict[str, object]:
+    def _fake_submit(payload: dict[str, Any]) -> dict[str, object]:
         captured.update(payload)
         return {"ok": True}
 
@@ -48,10 +53,11 @@ def test_choose_or_option_accepts_legacy_request_payload() -> None:
 
 def test_confirm_option_submits_or_response_when_waiting_for_or() -> None:
     server = _load_server_module()
-    captured: dict[str, object] = {}
+    captured: dict[str, Any] = {}
 
-    server._get_player = lambda player_id=None: {
-        "waitingFor": {
+    server._get_player = lambda player_id=None: object()
+    server._get_waiting_for_model = lambda _player: _waiting_for_model(
+        {
             "type": "or",
             "title": "Choose",
             "buttonLabel": "OK",
@@ -61,9 +67,9 @@ def test_confirm_option_submits_or_response_when_waiting_for_or() -> None:
                 {"type": "option", "title": "B", "buttonLabel": "OK"},
             ],
         }
-    }
+    )
 
-    def _fake_submit(payload: dict[str, object]) -> dict[str, object]:
+    def _fake_submit(payload: dict[str, Any]) -> dict[str, object]:
         captured.update(payload)
         return {"ok": True}
 
@@ -77,11 +83,14 @@ def test_confirm_option_submits_or_response_when_waiting_for_or() -> None:
 
 def test_confirm_option_submits_option_for_option_prompt() -> None:
     server = _load_server_module()
-    captured: dict[str, object] = {}
+    captured: dict[str, Any] = {}
 
-    server._get_player = lambda player_id=None: {"waitingFor": {"type": "option", "title": "Confirm", "buttonLabel": "OK"}}
+    server._get_player = lambda player_id=None: object()
+    server._get_waiting_for_model = lambda _player: _waiting_for_model(
+        {"type": "option", "title": "Confirm", "buttonLabel": "OK"}
+    )
 
-    def _fake_submit(payload: dict[str, object]) -> dict[str, object]:
+    def _fake_submit(payload: dict[str, Any]) -> dict[str, object]:
         captured.update(payload)
         return {"ok": True}
 
@@ -95,11 +104,14 @@ def test_confirm_option_submits_option_for_option_prompt() -> None:
 
 def test_pay_for_project_card_submits_direct_project_card_payload() -> None:
     server = _load_server_module()
-    captured: dict[str, object] = {}
+    captured: dict[str, Any] = {}
 
-    server._get_player = lambda player_id=None: {"waitingFor": {"type": "projectCard", "title": "Play", "buttonLabel": "OK"}}
+    server._get_player = lambda player_id=None: object()
+    server._get_waiting_for_model = lambda _player: _waiting_for_model(
+        {"type": "projectCard", "title": "Play", "buttonLabel": "OK"}
+    )
 
-    def _fake_submit(payload: dict[str, object]) -> dict[str, object]:
+    def _fake_submit(payload: dict[str, Any]) -> dict[str, object]:
         captured.update(payload)
         return {"ok": True}
 
@@ -115,10 +127,11 @@ def test_pay_for_project_card_submits_direct_project_card_payload() -> None:
 
 def test_pay_for_project_card_wraps_outer_or_menu() -> None:
     server = _load_server_module()
-    captured: dict[str, object] = {}
+    captured: dict[str, Any] = {}
 
-    server._get_player = lambda player_id=None: {
-        "waitingFor": {
+    server._get_player = lambda player_id=None: object()
+    server._get_waiting_for_model = lambda _player: _waiting_for_model(
+        {
             "type": "or",
             "title": "Choose",
             "buttonLabel": "OK",
@@ -128,9 +141,9 @@ def test_pay_for_project_card_wraps_outer_or_menu() -> None:
                 {"type": "option", "title": "Pass", "buttonLabel": "OK"},
             ],
         }
-    }
+    )
 
-    def _fake_submit(payload: dict[str, object]) -> dict[str, object]:
+    def _fake_submit(payload: dict[str, Any]) -> dict[str, object]:
         captured.update(payload)
         return {"ok": True}
 
@@ -149,8 +162,9 @@ def test_pay_for_project_card_wraps_outer_or_menu() -> None:
 def test_pay_for_project_card_errors_when_outer_or_has_no_project_card_branch() -> None:
     server = _load_server_module()
 
-    server._get_player = lambda player_id=None: {
-        "waitingFor": {
+    server._get_player = lambda player_id=None: object()
+    server._get_waiting_for_model = lambda _player: _waiting_for_model(
+        {
             "type": "or",
             "title": "Choose",
             "buttonLabel": "OK",
@@ -159,7 +173,7 @@ def test_pay_for_project_card_errors_when_outer_or_has_no_project_card_branch() 
                 {"type": "card", "title": "Select card", "buttonLabel": "OK"},
             ],
         }
-    }
+    )
 
     server._submit_and_return_state = lambda payload: {"ok": True}
 

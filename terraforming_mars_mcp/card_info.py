@@ -159,7 +159,8 @@ def _card_info(card_name: Any, include_play_details: bool = False) -> dict[str, 
         return {}
 
     tags = card.get("tags") if isinstance(card.get("tags"), list) else []
-    metadata = card.get("metadata") if isinstance(card.get("metadata"), dict) else None
+    raw_metadata = card.get("metadata")
+    metadata = raw_metadata if isinstance(raw_metadata, dict) else None
     render_data = metadata.get("renderData") if isinstance(metadata, dict) else None
     description = _description_text(metadata)
     actions, effects = _extract_actions_and_effects(render_data)

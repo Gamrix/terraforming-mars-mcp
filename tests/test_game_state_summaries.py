@@ -14,9 +14,14 @@ def _load_server_module() -> Any:
     return importlib.reload(module)
 
 
+def _player_view_model(payload: dict[str, Any]) -> Any:
+    api_models = importlib.import_module("terraforming_mars_mcp.api_response_models")
+    return api_models.PlayerViewModel.model_validate(payload)
+
+
 def test_get_game_state_surfaces_milestones_and_awards() -> None:
     server = _load_server_module()
-    player_model = {
+    player_model: dict[str, Any] = {
         "id": "player-1",
         "game": {
             "id": "game-1",
@@ -79,7 +84,8 @@ def test_get_game_state_surfaces_milestones_and_awards() -> None:
         "thisPlayer": {"name": "Alice", "color": "red", "isActive": True},
     }
 
-    server._get_player = lambda player_id=None: player_model
+    player_view = _player_view_model(player_model)
+    server._get_player = lambda player_id=None: player_view
     state = server.get_game_state()
 
     assert state["game"]["milestones"][0]["name"] == "Builder"
@@ -97,7 +103,7 @@ def test_get_game_state_surfaces_milestones_and_awards() -> None:
 
 def test_get_my_hand_cards_returns_cards_in_hand() -> None:
     server = _load_server_module()
-    player_model = {
+    player_model: dict[str, Any] = {
         "id": "player-1",
         "game": {
             "id": "game-1",
@@ -118,7 +124,8 @@ def test_get_my_hand_cards_returns_cards_in_hand() -> None:
         ],
     }
 
-    server._get_player = lambda player_id=None: player_model
+    player_view = _player_view_model(player_model)
+    server._get_player = lambda player_id=None: player_view
     hand = server.get_my_hand_cards()
 
     assert hand["cards_in_hand_count"] == 2

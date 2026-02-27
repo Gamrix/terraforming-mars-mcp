@@ -362,7 +362,6 @@ def main() -> int:
         return args.func(args)
     except ValidationError as exc:
         parser.error(str(exc))
-        return 2
 
 
 if __name__ == "__main__":

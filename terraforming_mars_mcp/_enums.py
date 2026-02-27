@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Any
 
 
 class InputType(StrEnum):
@@ -54,7 +53,7 @@ class ToolName(StrEnum):
     GET_MARS_BOARD_STATE = "get_mars_board_state"
 
 
-def _action_tools_for_input_type(input_type: str | None) -> list[Any]:
+def _action_tools_for_input_type(input_type: str | None) -> list[str]:
     if input_type is None:
         return []
     try:

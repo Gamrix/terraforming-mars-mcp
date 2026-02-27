@@ -16,12 +16,11 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import Literal
+from typing import Literal, cast
 
 from ._app import mcp
 from ._enums import InputType
-from .api_response_models import PlayerViewModel as ApiPlayerViewModel
-from .api_response_models import WaitingForInputModel as ApiWaitingForInputModel
+from .api_response_models import JsonValue
 from .card_info import _compact_cards
 from .game_state import _build_agent_state
 from .turn_flow import CFG, _get_player, _strip_base_url, _submit_and_return_state
@@ -37,15 +36,6 @@ DEFAULT_LOG_FILE = os.environ.get(
     "TM_MCP_LOG_FILE",
     str(Path(__file__).parent / "tmp" / "terraforming-mars-mcp.log"),
 )
-
-
-def _normalize_player_view(
-    player_model: ApiPlayerViewModel | dict[str, object],
-) -> ApiPlayerViewModel:
-    if isinstance(player_model, ApiPlayerViewModel):
-        return player_model
-    return ApiPlayerViewModel.model_validate(player_model)
-
 
 def _configure_server_logging(log_level: str, log_file: str) -> Path:
     normalized_level = log_level.upper()
@@ -99,7 +89,7 @@ def get_game_state(
 @mcp.tool()
 def get_my_hand_cards() -> dict[str, object]:
     """Return all cards currently in your hand."""
-    player_model = _normalize_player_view(_get_player())
+    player_model = _get_player()
     this_player = player_model.thisPlayer
     cards = _compact_cards(player_model.cardsInHand)
     game = player_model.game
@@ -149,9 +139,23 @@ def choose_or_option(
 
         if sub_response_json is None:
             if "sub_response_json" in parsed_request:
-                sub_response_json = parsed_request["sub_response_json"]
+                nested_response = parsed_request["sub_response_json"]
+                if isinstance(nested_response, str):
+                    sub_response_json = nested_response
+                elif isinstance(nested_response, dict):
+                    sub_response_json = cast(dict[str, object], nested_response)
+                elif nested_response is not None:
+                    raise ValueError(
+                        "request.sub_response_json must be a JSON string or object"
+                    )
             elif "response" in parsed_request:
-                sub_response_json = parsed_request["response"]
+                nested_response = parsed_request["response"]
+                if isinstance(nested_response, str):
+                    sub_response_json = nested_response
+                elif isinstance(nested_response, dict):
+                    sub_response_json = cast(dict[str, object], nested_response)
+                elif nested_response is not None:
+                    raise ValueError("request.response must be a JSON string or object")
 
     if option_index is None:
         raise ValueError("option_index is required")
@@ -177,12 +181,9 @@ def confirm_option() -> dict[str, object]:
             index = initial_idx
         else:
             options = waiting_for.options
-            if isinstance(options, list):
+            if options is not None:
                 for idx, option in enumerate(options):
-                    if (
-                        isinstance(option, ApiWaitingForInputModel)
-                        and option.type == InputType.SELECT_OPTION.value
-                    ):
+                    if option.type == InputType.SELECT_OPTION.value:
                         index = idx
                         break
         return _submit_and_return_state(
@@ -207,11 +208,11 @@ def pay_for_project_card(
     aurorai_data: int = 0,
     graphene: int = 0,
     kuiper_asteroids: int = 0,
-) -> dict[str, object]:
+    ) -> dict[str, object]:
     """Respond to `type: projectCard`."""
     if not card_name:
         raise ValueError("card_name is required")
-    project_card_response = {
+    project_card_response: dict[str, JsonValue] = {
         "type": "projectCard",
         "card": card_name,
         "payment": {

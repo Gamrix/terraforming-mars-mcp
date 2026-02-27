@@ -9,32 +9,22 @@ from .card_info import DETAIL_LEVEL_FULL, _compact_cards
 
 
 def _input_type_name(waiting_for: ApiWaitingForInputModel | None) -> str | None:
-    if not waiting_for:
+    if waiting_for is None:
         return None
     value = waiting_for.type
-    if isinstance(value, str):
-        try:
-            return InputType(value).value
-        except ValueError:
-            return value
-    return None
+    try:
+        return InputType(value).value
+    except ValueError:
+        return value
 
 
-def _get_waiting_for_model(
-    player_model: ApiPlayerViewModel | dict[str, object],
-) -> ApiWaitingForInputModel | None:
-    if isinstance(player_model, ApiPlayerViewModel):
-        raw_waiting_for = player_model.waitingFor
-    else:
-        raw_waiting_for = player_model.get("waitingFor")
-    if isinstance(raw_waiting_for, ApiWaitingForInputModel):
-        return raw_waiting_for
-    if isinstance(raw_waiting_for, dict):
-        return ApiWaitingForInputModel.model_validate(raw_waiting_for)
-    return None
+def _get_waiting_for_model(player_model: ApiPlayerViewModel) -> ApiWaitingForInputModel | None:
+    return player_model.waitingFor
 
 
-def _normalize_or_sub_response(value: str | dict[str, object] | None) -> dict[str, object]:
+def _normalize_or_sub_response(
+    value: str | dict[str, object] | None,
+) -> dict[str, object]:
     if value is None or value == "":
         return {"type": "option"}
     if isinstance(value, str):
@@ -53,20 +43,17 @@ def _find_or_option_index(
     waiting_for: ApiWaitingForInputModel, expected_type: str
 ) -> int:
     options = waiting_for.options
-    if not isinstance(options, list):
+    if options is None:
         raise RuntimeError("Current waitingFor has no options for an 'or' prompt")
 
     initial_idx = waiting_for.initialIdx
     if isinstance(initial_idx, int) and 0 <= initial_idx < len(options):
         initial_option = options[initial_idx]
-        if (
-            isinstance(initial_option, ApiWaitingForInputModel)
-            and initial_option.type == expected_type
-        ):
+        if initial_option.type == expected_type:
             return initial_idx
 
     for idx, option in enumerate(options):
-        if isinstance(option, ApiWaitingForInputModel) and option.type == expected_type:
+        if option.type == expected_type:
             return idx
 
     raise RuntimeError(
@@ -92,7 +79,7 @@ def _normalize_waiting_for(
 
     if wf.warning is not None:
         normalized["warning"] = wf.warning
-    if isinstance(wf.warnings, list) and wf.warnings:
+    if wf.warnings:
         normalized["warnings"] = wf.warnings
 
     if wf.initialIdx is not None:
@@ -114,10 +101,10 @@ def _normalize_waiting_for(
     if wf.count is not None:
         normalized["count"] = wf.count
 
-    if isinstance(wf.include, list) and wf.include:
+    if wf.include:
         normalized["include"] = wf.include
 
-    if isinstance(wf.cards, list):
+    if wf.cards is not None:
         normalized["cards"] = _compact_cards(wf.cards, detail_level=detail_level)
         card_selection: dict[str, object] = {}
         if wf.min is not None:
@@ -133,35 +120,34 @@ def _normalize_waiting_for(
         if card_selection:
             normalized["card_selection"] = card_selection
 
-    if isinstance(wf.players, list) and wf.players:
+    if wf.players:
         normalized["players"] = wf.players
-    if isinstance(wf.spaces, list) and wf.spaces:
+    if wf.spaces:
         normalized["spaces"] = wf.spaces
-    if isinstance(wf.parties, list) and wf.parties:
+    if wf.parties:
         normalized["parties"] = wf.parties
-    if isinstance(wf.globalEventNames, list) and wf.globalEventNames:
+    if wf.globalEventNames:
         normalized["globalEventNames"] = wf.globalEventNames
 
-    if isinstance(wf.tokens, list) and wf.tokens:
+    if wf.tokens:
         normalized["tokens"] = [
             token.model_dump(exclude_none=True) for token in wf.tokens
         ]
 
-    if isinstance(wf.coloniesModel, list):
-        normalized["colonies"] = [
-            colony.name for colony in wf.coloniesModel if isinstance(colony.name, str)
-        ]
+    if wf.coloniesModel is not None:
+        normalized["colonies"] = [colony.name for colony in wf.coloniesModel]
 
-    if isinstance(wf.payProduction, dict):
-        normalized["pay_production"] = wf.payProduction
+    if wf.payProduction is not None:
+        normalized["pay_production"] = wf.payProduction.model_dump(exclude_none=True)
 
-    if isinstance(wf.paymentOptions, dict):
-        normalized["payment_options"] = wf.paymentOptions
+    if wf.paymentOptions is not None:
+        normalized["payment_options"] = wf.paymentOptions.model_dump(exclude_none=True)
 
-    if isinstance(wf.aresData, dict):
-        normalized["ares_data"] = wf.aresData.get("hazardData", wf.aresData)
+    if wf.aresData is not None:
+        ares_data = wf.aresData.model_dump(exclude_none=True)
+        normalized["ares_data"] = ares_data.get("hazardData", ares_data)
 
-    if isinstance(wf.options, list):
+    if wf.options is not None:
         if depth >= 2:
             normalized["options_count"] = len(wf.options)
         else:

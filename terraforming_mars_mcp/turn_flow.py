@@ -5,11 +5,12 @@ import os
 import re
 import time
 from dataclasses import dataclass
-from typing import Any
+from typing import Mapping, Sequence, cast
 from urllib import error, parse, request
 
 from .api_response_models import (
     GameLogEntryModel as ApiGameLogEntryModel,
+    JsonValue,
     PlayerViewModel as ApiPlayerViewModel,
     WaitingForStatusModel as ApiWaitingForStatusModel,
 )
@@ -45,9 +46,9 @@ def _ensure_player_id(player_id: str | None = None) -> str:
 def _http_json(
     method: str,
     path: str,
-    query: dict[str, str] | None = None,
-    body: Any | None = None,
-) -> Any:
+    query: Mapping[str, str] | None = None,
+    body: JsonValue | None = None,
+) -> JsonValue:
     url = _strip_base_url(CFG.base_url) + path
     if query:
         url += "?" + parse.urlencode(query)
@@ -64,7 +65,7 @@ def _http_json(
             raw = resp.read().decode("utf-8")
             if not raw:
                 return {}
-            return json.loads(raw)
+            return cast(JsonValue, json.loads(raw))
     except error.HTTPError as exc:
         raw_error = exc.read().decode("utf-8", errors="replace")
         message = raw_error
@@ -79,22 +80,6 @@ def _http_json(
         raise RuntimeError(f"Cannot reach server at {CFG.base_url}: {exc}") from exc
 
 
-def _normalize_player_view(
-    player_model: ApiPlayerViewModel | dict[str, object],
-) -> ApiPlayerViewModel:
-    if isinstance(player_model, ApiPlayerViewModel):
-        return player_model
-    return ApiPlayerViewModel.model_validate(player_model)
-
-
-def _normalize_log_entry(
-    entry: ApiGameLogEntryModel | dict[str, object],
-) -> ApiGameLogEntryModel:
-    if isinstance(entry, ApiGameLogEntryModel):
-        return entry
-    return ApiGameLogEntryModel.model_validate(entry)
-
-
 def _get_player(player_id: str | None = None) -> ApiPlayerViewModel:
     pid = _ensure_player_id(player_id)
     result = _http_json("GET", "/api/player", {"id": pid})
@@ -104,7 +89,7 @@ def _get_player(player_id: str | None = None) -> ApiPlayerViewModel:
 
 
 def _post_input(
-    response: dict[str, object], player_id: str | None = None
+    response: dict[str, JsonValue], player_id: str | None = None
 ) -> ApiPlayerViewModel:
     pid = _ensure_player_id(player_id)
     result = _http_json("POST", "/player/input", {"id": pid}, response)
@@ -140,31 +125,27 @@ def _get_game_logs(player_id: str | None = None) -> list[ApiGameLogEntryModel]:
     return normalized_logs
 
 
-def _has_waiting_input(player_model: ApiPlayerViewModel | dict[str, object]) -> bool:
+def _has_waiting_input(player_model: ApiPlayerViewModel) -> bool:
     return _get_waiting_for_model(player_model) is not None
 
 
-def _log_signature(entry: ApiGameLogEntryModel | dict[str, object]) -> str:
-    parsed_entry = _normalize_log_entry(entry)
+def _log_signature(entry: ApiGameLogEntryModel) -> str:
     return json.dumps(
         {
-            "timestamp": parsed_entry.timestamp,
-            "message": parsed_entry.message,
-            "data": parsed_entry.data,
-            "type": parsed_entry.type,
-            "playerId": parsed_entry.playerId,
+            "timestamp": entry.timestamp,
+            "message": entry.message,
+            "data": [datum.model_dump(exclude_none=True) for datum in entry.data],
+            "type": entry.type,
+            "playerId": entry.playerId,
         },
         sort_keys=True,
         separators=(",", ":"),
     )
 
 
-def _build_color_name_map(
-    player_model: ApiPlayerViewModel | dict[str, object],
-) -> dict[str, str]:
-    parsed_player = _normalize_player_view(player_model)
+def _build_color_name_map(player_model: ApiPlayerViewModel) -> dict[str, str]:
     mapping: dict[str, str] = {}
-    for player in parsed_player.players:
+    for player in player_model.players:
         color = player.color
         name = player.name
         if color and name:
@@ -173,23 +154,18 @@ def _build_color_name_map(
 
 
 def _format_log_entry(
-    entry: ApiGameLogEntryModel | dict[str, object], color_to_name: dict[str, str]
+    entry: ApiGameLogEntryModel, color_to_name: dict[str, str]
 ) -> str:
-    parsed_entry = _normalize_log_entry(entry)
-    template = parsed_entry.message
-    data = parsed_entry.data
-    if not isinstance(data, list):
-        return str(template)
+    template = entry.message
+    data = entry.data
 
     def replace(match: re.Match[str]) -> str:
         idx = int(match.group(1))
         if idx < 0 or idx >= len(data):
             return match.group(0)
         datum = data[idx]
-        if not isinstance(datum, dict):
-            return match.group(0)
-        value = datum.get("value")
-        data_type = datum.get("type")
+        value = datum.value
+        data_type = datum.type
         if _is_player_log_data_type(data_type) and isinstance(value, str):
             return color_to_name.get(value, value)
         if value is None:
@@ -200,36 +176,29 @@ def _format_log_entry(
 
 
 def _extract_opponent_actions(
-    initial_logs: list[ApiGameLogEntryModel | dict[str, object]],
-    final_logs: list[ApiGameLogEntryModel | dict[str, object]],
+    initial_logs: Sequence[ApiGameLogEntryModel],
+    final_logs: Sequence[ApiGameLogEntryModel],
     opponent_colors: set[str],
     color_to_name: dict[str, str],
 ) -> list[str]:
     seen = {_log_signature(entry) for entry in initial_logs}
     actions: list[str] = []
     for entry in final_logs:
-        parsed_entry = _normalize_log_entry(entry)
         signature = _log_signature(entry)
         if signature in seen:
             continue
-        data = parsed_entry.data
-        if not isinstance(data, list):
-            continue
+        data = entry.data
         has_opponent = False
         for datum in data:
-            if not isinstance(datum, dict):
-                continue
-            if _is_player_log_data_type(datum.get("type")) and datum.get(
-                "value"
-            ) in opponent_colors:
+            if _is_player_log_data_type(datum.type) and datum.value in opponent_colors:
                 has_opponent = True
                 break
         if has_opponent:
-            actions.append(_format_log_entry(parsed_entry, color_to_name))
+            actions.append(_format_log_entry(entry, color_to_name))
     return actions
 
 
-def _is_player_log_data_type(data_type: Any) -> bool:
+def _is_player_log_data_type(data_type: int | str | None) -> bool:
     if isinstance(data_type, int):
         return data_type == PLAYER_LOG_DATA_TYPE_NUMERIC
     if isinstance(data_type, str):
@@ -242,21 +211,22 @@ def _is_player_log_data_type(data_type: Any) -> bool:
 
 
 def _wait_for_turn_from_player_model(
-    player_model: ApiPlayerViewModel | dict[str, object],
-    initial_logs: list[ApiGameLogEntryModel | dict[str, object]] | None = None,
+    player_model: ApiPlayerViewModel,
+    initial_logs: Sequence[ApiGameLogEntryModel] | None = None,
 ) -> tuple[ApiPlayerViewModel, list[str]]:
-    parsed_player = _normalize_player_view(player_model)
-    game = parsed_player.game
+    game = player_model.game
 
-    this_color = parsed_player.thisPlayer.color
-    color_to_name = _build_color_name_map(parsed_player)
+    this_color = player_model.thisPlayer.color
+    color_to_name = _build_color_name_map(player_model)
     opponent_colors = {color for color in color_to_name if color != this_color}
-    start_logs = initial_logs if initial_logs is not None else _get_game_logs()
+    start_logs = (
+        list(initial_logs) if initial_logs is not None else _get_game_logs()
+    )
 
     game_age = int(game.gameAge)
     undo_count = int(game.undoCount)
     deadline = time.monotonic() + TURN_WAIT_TIMEOUT_SECONDS
-    last_waitingfor: dict[str, object] | None = None
+    last_waitingfor: dict[str, JsonValue] | None = None
 
     while True:
         waiting = _get_waiting_for_state(game_age, undo_count)
@@ -295,8 +265,8 @@ def _wait_for_turn_from_player_model(
         time.sleep(TURN_WAIT_POLL_INTERVAL_SECONDS)
 
 
-def _submit_and_return_state(response: dict[str, object]) -> dict[str, object]:
-    player_model = _post_input(response)
+def _submit_and_return_state(response: Mapping[str, object]) -> dict[str, object]:
+    player_model = _post_input(cast(dict[str, JsonValue], dict(response)))
     if not _has_waiting_input(player_model):
         initial_logs = _get_game_logs()
         refreshed, opponent_actions = _wait_for_turn_from_player_model(
