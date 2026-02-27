@@ -4,42 +4,23 @@ from __future__ import annotations
 
 from typing import Any
 
-try:
-    from ._app import mcp
-    from ._models import (
-        InitialCardsSelectionModel,
-        RawInputEntityRequest,
-        _normalize_raw_input_entity,
-    )
-    from .api_response_models import WaitingForInputModel as ApiWaitingForInputModel
-    from .card_info import _extract_played_cards
-    from .game_state import _build_agent_state, _full_board_state
-    from .turn_flow import (
-        CFG,
-        _get_player,
-        _has_waiting_input,
-        _submit_and_return_state,
-        _wait_for_turn_from_player_model,
-    )
-    from .waiting_for import _get_waiting_for_model
-except ImportError:
-    from _app import mcp  # type: ignore[no-redef]
-    from _models import (
-        InitialCardsSelectionModel,
-        RawInputEntityRequest,
-        _normalize_raw_input_entity,
-    )  # type: ignore[no-redef]
-    from api_response_models import WaitingForInputModel as ApiWaitingForInputModel  # type: ignore[no-redef]
-    from card_info import _extract_played_cards  # type: ignore[no-redef]
-    from game_state import _build_agent_state, _full_board_state  # type: ignore[no-redef]
-    from turn_flow import (  # type: ignore[no-redef]
-        CFG,
-        _get_player,
-        _has_waiting_input,
-        _submit_and_return_state,
-        _wait_for_turn_from_player_model,
-    )
-    from waiting_for import _get_waiting_for_model  # type: ignore[no-redef]
+from ._app import mcp
+from ._models import (
+    InitialCardsSelectionModel,
+    RawInputEntityRequest,
+    _normalize_raw_input_entity,
+)
+from .api_response_models import WaitingForInputModel as ApiWaitingForInputModel
+from .card_info import _extract_played_cards
+from .game_state import _build_agent_state, _full_board_state
+from .turn_flow import (
+    CFG,
+    _get_player,
+    _has_waiting_input,
+    _submit_and_return_state,
+    _wait_for_turn_from_player_model,
+)
+from .waiting_for import _get_waiting_for_model
 
 
 @mcp.tool()

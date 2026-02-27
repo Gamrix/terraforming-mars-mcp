@@ -8,22 +8,13 @@ from dataclasses import dataclass
 from typing import Any
 from urllib import error, parse, request
 
-try:
-    from .api_response_models import (
-        GameLogEntryModel as ApiGameLogEntryModel,
-        PlayerViewModel as ApiPlayerViewModel,
-        WaitingForStatusModel as ApiWaitingForStatusModel,
-    )
-    from .game_state import _build_agent_state
-    from .waiting_for import _get_waiting_for_model
-except ImportError:
-    from api_response_models import (  # type: ignore[no-redef]
-        GameLogEntryModel as ApiGameLogEntryModel,
-        PlayerViewModel as ApiPlayerViewModel,
-        WaitingForStatusModel as ApiWaitingForStatusModel,
-    )
-    from game_state import _build_agent_state  # type: ignore[no-redef]
-    from waiting_for import _get_waiting_for_model  # type: ignore[no-redef]
+from .api_response_models import (
+    GameLogEntryModel as ApiGameLogEntryModel,
+    PlayerViewModel as ApiPlayerViewModel,
+    WaitingForStatusModel as ApiWaitingForStatusModel,
+)
+from .game_state import _build_agent_state
+from .waiting_for import _get_waiting_for_model
 
 TURN_WAIT_TIMEOUT_SECONDS = 2 * 60 * 60
 TURN_WAIT_POLL_INTERVAL_SECONDS = 2

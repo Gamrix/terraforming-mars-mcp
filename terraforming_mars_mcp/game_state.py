@@ -3,40 +3,20 @@ from __future__ import annotations
 from collections import Counter
 from typing import Any
 
-try:
-    from .api_response_models import (
-        ClaimedMilestoneModel as ApiClaimedMilestoneModel,
-        FundedAwardModel as ApiFundedAwardModel,
-        PlayerViewModel as ApiPlayerViewModel,
-        PublicPlayerModel as ApiPublicPlayerModel,
-        SpaceModel as ApiSpaceModel,
-    )
-    from ._enums import _action_tools_for_input_type
-    from .card_info import DETAIL_LEVEL_FULL, _card_info, _normalize_detail_level
-    from .waiting_for import (
-        _get_waiting_for_model,
-        _input_type_name,
-        _normalize_waiting_for,
-    )
-except ImportError:
-    from api_response_models import (  # type: ignore[no-redef]
-        ClaimedMilestoneModel as ApiClaimedMilestoneModel,
-        FundedAwardModel as ApiFundedAwardModel,
-        PlayerViewModel as ApiPlayerViewModel,
-        PublicPlayerModel as ApiPublicPlayerModel,
-        SpaceModel as ApiSpaceModel,
-    )
-    from _enums import _action_tools_for_input_type  # type: ignore[no-redef]
-    from card_info import (
-        DETAIL_LEVEL_FULL,
-        _card_info,
-        _normalize_detail_level,
-    )  # type: ignore[no-redef]
-    from waiting_for import (
-        _get_waiting_for_model,
-        _input_type_name,
-        _normalize_waiting_for,
-    )  # type: ignore[no-redef]
+from .api_response_models import (
+    ClaimedMilestoneModel as ApiClaimedMilestoneModel,
+    FundedAwardModel as ApiFundedAwardModel,
+    PlayerViewModel as ApiPlayerViewModel,
+    PublicPlayerModel as ApiPublicPlayerModel,
+    SpaceModel as ApiSpaceModel,
+)
+from ._enums import _action_tools_for_input_type
+from .card_info import DETAIL_LEVEL_FULL, _card_info, _normalize_detail_level
+from .waiting_for import (
+    _get_waiting_for_model,
+    _input_type_name,
+    _normalize_waiting_for,
+)
 
 END_OF_GENERATION_PHASES = {"production", "solar", "intergeneration", "end"}
 

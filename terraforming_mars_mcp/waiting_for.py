@@ -3,14 +3,9 @@ from __future__ import annotations
 import json
 from typing import Any
 
-try:
-    from .api_response_models import WaitingForInputModel as ApiWaitingForInputModel
-    from ._enums import InputType
-    from .card_info import DETAIL_LEVEL_FULL, _compact_cards
-except ImportError:
-    from api_response_models import WaitingForInputModel as ApiWaitingForInputModel  # type: ignore[no-redef]
-    from _enums import InputType  # type: ignore[no-redef]
-    from card_info import DETAIL_LEVEL_FULL, _compact_cards  # type: ignore[no-redef]
+from .api_response_models import WaitingForInputModel as ApiWaitingForInputModel
+from ._enums import InputType
+from .card_info import DETAIL_LEVEL_FULL, _compact_cards
 
 
 def _input_type_name(waiting_for: ApiWaitingForInputModel | None) -> str | None:

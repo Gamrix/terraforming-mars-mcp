@@ -5,16 +5,10 @@ import re
 from pathlib import Path
 from typing import Any
 
-try:
-    from .api_response_models import (
-        CardModel as ApiCardModel,
-        PublicPlayerModel as ApiPublicPlayerModel,
-    )
-except ImportError:
-    from api_response_models import (  # type: ignore[no-redef]
-        CardModel as ApiCardModel,
-        PublicPlayerModel as ApiPublicPlayerModel,
-    )
+from .api_response_models import (
+    CardModel as ApiCardModel,
+    PublicPlayerModel as ApiPublicPlayerModel,
+)
 
 DETAIL_LEVEL_FULL = "full"
 DETAIL_LEVEL_MINIMAL = "minimal"
