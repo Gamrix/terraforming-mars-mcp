@@ -58,21 +58,15 @@ def test_initial_cards_options_include_effect_text_previews() -> None:
     normalized = _normalize_waiting_for(server, waiting_for)
     options = normalized["options"]
 
-    assert options[0]["cards_preview"][0]["name"] == "Helion"
-    assert options[0]["cards_preview"][0]["tags"]
-    assert options[0]["cards_preview"][0]["effect_text"]
-    assert "on_play_effect_text" in options[0]["cards_preview"][0]
-    assert "ongoing_effects" in options[0]["cards_preview"][0]
-    assert options[1]["cards_preview"][0]["name"] == "Business Empire"
-    assert options[1]["cards_preview"][0]["tags"]
-    assert options[1]["cards_preview"][0]["effect_text"]
-    assert "on_play_effect_text" in options[1]["cards_preview"][0]
-    assert "ongoing_effects" in options[1]["cards_preview"][0]
-    assert options[2]["cards_preview"][0]["name"] == "Comet"
-    assert options[2]["cards_preview"][0]["tags"]
-    assert options[2]["cards_preview"][0]["effect_text"]
-    assert "on_play_effect_text" in options[2]["cards_preview"][0]
-    assert "ongoing_effects" in options[2]["cards_preview"][0]
+    assert options[0]["cards"][0]["name"] == "Helion"
+    assert options[0]["cards"][0]["tags"]
+    assert options[0]["cards"][0]["effect_text"]
+    assert options[1]["cards"][0]["name"] == "Business Empire"
+    assert options[1]["cards"][0]["tags"]
+    assert options[1]["cards"][0]["effect_text"]
+    assert options[2]["cards"][0]["name"] == "Comet"
+    assert options[2]["cards"][0]["tags"]
+    assert options[2]["cards"][0]["effect_text"]
 
 
 def test_waiting_for_card_lists_accept_string_card_names() -> None:
@@ -186,7 +180,7 @@ def test_waiting_for_surfaces_warnings_and_branch_metadata() -> None:
     assert normalized["initial_index"] == 1
     assert normalized["options"][0]["is_initial"] is False
     assert normalized["options"][1]["is_initial"] is True
-    assert normalized["options"][1]["detail"]["warnings"] == ["pass"]
+    assert normalized["options"][1]["warnings"] == ["pass"]
 
 
 def test_waiting_for_surfaces_resource_and_token_selectors() -> None:

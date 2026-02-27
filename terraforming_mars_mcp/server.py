@@ -121,6 +121,7 @@ DEFAULT_LOG_FILE = os.environ.get(
 
 _CARD_INFO_INDEX: dict[str, dict[str, Any]] | None = None
 _LAST_OPPONENT_TABLEAU: dict[str, dict[str, Counter[str]]] = {}
+_LAST_MA_SNAPSHOT: dict[str, dict[str, Any]] = {}
 TURN_WAIT_TIMEOUT_SECONDS = 2 * 60 * 60
 TURN_WAIT_POLL_INTERVAL_SECONDS = 2
 DETAIL_LEVEL_FULL = "full"
@@ -455,14 +456,6 @@ def _compact_card(
         if isinstance(tags, list) and tags:
             payload["tags"] = tags
 
-        ongoing_effects = info.get("ongoing_effects")
-        if isinstance(ongoing_effects, list) and ongoing_effects:
-            payload["ongoing_effects"] = ongoing_effects
-
-        activated_actions = info.get("activated_actions")
-        if isinstance(activated_actions, list) and activated_actions:
-            payload["activated_actions"] = activated_actions
-
         play_requirements = info.get("play_requirements")
         if isinstance(play_requirements, list) and play_requirements:
             payload["play_requirements"] = play_requirements
@@ -470,10 +463,6 @@ def _compact_card(
         play_requirements_text = info.get("play_requirements_text")
         if isinstance(play_requirements_text, str) and play_requirements_text.strip():
             payload["play_requirements_text"] = play_requirements_text
-
-        on_play_effect_text = info.get("on_play_effect_text")
-        if isinstance(on_play_effect_text, str) and on_play_effect_text.strip():
-            payload["on_play_effect_text"] = on_play_effect_text
 
         effect_text = _best_effect_text(info)
         if isinstance(effect_text, str) and effect_text.strip():
@@ -740,10 +729,13 @@ def _normalize_waiting_for(
                     "title": option.title,
                     "input_type": _input_type_name(option),
                 }
-                if option_detail is not None:
-                    option_payload["detail"] = option_detail
                 if wf.initialIdx is not None:
                     option_payload["is_initial"] = idx == wf.initialIdx
+                if option_detail is not None:
+                    for key, value in option_detail.items():
+                        if key in ("input_type", "title"):
+                            continue
+                        option_payload[key] = value
 
                 normalized_options.append(option_payload)
 
@@ -909,6 +901,55 @@ def _summarize_awards(game: dict[str, Any]) -> list[dict[str, Any]]:
     return summarized
 
 
+def _should_include_milestones_awards(
+    game: dict[str, Any],
+    milestones: list[dict[str, Any]],
+    awards: list[dict[str, Any]],
+    player_id: str,
+) -> bool:
+    """Include milestones/awards once per generation or when a critical change occurs.
+
+    Critical changes:
+    - A milestone was newly claimed (status changed to 'claimed')
+    - An award was newly funded (status changed to 'funded')
+    - A player became newly claimable for a milestone
+    - Generation changed (show once at start of each generation)
+    - First call for this game (no previous snapshot)
+    """
+    game_id = game.get("id", "")
+    ma_key = f"{game_id}:{player_id}"
+    prev = _LAST_MA_SNAPSHOT.get(ma_key)
+
+    claimed_set = frozenset(m["name"] for m in milestones if m["status"] == "claimed")
+    funded_set = frozenset(a["name"] for a in awards if a["status"] == "funded")
+    claimable_set = frozenset(
+        (m["name"], c) for m in milestones for c in m.get("claimable_by", [])
+    )
+    generation = game.get("generation")
+
+    current = {
+        "generation": generation,
+        "claimed": claimed_set,
+        "funded": funded_set,
+        "claimable": claimable_set,
+    }
+
+    include = False
+    if prev is None:
+        include = True
+    elif prev["generation"] != generation:
+        include = True
+    elif prev["claimed"] != claimed_set:
+        include = True
+    elif prev["funded"] != funded_set:
+        include = True
+    elif prev["claimable"] != claimable_set:
+        include = True
+
+    _LAST_MA_SNAPSHOT[ma_key] = current
+    return include
+
+
 END_OF_GENERATION_PHASES = {"production", "solar", "intergeneration", "end"}
 
 
@@ -922,25 +963,35 @@ def _full_board_state(game: dict[str, Any], include_empty_spaces: bool = False) 
             space = ApiSpaceModel.model_validate(raw_space)
             if not include_empty_spaces and space.tileType is None:
                 continue
-            mars_spaces.append(
-                {
-                    "id": space.id,
-                    "x": space.x,
-                    "y": space.y,
-                    "space_type": space.spaceType,
-                    "bonus": space.bonus,
-                    "tile_type": space.tileType,
-                    "owner_color": space.color,
-                    "co_owner_color": space.coOwner,
-                    "highlight": space.highlight,
-                    "gagarin": space.gagarin,
-                    "rotated": space.rotated,
-                    "cathedral": space.cathedral,
-                    "nomads": space.nomads,
-                    "underground_resource": space.undergroundResource,
-                    "excavator": space.excavator,
-                }
-            )
+            space_data: dict[str, Any] = {
+                "id": space.id,
+                "x": space.x,
+                "y": space.y,
+                "space_type": space.spaceType,
+            }
+            if space.bonus:
+                space_data["bonus"] = space.bonus
+            if space.tileType is not None:
+                space_data["tile_type"] = space.tileType
+            if space.color is not None:
+                space_data["owner_color"] = space.color
+            if space.coOwner is not None:
+                space_data["co_owner_color"] = space.coOwner
+            if space.highlight is not None:
+                space_data["highlight"] = space.highlight
+            if space.gagarin is not None:
+                space_data["gagarin"] = space.gagarin
+            if space.rotated is not None:
+                space_data["rotated"] = space.rotated
+            if space.cathedral is not None:
+                space_data["cathedral"] = space.cathedral
+            if space.nomads is not None:
+                space_data["nomads"] = space.nomads
+            if space.undergroundResource is not None:
+                space_data["underground_resource"] = space.undergroundResource
+            if space.excavator is not None:
+                space_data["excavator"] = space.excavator
+            mars_spaces.append(space_data)
 
     return {
         "game_id": game.get("id"),
@@ -1147,12 +1198,16 @@ def _build_agent_state(
     }
 
     if normalized_detail_level == DETAIL_LEVEL_FULL:
-        game_state.update(
-            {
-                "milestones": _summarize_milestones(game),
-                "awards": _summarize_awards(game),
-            }
+        milestones = _summarize_milestones(game)
+        awards = _summarize_awards(game)
+        include_ma = _should_include_milestones_awards(
+            game, milestones, awards, player_model.get("id", CFG.player_id),
         )
+        if include_ma:
+            game_state["milestones"] = milestones
+            game_state["awards"] = awards
+        else:
+            game_state["milestones_changed"] = False
     if show_board:
         game_state["board"] = _summarize_board(game)
         game_state["board_visible"] = True
