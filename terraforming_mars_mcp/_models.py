@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import json
-
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
 
@@ -51,30 +49,9 @@ class InitialCardsSelectionModel(BaseModel):
     @field_validator("project_cards", "prelude_cards", "ceo_cards", mode="before")
     @classmethod
     def _normalize_cards(
-        cls, value: list[str] | str | None, info: ValidationInfo
+        _cls, value: list[str] | str | None, info: ValidationInfo
     ) -> list[str]:
         return _parse_card_list(value, str(info.field_name))
-
-
-class OrChoiceInputModel(BaseModel):
-    option_index: int = Field(ge=0)
-    sub_response_json: str | dict[str, object] | None = None
-
-    @field_validator("sub_response_json", mode="before")
-    @classmethod
-    def _normalize_nested_response(
-        cls, value: str | dict[str, object] | None
-    ) -> dict[str, object]:
-        if value is None or value == "":
-            return {"type": "option"}
-        if isinstance(value, str):
-            decoded = json.loads(value)
-            if not isinstance(decoded, dict):
-                raise ValueError("sub_response_json must decode to an object")
-            return decoded
-        if isinstance(value, dict):
-            return value
-        raise ValueError("sub_response_json must be a JSON string or object")
 
 
 class RawInputEntityRequest(BaseModel):

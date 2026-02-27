@@ -48,9 +48,6 @@ class ToolName(StrEnum):
     SELECT_RESOURCE = "select_resource"
     SELECT_RESOURCES = "select_resources"
     SELECT_CLAIMED_UNDERGROUND_TOKEN = "select_claimed_underground_tokens"
-    GET_OPPONENTS_PLAYED_CARDS = "get_opponents_played_cards"
-    GET_MY_PLAYED_CARDS = "get_my_played_cards"
-    GET_MARS_BOARD_STATE = "get_mars_board_state"
 
 
 def _action_tools_for_input_type(input_type: str | None) -> list[str]:
