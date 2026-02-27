@@ -200,7 +200,7 @@ def _get_player(player_id: str | None = None) -> dict[str, Any]:
     result = _http_json("GET", "/api/player", {"id": pid})
     if not isinstance(result, dict):
         raise RuntimeError("Unexpected /api/player response")
-    return ApiPlayerViewModel.model_validate(result).model_dump(exclude_none=False)
+    return ApiPlayerViewModel.model_validate(result).model_dump(exclude_none=True)
 
 
 def _post_input(response: dict[str, Any], player_id: str | None = None) -> dict[str, Any]:
@@ -208,7 +208,7 @@ def _post_input(response: dict[str, Any], player_id: str | None = None) -> dict[
     result = _http_json("POST", "/player/input", {"id": pid}, response)
     if not isinstance(result, dict):
         raise RuntimeError("Unexpected /player/input response")
-    return ApiPlayerViewModel.model_validate(result).model_dump(exclude_none=False)
+    return ApiPlayerViewModel.model_validate(result).model_dump(exclude_none=True)
 
 
 def _parse_card_list(value: list[str] | str | None, field_name: str) -> list[str]:
@@ -345,7 +345,7 @@ def _get_waiting_for_state(game_age: int, undo_count: int, player_id: str | None
     )
     if not isinstance(result, dict):
         raise RuntimeError("Unexpected /api/waitingfor response")
-    return ApiWaitingForStatusModel.model_validate(result).model_dump(exclude_none=False)
+    return ApiWaitingForStatusModel.model_validate(result).model_dump(exclude_none=True)
 
 
 def _get_game_logs(player_id: str | None = None) -> list[dict[str, Any]]:
@@ -357,7 +357,7 @@ def _get_game_logs(player_id: str | None = None) -> list[dict[str, Any]]:
     for item in result:
         if not isinstance(item, dict):
             continue
-        normalized_logs.append(ApiGameLogEntryModel.model_validate(item).model_dump(exclude_none=False))
+        normalized_logs.append(ApiGameLogEntryModel.model_validate(item).model_dump(exclude_none=True))
     return normalized_logs
 
 
@@ -669,7 +669,7 @@ def _normalize_waiting_for(
         normalized["globalEventNames"] = wf.globalEventNames
 
     if isinstance(wf.tokens, list) and wf.tokens:
-        normalized["tokens"] = [token.model_dump(exclude_none=False) for token in wf.tokens]
+        normalized["tokens"] = [token.model_dump(exclude_none=True) for token in wf.tokens]
 
     if isinstance(wf.coloniesModel, list):
         normalized["colonies"] = [colony.name for colony in wf.coloniesModel if isinstance(colony.name, str)]
