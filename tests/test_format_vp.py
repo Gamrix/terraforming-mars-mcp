@@ -8,18 +8,18 @@ from typing import Any
 import pytest
 
 
-def _load_server_module() -> Any:
+def _load_card_info_module() -> Any:
     repo_root = Path(__file__).resolve().parents[1]
     if str(repo_root) not in sys.path:
         sys.path.insert(0, str(repo_root))
-    module = importlib.import_module("terraforming_mars_mcp.server")
+    module = importlib.import_module("terraforming_mars_mcp.card_info")
     return importlib.reload(module)
 
 
 @pytest.fixture(name="format_vp")
 def format_vp_fixture():
-    server = _load_server_module()
-    return server._format_vp
+    card_info = _load_card_info_module()
+    return card_info._format_vp
 
 
 # fmt: off

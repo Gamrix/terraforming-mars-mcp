@@ -1,0 +1,53 @@
+from __future__ import annotations
+
+from enum import StrEnum
+
+
+class InputType(StrEnum):
+    AND_OPTIONS = "and"
+    OR_OPTIONS = "or"
+    SELECT_AMOUNT = "amount"
+    SELECT_CARD = "card"
+    SELECT_DELEGATE = "delegate"
+    SELECT_PAYMENT = "payment"
+    SELECT_PROJECT_CARD_TO_PLAY = "projectCard"
+    SELECT_INITIAL_CARDS = "initialCards"
+    SELECT_OPTION = "option"
+    SELECT_PARTY = "party"
+    SELECT_PLAYER = "player"
+    SELECT_SPACE = "space"
+    SELECT_COLONY = "colony"
+    SELECT_PRODUCTION_TO_LOSE = "productionToLose"
+    SHIFT_ARES_GLOBAL_PARAMETERS = "aresGlobalParameters"
+    SELECT_GLOBAL_EVENT = "globalEvent"
+    SELECT_POLICY = "policy"
+    SELECT_RESOURCE = "resource"
+    SELECT_RESOURCES = "resources"
+    SELECT_CLAIMED_UNDERGROUND_TOKEN = "claimedUndergroundToken"
+
+
+class ToolName(StrEnum):
+    SUBMIT_RAW_ENTITY = "submit_raw_entity"
+    CHOOSE_OR_OPTION = "choose_or_option"
+    SUBMIT_AND_OPTIONS = "submit_and_options"
+    SELECT_AMOUNT = "select_amount"
+    SELECT_CARDS = "select_cards"
+    SELECT_DELEGATE_TARGET = "select_delegate_target"
+    PAY_FOR_ACTION = "pay_for_action"
+    PAY_FOR_PROJECT_CARD = "pay_for_project_card"
+    SELECT_INITIAL_CARDS = "select_initial_cards"
+    CONFIRM_OPTION = "confirm_option"
+    SELECT_PARTY = "select_party"
+    SELECT_PLAYER = "select_player"
+    SELECT_SPACE = "select_space"
+    SELECT_COLONY = "select_colony"
+    SELECT_PRODUCTION_TO_LOSE = "select_production_to_lose"
+    SHIFT_ARES_GLOBAL_PARAMETERS = "shift_ares_global_parameters"
+    SELECT_GLOBAL_EVENT = "select_global_event"
+    SELECT_POLICY = "select_policy"
+    SELECT_RESOURCE = "select_resource"
+    SELECT_RESOURCES = "select_resources"
+    SELECT_CLAIMED_UNDERGROUND_TOKEN = "select_claimed_underground_tokens"
+    GET_OPPONENTS_PLAYED_CARDS = "get_opponents_played_cards"
+    GET_MY_PLAYED_CARDS = "get_my_played_cards"
+    GET_MARS_BOARD_STATE = "get_mars_board_state"

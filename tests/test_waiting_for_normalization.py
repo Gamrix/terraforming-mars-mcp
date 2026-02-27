@@ -14,6 +14,13 @@ def _load_server_module() -> Any:
     return importlib.reload(module)
 
 
+def _load_card_info_module() -> Any:
+    repo_root = Path(__file__).resolve().parents[1]
+    if str(repo_root) not in sys.path:
+        sys.path.insert(0, str(repo_root))
+    return importlib.import_module("terraforming_mars_mcp.card_info")
+
+
 def _normalize_waiting_for(server: Any, waiting_for: dict[str, Any]) -> dict[str, Any]:
     wf_model = server.ApiWaitingForInputModel.model_validate(waiting_for)
     normalized = server._normalize_waiting_for(wf_model)
@@ -121,7 +128,9 @@ def test_waiting_for_card_preserves_name_cost_and_disabled_state() -> None:
 
 def test_waiting_for_card_surfaces_base_and_discounted_cost() -> None:
     server = _load_server_module()
-    server._card_info = lambda card_name, include_play_details=False: {
+    card_info = _load_card_info_module()
+    original_card_info_fn = card_info._card_info
+    card_info._card_info = lambda card_name, include_play_details=False: {
         "name": card_name,
         "base_cost": 10,
         "tags": [],
@@ -131,21 +140,23 @@ def test_waiting_for_card_surfaces_base_and_discounted_cost() -> None:
         "play_requirements_text": None,
         "on_play_effect_text": None,
     }
+    try:
+        waiting_for = {
+            "type": "card",
+            "title": "Play project card",
+            "buttonLabel": "Confirm",
+            "min": 1,
+            "max": 1,
+            "cards": [{"name": "Birds", "calculatedCost": 7}],
+        }
 
-    waiting_for = {
-        "type": "card",
-        "title": "Play project card",
-        "buttonLabel": "Confirm",
-        "min": 1,
-        "max": 1,
-        "cards": [{"name": "Birds", "calculatedCost": 7}],
-    }
+        normalized = _normalize_waiting_for(server, waiting_for)
+        card = normalized["cards"][0]
 
-    normalized = _normalize_waiting_for(server, waiting_for)
-    card = normalized["cards"][0]
-
-    assert card["cost"] == 10
-    assert card["discounted_cost"] == 7
+        assert card["cost"] == 10
+        assert card["discounted_cost"] == 7
+    finally:
+        card_info._card_info = original_card_info_fn
 
 
 def test_waiting_for_surfaces_warnings_and_branch_metadata() -> None:
