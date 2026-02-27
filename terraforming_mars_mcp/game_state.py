@@ -43,6 +43,59 @@ END_OF_GENERATION_PHASES = {"production", "solar", "intergeneration", "end"}
 _LAST_OPPONENT_TABLEAU: dict[str, dict[str, Counter[str]]] = {}
 _LAST_MA_SNAPSHOT: dict[str, dict[str, Any]] = {}
 
+_TILE_TYPE_LABELS = (
+    "greenery",
+    "ocean",
+    "city",
+    "capital",
+    "commercial district",
+    "ecological zone",
+    "industrial center",
+    "lava flows",
+    "mining area",
+    "mining rights",
+    "mohole area",
+    "natural preserve",
+    "nuclear zone",
+    "restricted area",
+    "deimos down",
+    "great dam",
+    "magnetic field generators",
+    "biofertilizer facility",
+    "metallic asteroid",
+    "solar farm",
+    "ocean city",
+    "ocean farm",
+    "ocean sanctuary",
+    "dust storm mild",
+    "dust storm severe",
+    "erosion mild",
+    "erosion severe",
+    "mining steel bonus",
+    "mining titanium bonus",
+    "moon mine",
+    "moon habitat",
+    "moon road",
+    "luna trade station",
+    "luna mining hub",
+    "luna train station",
+    "lunar mine urbanization",
+    "wetlands",
+    "red city",
+    "martian nature wonders",
+    "crashlanding",
+    "mars nomads",
+    "rey skywalker",
+    "man made volcano",
+    "new holland",
+)
+
+
+def _tile_type_name(tile_type: int) -> str:
+    if 0 <= tile_type < len(_TILE_TYPE_LABELS):
+        return _TILE_TYPE_LABELS[tile_type]
+    return str(tile_type)
+
 
 def _summarize_players(
     player_model: dict[str, Any],
@@ -130,7 +183,7 @@ def _summarize_board(game: dict[str, Any]) -> dict[str, Any]:
         tile_type = space.tileType
         if tile_type is not None:
             occupied += 1
-            key = str(tile_type)
+            key = _tile_type_name(tile_type)
             by_tile[key] = by_tile.get(key, 0) + 1
     return {
         "total_spaces": len(spaces)
@@ -281,7 +334,7 @@ def _full_board_state(
             if space.bonus:
                 space_data["bonus"] = space.bonus
             if space.tileType is not None:
-                space_data["tile_type"] = space.tileType
+                space_data["tile_type"] = _tile_type_name(space.tileType)
             if space.color is not None:
                 space_data["owner_color"] = space.color
             if space.coOwner is not None:
@@ -377,7 +430,6 @@ def _detect_new_opponent_cards(player_model: dict[str, Any]) -> list[dict[str, A
 
     _LAST_OPPONENT_TABLEAU[key] = current
     return events
-
 
 
 def _build_agent_state(
