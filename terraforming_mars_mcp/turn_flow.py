@@ -27,6 +27,8 @@ except ImportError:
 
 TURN_WAIT_TIMEOUT_SECONDS = 2 * 60 * 60
 TURN_WAIT_POLL_INTERVAL_SECONDS = 2
+# TM-OSS serializes LogMessageDataType.PLAYER as numeric enum value 2.
+PLAYER_LOG_DATA_TYPE_NUMERIC = 2
 
 
 @dataclass
@@ -181,7 +183,7 @@ def _format_log_entry(entry: dict[str, Any], color_to_name: dict[str, str]) -> s
             return match.group(0)
         value = datum.get("value")
         data_type = datum.get("type")
-        if data_type == "player" and isinstance(value, str):
+        if _is_player_log_data_type(data_type) and isinstance(value, str):
             return color_to_name.get(value, value)
         if value is None:
             return ""
@@ -209,12 +211,26 @@ def _extract_opponent_actions(
         for datum in data:
             if not isinstance(datum, dict):
                 continue
-            if datum.get("type") == "player" and datum.get("value") in opponent_colors:
+            if _is_player_log_data_type(datum.get("type")) and datum.get(
+                "value"
+            ) in opponent_colors:
                 has_opponent = True
                 break
         if has_opponent:
             actions.append(_format_log_entry(entry, color_to_name))
     return actions
+
+
+def _is_player_log_data_type(data_type: Any) -> bool:
+    if isinstance(data_type, int):
+        return data_type == PLAYER_LOG_DATA_TYPE_NUMERIC
+    if isinstance(data_type, str):
+        lowered = data_type.strip().lower()
+        if lowered == "player":
+            return True
+        if lowered.isdigit():
+            return int(lowered) == PLAYER_LOG_DATA_TYPE_NUMERIC
+    return False
 
 
 def _wait_for_turn_from_player_model(
@@ -282,12 +298,12 @@ def _submit_and_return_state(response: dict[str, Any]) -> dict[str, Any]:
         refreshed, opponent_actions = _wait_for_turn_from_player_model(
             player_model, initial_logs=initial_logs
         )
+        result = _build_agent_state(
+            refreshed, base_url=CFG.base_url, player_id_fallback=CFG.player_id
+        )
         if opponent_actions:
-            result = _build_agent_state(
-                refreshed, base_url=CFG.base_url, player_id_fallback=CFG.player_id
-            )
             result["opponent_actions_between_turns"] = opponent_actions
-            return result
+        return result
     return _build_agent_state(
         player_model, base_url=CFG.base_url, player_id_fallback=CFG.player_id
     )
