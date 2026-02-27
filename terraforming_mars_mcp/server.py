@@ -23,10 +23,9 @@ from ._enums import InputType
 from .api_response_models import JsonValue
 from .card_info import _compact_cards
 from .game_state import _build_agent_state
-from .turn_flow import CFG, _get_player, _strip_base_url, _submit_and_return_state
+from .turn_flow import CFG, _get_player, _submit_and_return_state
 from .waiting_for import (
     _find_or_option_index,
-    _get_waiting_for_model,
     _normalize_or_sub_response,
     _normalize_waiting_for,  # noqa: F401 – re-exported for test monkey-patching
 )
@@ -62,7 +61,7 @@ def configure_session(
 ) -> dict[str, object]:
     """Set or update Terraforming Mars server URL and player ID for later tools."""
     if base_url:
-        CFG.base_url = _strip_base_url(base_url)
+        CFG.base_url = base_url.rstrip("/")
     if player_id:
         CFG.player_id = player_id
     return {"base_url": CFG.base_url, "player_id": CFG.player_id}
@@ -173,7 +172,7 @@ def choose_or_option(
 def confirm_option() -> dict[str, object]:
     """Respond to `type: option`."""
     player_model = _get_player()
-    waiting_for = _get_waiting_for_model(player_model)
+    waiting_for = player_model.waitingFor
     if waiting_for is not None and waiting_for.type == InputType.OR_OPTIONS.value:
         index = 0
         initial_idx = waiting_for.initialIdx
@@ -233,7 +232,7 @@ def pay_for_project_card(
     }
 
     player_model = _get_player()
-    waiting_for = _get_waiting_for_model(player_model)
+    waiting_for = player_model.waitingFor
     if waiting_for is not None and waiting_for.type == InputType.OR_OPTIONS.value:
         option_index = _find_or_option_index(
             waiting_for, InputType.SELECT_PROJECT_CARD_TO_PLAY.value
@@ -281,7 +280,7 @@ def main() -> None:
     _configure_server_logging(args.log_level, args.log_file)
 
     if args.base_url:
-        CFG.base_url = _strip_base_url(args.base_url)
+        CFG.base_url = args.base_url.rstrip("/")
     if args.player_id:
         CFG.player_id = args.player_id
 

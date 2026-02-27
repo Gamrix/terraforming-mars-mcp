@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 
-from .api_response_models import PlayerViewModel as ApiPlayerViewModel
 from .api_response_models import WaitingForInputModel as ApiWaitingForInputModel
 from ._enums import InputType
 from .card_info import DETAIL_LEVEL_FULL, _compact_cards
@@ -16,10 +15,6 @@ def _input_type_name(waiting_for: ApiWaitingForInputModel | None) -> str | None:
         return InputType(value).value
     except ValueError:
         return value
-
-
-def _get_waiting_for_model(player_model: ApiPlayerViewModel) -> ApiWaitingForInputModel | None:
-    return player_model.waitingFor
 
 
 def _normalize_or_sub_response(

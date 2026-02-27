@@ -11,11 +11,7 @@ from .api_response_models import (
 )
 from ._enums import _action_tools_for_input_type
 from .card_info import DETAIL_LEVEL_FULL, _card_info, _normalize_detail_level
-from .waiting_for import (
-    _get_waiting_for_model,
-    _input_type_name,
-    _normalize_waiting_for,
-)
+from .waiting_for import _input_type_name, _normalize_waiting_for
 
 END_OF_GENERATION_PHASES = {"production", "solar", "intergeneration", "end"}
 
@@ -171,12 +167,6 @@ _TILE_TYPE_LABELS = (
 )
 
 
-def _tile_type_name(tile_type: int) -> str:
-    if 0 <= tile_type < len(_TILE_TYPE_LABELS):
-        return _TILE_TYPE_LABELS[tile_type]
-    return str(tile_type)
-
-
 def _player_summary(player: ApiPublicPlayerModel) -> _PlayerSummary:
     return _PlayerSummary(
         name=player.name,
@@ -228,7 +218,11 @@ def _summarize_board(game: ApiGameModel) -> dict[str, object]:
         tile_type = space.tileType
         if tile_type is not None:
             occupied += 1
-            key = _tile_type_name(tile_type)
+            key = (
+                _TILE_TYPE_LABELS[tile_type]
+                if 0 <= tile_type < len(_TILE_TYPE_LABELS)
+                else str(tile_type)
+            )
             by_tile[key] = by_tile.get(key, 0) + 1
     return {
         "total_spaces": len(spaces),
@@ -360,7 +354,12 @@ def _full_board_state(
         if space.bonus:
             space_data["bonus"] = space.bonus
         if space.tileType is not None:
-            space_data["tile_type"] = _tile_type_name(space.tileType)
+            tile_type = space.tileType
+            space_data["tile_type"] = (
+                _TILE_TYPE_LABELS[tile_type]
+                if 0 <= tile_type < len(_TILE_TYPE_LABELS)
+                else str(tile_type)
+            )
         if space.color is not None:
             space_data["owner_color"] = space.color
         if space.coOwner is not None:
@@ -462,7 +461,7 @@ def _build_agent_state(
 ) -> dict[str, object]:
     game = player_model.game
     normalized_detail_level = _normalize_detail_level(detail_level)
-    waiting_for = _get_waiting_for_model(player_model)
+    waiting_for = player_model.waitingFor
     input_type = _input_type_name(waiting_for)
     you, opponents = _summarize_players(player_model)
 

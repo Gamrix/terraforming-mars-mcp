@@ -15,7 +15,6 @@ from .api_response_models import (
     WaitingForStatusModel as ApiWaitingForStatusModel,
 )
 from .game_state import _build_agent_state
-from .waiting_for import _get_waiting_for_model
 
 TURN_WAIT_TIMEOUT_SECONDS = 2 * 60 * 60
 TURN_WAIT_POLL_INTERVAL_SECONDS = 2
@@ -32,10 +31,6 @@ class SessionConfig:
 CFG = SessionConfig()
 
 
-def _strip_base_url(base_url: str) -> str:
-    return base_url.rstrip("/")
-
-
 def _ensure_player_id(player_id: str | None = None) -> str:
     pid = player_id or CFG.player_id
     if not pid:
@@ -49,7 +44,7 @@ def _http_json(
     query: Mapping[str, str] | None = None,
     body: JsonValue | None = None,
 ) -> JsonValue:
-    url = _strip_base_url(CFG.base_url) + path
+    url = CFG.base_url.rstrip("/") + path
     if query:
         url += "?" + parse.urlencode(query)
 
@@ -123,10 +118,6 @@ def _get_game_logs(player_id: str | None = None) -> list[ApiGameLogEntryModel]:
             continue
         normalized_logs.append(ApiGameLogEntryModel.model_validate(item))
     return normalized_logs
-
-
-def _has_waiting_input(player_model: ApiPlayerViewModel) -> bool:
-    return _get_waiting_for_model(player_model) is not None
 
 
 def _log_signature(entry: ApiGameLogEntryModel) -> str:
@@ -247,7 +238,7 @@ def _wait_for_turn_from_player_model(
             refreshed_game = refreshed.game
             game_age = int(refreshed_game.gameAge)
             undo_count = int(refreshed_game.undoCount)
-            if _has_waiting_input(refreshed):
+            if refreshed.waitingFor is not None:
                 final_logs = _get_game_logs()
                 opponent_actions = _extract_opponent_actions(
                     start_logs,
@@ -267,7 +258,7 @@ def _wait_for_turn_from_player_model(
 
 def _submit_and_return_state(response: Mapping[str, object]) -> dict[str, object]:
     player_model = _post_input(cast(dict[str, JsonValue], dict(response)))
-    if not _has_waiting_input(player_model):
+    if player_model.waitingFor is None:
         initial_logs = _get_game_logs()
         refreshed, opponent_actions = _wait_for_turn_from_player_model(
             player_model, initial_logs=initial_logs

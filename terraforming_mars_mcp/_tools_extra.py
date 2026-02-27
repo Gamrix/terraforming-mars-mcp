@@ -16,11 +16,9 @@ from .game_state import _build_agent_state, _full_board_state
 from .turn_flow import (
     CFG,
     _get_player,
-    _has_waiting_input,
     _submit_and_return_state,
     _wait_for_turn_from_player_model,
 )
-from .waiting_for import _get_waiting_for_model
 
 
 @mcp.tool()
@@ -79,7 +77,7 @@ def get_mars_board_state(include_empty_spaces: bool = False) -> dict[str, object
 def wait_for_turn() -> dict[str, object]:
     """Poll /api/waitingfor until it's your turn using fixed server defaults."""
     player_model = _get_player()
-    if _has_waiting_input(player_model):
+    if player_model.waitingFor is not None:
         return {
             "status": "GO",
             "state": _build_agent_state(
@@ -230,7 +228,7 @@ def pay_for_action(
 def select_initial_cards(request: InitialCardsSelectionModel) -> dict[str, object]:
     """Respond to `type: initialCards` using current waiting-for option order."""
     player_model = _get_player()
-    waiting_for = _get_waiting_for_model(player_model)
+    waiting_for = player_model.waitingFor
     options = waiting_for.options if waiting_for is not None else None
     if not isinstance(options, list):
         raise RuntimeError("Current waitingFor has no options for initialCards")

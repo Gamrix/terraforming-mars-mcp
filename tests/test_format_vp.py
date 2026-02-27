@@ -15,13 +15,6 @@ def _load_card_info_module() -> Any:
     module = importlib.import_module("terraforming_mars_mcp.card_info")
     return importlib.reload(module)
 
-
-@pytest.fixture(name="format_vp")
-def format_vp_fixture():
-    card_info = _load_card_info_module()
-    return card_info._format_vp
-
-
 # fmt: off
 @pytest.mark.parametrize("vp,expected", [
     # Fixed integer VP
@@ -57,5 +50,5 @@ def format_vp_fixture():
     ({"moon": {}},                         "1 per tile tile on Moon"),
 ])
 # fmt: on
-def test_format_vp(format_vp, vp: Any, expected: Any) -> None:
-    assert format_vp(vp) == expected
+def test_format_vp(vp: Any, expected: Any) -> None:
+    assert _load_card_info_module()._format_vp(vp) == expected

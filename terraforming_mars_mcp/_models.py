@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
+from typing import Annotated
+
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
 
 def _parse_card_list(value: list[str] | str | None, field_name: str) -> list[str]:
@@ -20,6 +22,14 @@ def _parse_card_list(value: list[str] | str | None, field_name: str) -> list[str
     raise ValueError(
         f"{field_name} must be a list of strings or a comma-separated string"
     )
+
+
+CardListField = Annotated[
+    list[str],
+    BeforeValidator(
+        lambda value, info: _parse_card_list(value, str(info.field_name))
+    ),
+]
 
 
 class PaymentPayloadModel(BaseModel):
@@ -42,16 +52,9 @@ class PaymentPayloadModel(BaseModel):
 
 class InitialCardsSelectionModel(BaseModel):
     corporation_card: str | None = None
-    project_cards: list[str]
-    prelude_cards: list[str] = Field(default_factory=list)
-    ceo_cards: list[str] = Field(default_factory=list)
-
-    @field_validator("project_cards", "prelude_cards", "ceo_cards", mode="before")
-    @classmethod
-    def _normalize_cards(
-        _cls, value: list[str] | str | None, info: ValidationInfo
-    ) -> list[str]:
-        return _parse_card_list(value, str(info.field_name))
+    project_cards: CardListField
+    prelude_cards: CardListField = Field(default_factory=list)
+    ceo_cards: CardListField = Field(default_factory=list)
 
 
 class RawInputEntityRequest(BaseModel):

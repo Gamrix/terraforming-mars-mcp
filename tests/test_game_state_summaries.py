@@ -14,11 +14,6 @@ def _load_server_module() -> Any:
     return importlib.reload(module)
 
 
-def _player_view_model(payload: dict[str, Any]) -> Any:
-    api_models = importlib.import_module("terraforming_mars_mcp.api_response_models")
-    return api_models.PlayerViewModel.model_validate(payload)
-
-
 def test_get_game_state_surfaces_milestones_and_awards() -> None:
     server = _load_server_module()
     player_model: dict[str, Any] = {
@@ -84,7 +79,9 @@ def test_get_game_state_surfaces_milestones_and_awards() -> None:
         "thisPlayer": {"name": "Alice", "color": "red", "isActive": True},
     }
 
-    player_view = _player_view_model(player_model)
+    player_view = importlib.import_module(
+        "terraforming_mars_mcp.api_response_models"
+    ).PlayerViewModel.model_validate(player_model)
     server._get_player = lambda player_id=None: player_view
     state = server.get_game_state()
 
@@ -124,7 +121,9 @@ def test_get_my_hand_cards_returns_cards_in_hand() -> None:
         ],
     }
 
-    player_view = _player_view_model(player_model)
+    player_view = importlib.import_module(
+        "terraforming_mars_mcp.api_response_models"
+    ).PlayerViewModel.model_validate(player_model)
     server._get_player = lambda player_id=None: player_view
     hand = server.get_my_hand_cards()
 

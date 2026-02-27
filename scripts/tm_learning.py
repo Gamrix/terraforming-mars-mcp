@@ -74,18 +74,6 @@ def _infer_game_id(game_url: str) -> str:
     return tail or "unknown"
 
 
-def _require(record: dict[str, Any], key: str) -> Any:
-    if key not in record:
-        raise ValidationError(f"Missing required key: {key}")
-    return record[key]
-
-
-def _validate_int(value: Any, label: str) -> int:
-    if not isinstance(value, int):
-        raise ValidationError(f"{label} must be an int")
-    return value
-
-
 def _validate_record(record: dict[str, Any]) -> None:
     for key in (
         "game_date",
@@ -99,7 +87,8 @@ def _validate_record(record: dict[str, Any]) -> None:
         "rule_updates",
         "counterfactuals",
     ):
-        _require(record, key)
+        if key not in record:
+            raise ValidationError(f"Missing required key: {key}")
 
     if not isinstance(record["game_date"], str) or not record["game_date"]:
         raise ValidationError("game_date must be a non-empty string")
@@ -112,29 +101,46 @@ def _validate_record(record: dict[str, Any]) -> None:
     if strategy not in STRATEGIES:
         raise ValidationError(f"planned_strategy must be one of {sorted(STRATEGIES)}")
 
-    finish_generation = _validate_int(record["finish_generation"], "finish_generation")
+    finish_generation = record["finish_generation"]
+    if not isinstance(finish_generation, int):
+        raise ValidationError("finish_generation must be an int")
     if finish_generation < 1 or finish_generation > 20:
         raise ValidationError("finish_generation must be between 1 and 20")
 
     pivot_generation = record.get("pivot_generation", 0)
-    _validate_int(pivot_generation, "pivot_generation")
+    if not isinstance(pivot_generation, int):
+        raise ValidationError("pivot_generation must be an int")
 
     score = record["score"]
     if not isinstance(score, dict):
         raise ValidationError("score must be an object")
-    self_score = _validate_int(_require(score, "self"), "score.self")
-    opp_score = _validate_int(_require(score, "opponent"), "score.opponent")
+    if "self" not in score:
+        raise ValidationError("Missing required key: self")
+    self_score = score["self"]
+    if not isinstance(self_score, int):
+        raise ValidationError("score.self must be an int")
+    if "opponent" not in score:
+        raise ValidationError("Missing required key: opponent")
+    opp_score = score["opponent"]
+    if not isinstance(opp_score, int):
+        raise ValidationError("score.opponent must be an int")
 
     breakdown = record["breakdown"]
     if not isinstance(breakdown, dict):
         raise ValidationError("breakdown must be an object")
 
     for side in ("self", "opponent"):
-        side_breakdown = _require(breakdown, side)
+        if side not in breakdown:
+            raise ValidationError(f"Missing required key: {side}")
+        side_breakdown = breakdown[side]
         if not isinstance(side_breakdown, dict):
             raise ValidationError(f"breakdown.{side} must be an object")
         for cat in CATEGORIES:
-            _validate_int(_require(side_breakdown, cat), f"breakdown.{side}.{cat}")
+            if cat not in side_breakdown:
+                raise ValidationError(f"Missing required key: {cat}")
+            value = side_breakdown[cat]
+            if not isinstance(value, int):
+                raise ValidationError(f"breakdown.{side}.{cat} must be an int")
 
     self_total = sum(breakdown["self"][cat] for cat in CATEGORIES)
     opp_total = sum(breakdown["opponent"][cat] for cat in CATEGORIES)
@@ -163,7 +169,9 @@ def _validate_record(record: dict[str, Any]) -> None:
             raise ValidationError(f"counterfactuals[{idx}] must be an object")
         if not isinstance(cf.get("change"), str) or not cf["change"]:
             raise ValidationError(f"counterfactuals[{idx}].change must be non-empty string")
-        _validate_int(cf.get("swing_vp_est"), f"counterfactuals[{idx}].swing_vp_est")
+        swing_vp_est = cf.get("swing_vp_est")
+        if not isinstance(swing_vp_est, int):
+            raise ValidationError(f"counterfactuals[{idx}].swing_vp_est must be an int")
         confidence = cf.get("confidence", "med")
         if confidence not in CONFIDENCE:
             raise ValidationError(f"counterfactuals[{idx}].confidence must be in {sorted(CONFIDENCE)}")

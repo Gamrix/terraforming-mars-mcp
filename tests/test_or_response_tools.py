@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 
@@ -14,20 +15,13 @@ def _load_server_module() -> Any:
     return importlib.reload(module)
 
 
-def _waiting_for_model(payload: dict[str, Any]) -> Any:
-    api_models = importlib.import_module("terraforming_mars_mcp.api_response_models")
-    return api_models.WaitingForInputModel.model_validate(payload)
-
-
 def test_choose_or_option_defaults_nested_option_response() -> None:
     server = _load_server_module()
     captured: dict[str, Any] = {}
 
-    def _fake_submit(payload: dict[str, Any]) -> dict[str, object]:
-        captured.update(payload)
-        return {"ok": True}
-
-    server._submit_and_return_state = _fake_submit
+    server._submit_and_return_state = lambda payload: (
+        captured.update(payload) or {"ok": True}
+    )
 
     result = server.choose_or_option(option_index=2)
 
@@ -39,11 +33,9 @@ def test_choose_or_option_accepts_legacy_request_payload() -> None:
     server = _load_server_module()
     captured: dict[str, Any] = {}
 
-    def _fake_submit(payload: dict[str, Any]) -> dict[str, object]:
-        captured.update(payload)
-        return {"ok": True}
-
-    server._submit_and_return_state = _fake_submit
+    server._submit_and_return_state = lambda payload: (
+        captured.update(payload) or {"ok": True}
+    )
 
     result = server.choose_or_option(request='{"option_index":4}')
 
@@ -55,8 +47,9 @@ def test_confirm_option_submits_or_response_when_waiting_for_or() -> None:
     server = _load_server_module()
     captured: dict[str, Any] = {}
 
-    server._get_player = lambda player_id=None: object()
-    server._get_waiting_for_model = lambda _player: _waiting_for_model(
+    waiting_for = importlib.import_module(
+        "terraforming_mars_mcp.api_response_models"
+    ).WaitingForInputModel.model_validate(
         {
             "type": "or",
             "title": "Choose",
@@ -68,12 +61,10 @@ def test_confirm_option_submits_or_response_when_waiting_for_or() -> None:
             ],
         }
     )
-
-    def _fake_submit(payload: dict[str, Any]) -> dict[str, object]:
-        captured.update(payload)
-        return {"ok": True}
-
-    server._submit_and_return_state = _fake_submit
+    server._get_player = lambda player_id=None: SimpleNamespace(waitingFor=waiting_for)
+    server._submit_and_return_state = lambda payload: (
+        captured.update(payload) or {"ok": True}
+    )
 
     result = server.confirm_option()
 
@@ -85,16 +76,15 @@ def test_confirm_option_submits_option_for_option_prompt() -> None:
     server = _load_server_module()
     captured: dict[str, Any] = {}
 
-    server._get_player = lambda player_id=None: object()
-    server._get_waiting_for_model = lambda _player: _waiting_for_model(
+    waiting_for = importlib.import_module(
+        "terraforming_mars_mcp.api_response_models"
+    ).WaitingForInputModel.model_validate(
         {"type": "option", "title": "Confirm", "buttonLabel": "OK"}
     )
-
-    def _fake_submit(payload: dict[str, Any]) -> dict[str, object]:
-        captured.update(payload)
-        return {"ok": True}
-
-    server._submit_and_return_state = _fake_submit
+    server._get_player = lambda player_id=None: SimpleNamespace(waitingFor=waiting_for)
+    server._submit_and_return_state = lambda payload: (
+        captured.update(payload) or {"ok": True}
+    )
 
     result = server.confirm_option()
 
@@ -106,16 +96,15 @@ def test_pay_for_project_card_submits_direct_project_card_payload() -> None:
     server = _load_server_module()
     captured: dict[str, Any] = {}
 
-    server._get_player = lambda player_id=None: object()
-    server._get_waiting_for_model = lambda _player: _waiting_for_model(
+    waiting_for = importlib.import_module(
+        "terraforming_mars_mcp.api_response_models"
+    ).WaitingForInputModel.model_validate(
         {"type": "projectCard", "title": "Play", "buttonLabel": "OK"}
     )
-
-    def _fake_submit(payload: dict[str, Any]) -> dict[str, object]:
-        captured.update(payload)
-        return {"ok": True}
-
-    server._submit_and_return_state = _fake_submit
+    server._get_player = lambda player_id=None: SimpleNamespace(waitingFor=waiting_for)
+    server._submit_and_return_state = lambda payload: (
+        captured.update(payload) or {"ok": True}
+    )
 
     result = server.pay_for_project_card(card_name="Noctis City", mega_credits=18)
 
@@ -129,8 +118,9 @@ def test_pay_for_project_card_wraps_outer_or_menu() -> None:
     server = _load_server_module()
     captured: dict[str, Any] = {}
 
-    server._get_player = lambda player_id=None: object()
-    server._get_waiting_for_model = lambda _player: _waiting_for_model(
+    waiting_for = importlib.import_module(
+        "terraforming_mars_mcp.api_response_models"
+    ).WaitingForInputModel.model_validate(
         {
             "type": "or",
             "title": "Choose",
@@ -142,12 +132,10 @@ def test_pay_for_project_card_wraps_outer_or_menu() -> None:
             ],
         }
     )
-
-    def _fake_submit(payload: dict[str, Any]) -> dict[str, object]:
-        captured.update(payload)
-        return {"ok": True}
-
-    server._submit_and_return_state = _fake_submit
+    server._get_player = lambda player_id=None: SimpleNamespace(waitingFor=waiting_for)
+    server._submit_and_return_state = lambda payload: (
+        captured.update(payload) or {"ok": True}
+    )
 
     result = server.pay_for_project_card(card_name="Noctis City", mega_credits=18)
 
@@ -162,8 +150,9 @@ def test_pay_for_project_card_wraps_outer_or_menu() -> None:
 def test_pay_for_project_card_errors_when_outer_or_has_no_project_card_branch() -> None:
     server = _load_server_module()
 
-    server._get_player = lambda player_id=None: object()
-    server._get_waiting_for_model = lambda _player: _waiting_for_model(
+    waiting_for = importlib.import_module(
+        "terraforming_mars_mcp.api_response_models"
+    ).WaitingForInputModel.model_validate(
         {
             "type": "or",
             "title": "Choose",
@@ -174,6 +163,7 @@ def test_pay_for_project_card_errors_when_outer_or_has_no_project_card_branch() 
             ],
         }
     )
+    server._get_player = lambda player_id=None: SimpleNamespace(waitingFor=waiting_for)
 
     server._submit_and_return_state = lambda payload: {"ok": True}
 
