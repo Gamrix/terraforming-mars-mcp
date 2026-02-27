@@ -446,6 +446,9 @@ def _compact_card(
         payload["warnings"] = warnings
     if resources is not None:
         payload["resources"] = resources
+    vp = info.get("vp")
+    if vp is not None:
+        payload["vp"] = vp
 
     if normalized_detail_level == DETAIL_LEVEL_FULL:
         tags = info.get("tags")
@@ -565,6 +568,46 @@ def _extract_actions_and_effects(render_data: Any) -> tuple[list[str], list[str]
     return actions, effects
 
 
+def _format_vp(vp: Any) -> int | str | None:
+    """Return a human-readable VP value, or None if VP is zero/absent."""
+    if vp is None:
+        return None
+    if isinstance(vp, (int, float)):
+        return int(vp) if vp != 0 else None
+    if not isinstance(vp, dict):
+        return None
+    per: int = vp.get("per", 1) or 1
+    each: int = vp.get("each", 1) or 1
+    if "resourcesHere" in vp:
+        if each != 1:
+            return f"{each} per resource"
+        if per != 1:
+            return f"1 per {per} resources"
+        return "1 per resource"
+    if "tag" in vp:
+        tag = vp["tag"]
+        if per != 1:
+            return f"1 per {per} {tag} tags"
+        return f"1 per {tag} tag"
+    if "cities" in vp:
+        suffix = " (all players)" if vp.get("all") else ""
+        if per != 1:
+            return f"1 per {per} cities{suffix}"
+        return f"1 per city{suffix}"
+    if "colonies" in vp:
+        suffix = " (all players)" if vp.get("all") else ""
+        if per != 1:
+            return f"1 per {per} colonies{suffix}"
+        return f"1 per colony{suffix}"
+    if "moon" in vp:
+        moon_obj = vp.get("moon")
+        tile = next(iter(moon_obj), "tile") if isinstance(moon_obj, dict) and moon_obj else "tile"
+        if per != 1:
+            return f"1 per {per} {tile} tiles on Moon"
+        return f"1 per {tile} tile on Moon"
+    return None
+
+
 def _card_info(card_name: Any, include_play_details: bool = False) -> dict[str, Any]:
     if not isinstance(card_name, str):
         return {}
@@ -577,6 +620,7 @@ def _card_info(card_name: Any, include_play_details: bool = False) -> dict[str, 
     render_data = metadata.get("renderData") if isinstance(metadata, dict) else None
     description = _description_text(metadata)
     actions, effects = _extract_actions_and_effects(render_data)
+    vp = _format_vp(card.get("victoryPoints"))
 
     info: dict[str, Any] = {
         "name": card_name,
@@ -584,6 +628,7 @@ def _card_info(card_name: Any, include_play_details: bool = False) -> dict[str, 
         "ongoing_effects": effects,
         "activated_actions": actions,
         "description_text": description,
+        "vp": vp,
     }
 
     if include_play_details:
@@ -920,7 +965,7 @@ def _extract_played_cards(player: dict[str, Any], include_play_details: bool = F
     if isinstance(tableau, list):
         for card in tableau:
             info = _card_info(card.name, include_play_details=include_play_details)
-            payload = {
+            payload: dict[str, Any] = {
                 "name": card.name,
                 "resources": card.resources,
                 "is_disabled": card.isDisabled is True,
@@ -929,6 +974,9 @@ def _extract_played_cards(player: dict[str, Any], include_play_details: bool = F
                 "ongoing_effects": info.get("ongoing_effects", []),
                 "activated_actions": info.get("activated_actions", []),
             }
+            vp = info.get("vp")
+            if vp is not None:
+                payload["vp"] = vp
             if include_play_details:
                 base_cost = info.get("base_cost")
                 discounted_cost = card.calculatedCost if card.calculatedCost is not None else base_cost
@@ -980,21 +1028,23 @@ def _detect_new_opponent_cards(player_model: dict[str, Any]) -> list[dict[str, A
         for card_name, count in delta.items():
             for _ in range(count):
                 info = _card_info(card_name, include_play_details=True)
-                events.append(
-                    {
-                        "player_name": player.name,
-                        "player_color": color,
-                        "card_name": card_name,
-                        "tags": info.get("tags", []),
-                        "ongoing_effects": info.get("ongoing_effects", []),
-                        "activated_actions": info.get("activated_actions", []),
-                        "play_requirements": info.get("play_requirements", []),
-                        "play_requirements_text": info.get("play_requirements_text"),
-                        "on_play_effect_text": info.get("on_play_effect_text"),
-                        "cost": info.get("base_cost"),
-                        "discounted_cost": info.get("base_cost"),
-                    }
-                )
+                event: dict[str, Any] = {
+                    "player_name": player.name,
+                    "player_color": color,
+                    "card_name": card_name,
+                    "tags": info.get("tags", []),
+                    "ongoing_effects": info.get("ongoing_effects", []),
+                    "activated_actions": info.get("activated_actions", []),
+                    "play_requirements": info.get("play_requirements", []),
+                    "play_requirements_text": info.get("play_requirements_text"),
+                    "on_play_effect_text": info.get("on_play_effect_text"),
+                    "cost": info.get("base_cost"),
+                    "discounted_cost": info.get("base_cost"),
+                }
+                vp = info.get("vp")
+                if vp is not None:
+                    event["vp"] = vp
+                events.append(event)
 
     _LAST_OPPONENT_TABLEAU[key] = current
     return events
