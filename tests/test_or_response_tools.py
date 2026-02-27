@@ -53,8 +53,13 @@ def test_confirm_option_submits_or_response_when_waiting_for_or() -> None:
     server._get_player = lambda player_id=None: {
         "waitingFor": {
             "type": "or",
+            "title": "Choose",
+            "buttonLabel": "OK",
             "initialIdx": 1,
-            "options": [{"type": "option"}, {"type": "option"}],
+            "options": [
+                {"type": "option", "title": "A", "buttonLabel": "OK"},
+                {"type": "option", "title": "B", "buttonLabel": "OK"},
+            ],
         }
     }
 
@@ -74,7 +79,7 @@ def test_confirm_option_submits_option_for_option_prompt() -> None:
     server = _load_server_module()
     captured: dict[str, Any] = {}
 
-    server._get_player = lambda player_id=None: {"waitingFor": {"type": "option"}}
+    server._get_player = lambda player_id=None: {"waitingFor": {"type": "option", "title": "Confirm", "buttonLabel": "OK"}}
 
     def _fake_submit(payload: dict[str, Any]) -> dict[str, Any]:
         captured.update(payload)
@@ -92,7 +97,7 @@ def test_pay_for_project_card_submits_direct_project_card_payload() -> None:
     server = _load_server_module()
     captured: dict[str, Any] = {}
 
-    server._get_player = lambda player_id=None: {"waitingFor": {"type": "projectCard"}}
+    server._get_player = lambda player_id=None: {"waitingFor": {"type": "projectCard", "title": "Play", "buttonLabel": "OK"}}
 
     def _fake_submit(payload: dict[str, Any]) -> dict[str, Any]:
         captured.update(payload)
@@ -115,10 +120,12 @@ def test_pay_for_project_card_wraps_outer_or_menu() -> None:
     server._get_player = lambda player_id=None: {
         "waitingFor": {
             "type": "or",
+            "title": "Choose",
+            "buttonLabel": "OK",
             "initialIdx": 0,
             "options": [
-                {"type": "projectCard"},
-                {"type": "option"},
+                {"type": "projectCard", "title": "Play card", "buttonLabel": "OK"},
+                {"type": "option", "title": "Pass", "buttonLabel": "OK"},
             ],
         }
     }
@@ -145,9 +152,11 @@ def test_pay_for_project_card_errors_when_outer_or_has_no_project_card_branch() 
     server._get_player = lambda player_id=None: {
         "waitingFor": {
             "type": "or",
+            "title": "Choose",
+            "buttonLabel": "OK",
             "options": [
-                {"type": "option"},
-                {"type": "card"},
+                {"type": "option", "title": "Pass", "buttonLabel": "OK"},
+                {"type": "card", "title": "Select card", "buttonLabel": "OK"},
             ],
         }
     }

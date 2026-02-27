@@ -113,10 +113,10 @@ def test_waiting_for_card_preserves_name_cost_and_disabled_state() -> None:
 
     assert card["name"] == "Power Plant:SP"
     assert card["cost"] == 11
-    assert card["discounted_cost"] == 11
+    assert "discounted_cost" not in card  # omitted when equal to cost
     assert card["disabled"] is True
     assert card_selection["show_only_in_learner_mode"] is True
-    assert card_selection["show_owner"] is False
+    assert "show_owner" not in card_selection  # omitted when False
 
 
 def test_waiting_for_card_surfaces_base_and_discounted_cost() -> None:

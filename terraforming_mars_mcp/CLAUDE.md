@@ -1,0 +1,1 @@
+../../env_setup/python_scripts/CLAUDE.md
