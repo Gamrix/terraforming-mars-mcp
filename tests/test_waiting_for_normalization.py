@@ -1,38 +1,24 @@
 from __future__ import annotations
 
 import importlib
-import sys
-from pathlib import Path
 from typing import Any, Mapping, cast
 
-
-def _load_server_module() -> Any:
-    repo_root = Path(__file__).resolve().parents[1]
-    if str(repo_root) not in sys.path:
-        sys.path.insert(0, str(repo_root))
-    module = importlib.import_module("terraforming_mars_mcp.server")
-    return importlib.reload(module)
-
-
-def _load_card_info_module() -> Any:
-    repo_root = Path(__file__).resolve().parents[1]
-    if str(repo_root) not in sys.path:
-        sys.path.insert(0, str(repo_root))
-    return importlib.import_module("terraforming_mars_mcp.card_info")
+import terraforming_mars_mcp.card_info as card_info_mod
+import terraforming_mars_mcp.server as server_mod
+from terraforming_mars_mcp.api_response_models import WaitingForInputModel
 
 
 def _normalize_waiting_for(
     server: Any, waiting_for: Mapping[str, Any]
 ) -> dict[str, Any]:
-    api_models = importlib.import_module("terraforming_mars_mcp.api_response_models")
-    wf_model = api_models.WaitingForInputModel.model_validate(dict(waiting_for))
+    wf_model = WaitingForInputModel.model_validate(dict(waiting_for))
     normalized = server._normalize_waiting_for(wf_model)
     assert isinstance(normalized, dict)
     return cast(dict[str, Any], normalized)
 
 
 def test_initial_cards_options_include_effect_text_previews() -> None:
-    server = _load_server_module()
+    server = importlib.reload(server_mod)
     waiting_for = {
         "type": "initialCards",
         "title": " ",
@@ -80,7 +66,7 @@ def test_initial_cards_options_include_effect_text_previews() -> None:
 
 
 def test_waiting_for_card_lists_accept_string_card_names() -> None:
-    server = _load_server_module()
+    server = importlib.reload(server_mod)
     waiting_for = {
         "type": "card",
         "title": "Select initial cards to buy",
@@ -99,7 +85,7 @@ def test_waiting_for_card_lists_accept_string_card_names() -> None:
 
 
 def test_waiting_for_card_preserves_name_cost_and_disabled_state() -> None:
-    server = _load_server_module()
+    server = importlib.reload(server_mod)
     waiting_for = {
         "type": "card",
         "title": "Standard projects",
@@ -130,8 +116,8 @@ def test_waiting_for_card_preserves_name_cost_and_disabled_state() -> None:
 
 
 def test_waiting_for_card_surfaces_base_and_discounted_cost() -> None:
-    server = _load_server_module()
-    card_info = _load_card_info_module()
+    server = importlib.reload(server_mod)
+    card_info = importlib.reload(card_info_mod)
     original_card_info_fn = card_info._card_info
     card_info._card_info = lambda card_name, include_play_details=False: {
         "name": card_name,
@@ -163,7 +149,7 @@ def test_waiting_for_card_surfaces_base_and_discounted_cost() -> None:
 
 
 def test_waiting_for_surfaces_warnings_and_branch_metadata() -> None:
-    server = _load_server_module()
+    server = importlib.reload(server_mod)
     waiting_for = {
         "type": "or",
         "title": "Take your next action",
@@ -198,7 +184,7 @@ def test_waiting_for_surfaces_warnings_and_branch_metadata() -> None:
 
 
 def test_waiting_for_surfaces_resource_and_token_selectors() -> None:
-    server = _load_server_module()
+    server = importlib.reload(server_mod)
 
     normalized_resource = _normalize_waiting_for(
         server,

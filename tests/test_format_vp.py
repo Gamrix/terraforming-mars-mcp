@@ -1,19 +1,11 @@
 from __future__ import annotations
 
-import importlib
-import sys
-from pathlib import Path
 from typing import Any
 
 import pytest
 
+import terraforming_mars_mcp.card_info as card_info
 
-def _load_card_info_module() -> Any:
-    repo_root = Path(__file__).resolve().parents[1]
-    if str(repo_root) not in sys.path:
-        sys.path.insert(0, str(repo_root))
-    module = importlib.import_module("terraforming_mars_mcp.card_info")
-    return importlib.reload(module)
 
 # fmt: off
 @pytest.mark.parametrize("vp,expected", [
@@ -51,4 +43,4 @@ def _load_card_info_module() -> Any:
 ])
 # fmt: on
 def test_format_vp(vp: Any, expected: Any) -> None:
-    assert _load_card_info_module()._format_vp(vp) == expected
+    assert card_info._format_vp(vp) == expected

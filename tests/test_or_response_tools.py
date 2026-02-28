@@ -1,22 +1,15 @@
 from __future__ import annotations
 
 import importlib
-import sys
-from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
-
-def _load_server_module() -> Any:
-    repo_root = Path(__file__).resolve().parents[1]
-    if str(repo_root) not in sys.path:
-        sys.path.insert(0, str(repo_root))
-    module = importlib.import_module("terraforming_mars_mcp.server")
-    return importlib.reload(module)
+import terraforming_mars_mcp.server as server_mod
+from terraforming_mars_mcp.api_response_models import WaitingForInputModel
 
 
 def test_choose_or_option_defaults_nested_option_response() -> None:
-    server = _load_server_module()
+    server = importlib.reload(server_mod)
     captured: dict[str, Any] = {}
 
     server._submit_and_return_state = lambda payload: (
@@ -30,7 +23,7 @@ def test_choose_or_option_defaults_nested_option_response() -> None:
 
 
 def test_choose_or_option_accepts_legacy_request_payload() -> None:
-    server = _load_server_module()
+    server = importlib.reload(server_mod)
     captured: dict[str, Any] = {}
 
     server._submit_and_return_state = lambda payload: (
@@ -44,12 +37,10 @@ def test_choose_or_option_accepts_legacy_request_payload() -> None:
 
 
 def test_confirm_option_submits_or_response_when_waiting_for_or() -> None:
-    server = _load_server_module()
+    server = importlib.reload(server_mod)
     captured: dict[str, Any] = {}
 
-    waiting_for = importlib.import_module(
-        "terraforming_mars_mcp.api_response_models"
-    ).WaitingForInputModel.model_validate(
+    waiting_for = WaitingForInputModel.model_validate(
         {
             "type": "or",
             "title": "Choose",
@@ -73,12 +64,10 @@ def test_confirm_option_submits_or_response_when_waiting_for_or() -> None:
 
 
 def test_confirm_option_submits_option_for_option_prompt() -> None:
-    server = _load_server_module()
+    server = importlib.reload(server_mod)
     captured: dict[str, Any] = {}
 
-    waiting_for = importlib.import_module(
-        "terraforming_mars_mcp.api_response_models"
-    ).WaitingForInputModel.model_validate(
+    waiting_for = WaitingForInputModel.model_validate(
         {"type": "option", "title": "Confirm", "buttonLabel": "OK"}
     )
     server._get_player = lambda player_id=None: SimpleNamespace(waitingFor=waiting_for)
@@ -93,12 +82,10 @@ def test_confirm_option_submits_option_for_option_prompt() -> None:
 
 
 def test_pay_for_project_card_submits_direct_project_card_payload() -> None:
-    server = _load_server_module()
+    server = importlib.reload(server_mod)
     captured: dict[str, Any] = {}
 
-    waiting_for = importlib.import_module(
-        "terraforming_mars_mcp.api_response_models"
-    ).WaitingForInputModel.model_validate(
+    waiting_for = WaitingForInputModel.model_validate(
         {"type": "projectCard", "title": "Play", "buttonLabel": "OK"}
     )
     server._get_player = lambda player_id=None: SimpleNamespace(waitingFor=waiting_for)
@@ -115,12 +102,10 @@ def test_pay_for_project_card_submits_direct_project_card_payload() -> None:
 
 
 def test_pay_for_project_card_wraps_outer_or_menu() -> None:
-    server = _load_server_module()
+    server = importlib.reload(server_mod)
     captured: dict[str, Any] = {}
 
-    waiting_for = importlib.import_module(
-        "terraforming_mars_mcp.api_response_models"
-    ).WaitingForInputModel.model_validate(
+    waiting_for = WaitingForInputModel.model_validate(
         {
             "type": "or",
             "title": "Choose",
@@ -148,11 +133,9 @@ def test_pay_for_project_card_wraps_outer_or_menu() -> None:
 
 
 def test_pay_for_project_card_errors_when_outer_or_has_no_project_card_branch() -> None:
-    server = _load_server_module()
+    server = importlib.reload(server_mod)
 
-    waiting_for = importlib.import_module(
-        "terraforming_mars_mcp.api_response_models"
-    ).WaitingForInputModel.model_validate(
+    waiting_for = WaitingForInputModel.model_validate(
         {
             "type": "or",
             "title": "Choose",

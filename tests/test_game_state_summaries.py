@@ -1,21 +1,14 @@
 from __future__ import annotations
 
 import importlib
-import sys
-from pathlib import Path
 from typing import Any
 
-
-def _load_server_module() -> Any:
-    repo_root = Path(__file__).resolve().parents[1]
-    if str(repo_root) not in sys.path:
-        sys.path.insert(0, str(repo_root))
-    module = importlib.import_module("terraforming_mars_mcp.server")
-    return importlib.reload(module)
+import terraforming_mars_mcp.server as server_mod
+from terraforming_mars_mcp.api_response_models import PlayerViewModel
 
 
 def test_get_game_state_surfaces_milestones_and_awards() -> None:
-    server = _load_server_module()
+    server = importlib.reload(server_mod)
     player_model: dict[str, Any] = {
         "id": "player-1",
         "game": {
@@ -79,9 +72,7 @@ def test_get_game_state_surfaces_milestones_and_awards() -> None:
         "thisPlayer": {"name": "Alice", "color": "red", "isActive": True},
     }
 
-    player_view = importlib.import_module(
-        "terraforming_mars_mcp.api_response_models"
-    ).PlayerViewModel.model_validate(player_model)
+    player_view = PlayerViewModel.model_validate(player_model)
     server._get_player = lambda player_id=None: player_view
     state = server.get_game_state()
 
@@ -99,7 +90,7 @@ def test_get_game_state_surfaces_milestones_and_awards() -> None:
 
 
 def test_get_my_hand_cards_returns_cards_in_hand() -> None:
-    server = _load_server_module()
+    server = importlib.reload(server_mod)
     player_model: dict[str, Any] = {
         "id": "player-1",
         "game": {
@@ -121,9 +112,7 @@ def test_get_my_hand_cards_returns_cards_in_hand() -> None:
         ],
     }
 
-    player_view = importlib.import_module(
-        "terraforming_mars_mcp.api_response_models"
-    ).PlayerViewModel.model_validate(player_model)
+    player_view = PlayerViewModel.model_validate(player_model)
     server._get_player = lambda player_id=None: player_view
     hand = server.get_my_hand_cards()
 

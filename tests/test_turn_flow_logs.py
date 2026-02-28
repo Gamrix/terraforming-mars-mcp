@@ -1,21 +1,9 @@
 from __future__ import annotations
 
-import importlib
-import sys
-from pathlib import Path
-from typing import Any
-
-
-def _load_turn_flow_module() -> Any:
-    repo_root = Path(__file__).resolve().parents[1]
-    if str(repo_root) not in sys.path:
-        sys.path.insert(0, str(repo_root))
-    module = importlib.import_module("terraforming_mars_mcp.turn_flow")
-    return importlib.reload(module)
+import terraforming_mars_mcp.turn_flow as turn_flow
 
 
 def test_extract_opponent_actions_accepts_numeric_player_data_type() -> None:
-    turn_flow = _load_turn_flow_module()
     final_logs = [
         turn_flow.ApiGameLogEntryModel.model_validate(
             {
@@ -50,7 +38,6 @@ def test_extract_opponent_actions_accepts_numeric_player_data_type() -> None:
 
 
 def test_extract_opponent_actions_accepts_string_player_data_type() -> None:
-    turn_flow = _load_turn_flow_module()
     final_logs = [
         turn_flow.ApiGameLogEntryModel.model_validate(
             {

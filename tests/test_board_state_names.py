@@ -1,21 +1,11 @@
 from __future__ import annotations
 
-import importlib
-import sys
-from pathlib import Path
 from typing import Any
 
-
-def _load_game_state_module() -> Any:
-    repo_root = Path(__file__).resolve().parents[1]
-    if str(repo_root) not in sys.path:
-        sys.path.insert(0, str(repo_root))
-    module = importlib.import_module("terraforming_mars_mcp.game_state")
-    return importlib.reload(module)
+import terraforming_mars_mcp.game_state as game_state
 
 
 def test_full_board_state_translates_tile_type_labels() -> None:
-    game_state = _load_game_state_module()
     game_model = game_state.ApiGameModel.model_validate(
         {
             "id": "game-1",
@@ -55,7 +45,6 @@ def test_full_board_state_translates_tile_type_labels() -> None:
 
 
 def test_board_summary_uses_tile_type_labels() -> None:
-    game_state = _load_game_state_module()
     game_model = game_state.ApiGameModel.model_validate(
         {
             "id": "game-1",
