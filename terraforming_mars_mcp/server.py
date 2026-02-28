@@ -90,8 +90,8 @@ def get_my_hand_cards() -> dict[str, object]:
     """Return all cards currently in your hand."""
     player_model = _get_player()
     this_player = player_model.thisPlayer
-    cards = _compact_cards(player_model.cardsInHand)
     game = player_model.game
+    cards = _compact_cards(player_model.cardsInHand, generation=game.generation)
     return {
         "generation": game.generation,
         "phase": game.phase,

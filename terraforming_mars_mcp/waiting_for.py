@@ -60,6 +60,8 @@ def _normalize_waiting_for(
     waiting_for: ApiWaitingForInputModel | None,
     depth: int = 0,
     detail_level: str = DETAIL_LEVEL_FULL,
+    generation: int | None = None,
+    auto_response: bool = False,
 ) -> dict[str, object] | None:
     if waiting_for is None:
         return None
@@ -100,7 +102,12 @@ def _normalize_waiting_for(
         normalized["include"] = wf.include
 
     if wf.cards is not None:
-        normalized["cards"] = _compact_cards(wf.cards, detail_level=detail_level)
+        normalized["cards"] = _compact_cards(
+            wf.cards,
+            detail_level=detail_level,
+            generation=generation,
+            auto_response=auto_response,
+        )
         card_selection: dict[str, object] = {}
         if wf.min is not None:
             card_selection["min"] = wf.min
@@ -149,7 +156,11 @@ def _normalize_waiting_for(
             normalized_options: list[dict[str, object]] = []
             for idx, option in enumerate(wf.options):
                 option_detail = _normalize_waiting_for(
-                    option, depth + 1, detail_level=detail_level
+                    option,
+                    depth + 1,
+                    detail_level=detail_level,
+                    generation=generation,
+                    auto_response=auto_response,
                 )
                 option_payload: dict[str, object] = {
                     "index": idx,

@@ -17,6 +17,47 @@ VALID_DETAIL_LEVELS = {DETAIL_LEVEL_FULL, DETAIL_LEVEL_MINIMAL}
 _CARD_INFO_INDEX: dict[str, dict[str, object]] | None = None
 
 
+class _CardDetailTracker:
+    """Tracks per-card detail tier for auto-returned responses within a generation.
+
+    Only applies to auto-returned data (after submitting an action). Proactive
+    requests always get full detail regardless of this tracker.
+
+    For auto-returned responses:
+      1st appearance in generation → full detail (tags, requirements, effect_text, etc.)
+      2nd+ appearance → name only, unless dynamic fields (warnings) changed
+    Resets when generation changes or on explicit reset.
+    """
+
+    def __init__(self) -> None:
+        self._generation: int | None = None
+        self._seen: dict[str, dict[str, object]] = {}
+
+    def should_send_details(
+        self, card_name: str, generation: int, dynamic_fields: dict[str, object]
+    ) -> bool:
+        """Return True if this card should include details beyond just the name.
+
+        Tracks cards by generation. Returns True on first appearance, and on
+        subsequent appearances only if dynamic fields (warnings, etc.) changed.
+        """
+        if self._generation != generation:
+            self._generation = generation
+            self._seen.clear()
+        prev = self._seen.get(card_name)
+        self._seen[card_name] = dynamic_fields
+        if prev is None:
+            return True
+        return prev != dynamic_fields
+
+    def reset(self) -> None:
+        self._generation = None
+        self._seen.clear()
+
+
+_CARD_TRACKER = _CardDetailTracker()
+
+
 def _normalize_detail_level(detail_level: str) -> str:
     normalized = str(detail_level).strip().lower()
     if normalized not in VALID_DETAIL_LEVELS:
@@ -222,6 +263,8 @@ def _best_effect_text(info: dict[str, object]) -> str | None:
 def _compact_card(
     card: dict[str, object] | str | ApiCardModel,
     detail_level: str = DETAIL_LEVEL_FULL,
+    generation: int | None = None,
+    auto_response: bool = False,
 ) -> dict[str, object]:
     normalized_detail_level = _normalize_detail_level(detail_level)
 
@@ -235,6 +278,12 @@ def _compact_card(
         card_model = ApiCardModel.model_validate(card)
         card_name = card_model.name
 
+    disabled = bool(card_model.isDisabled) if card_model else False
+
+    # Disabled cards in auto-responses: just name + disabled flag.
+    if disabled and auto_response:
+        return {"name": card_name, "disabled": True}
+
     info = _card_info(card_name, include_play_details=True)
     base_cost = info.get("base_cost")
     discounted_cost = (
@@ -242,21 +291,36 @@ def _compact_card(
         if card_model and card_model.calculatedCost is not None
         else base_cost
     )
-    disabled = bool(card_model.isDisabled) if card_model else False
     warning = card_model.warning if card_model else None
     warnings = card_model.warnings if card_model else []
     resources = card_model.resources if card_model else None
 
+    # Build dynamic fields dict for change detection in auto-response mode.
+    dynamic_fields: dict[str, object] = {}
+    if isinstance(warning, str) and warning.strip():
+        dynamic_fields["warning"] = warning
+    if isinstance(warnings, list) and warnings:
+        dynamic_fields["warnings"] = tuple(warnings)
+    if resources is not None:
+        dynamic_fields["resources"] = resources
+
+    # Auto-response caching: after first appearance in a generation,
+    # return name-only unless dynamic fields changed.
+    if auto_response and generation is not None:
+        if not _CARD_TRACKER.should_send_details(card_name, generation, dynamic_fields):
+            return {"name": card_name}
+
+    # Build the payload with cost and dynamic fields.
     payload: dict[str, object] = {
         "name": card_name,
     }
+    if disabled:
+        payload["disabled"] = True
     cost = base_cost if base_cost is not None else discounted_cost
     if cost is not None:
         payload["cost"] = cost
     if discounted_cost is not None and discounted_cost != cost:
         payload["discounted_cost"] = discounted_cost
-    if disabled:
-        payload["disabled"] = True
     if isinstance(warning, str) and warning.strip():
         payload["warning"] = warning
     if isinstance(warnings, list) and warnings:
@@ -267,6 +331,7 @@ def _compact_card(
     if vp is not None:
         payload["vp"] = vp
 
+    # Full detail: include tags, requirements, and effect text.
     if normalized_detail_level == DETAIL_LEVEL_FULL:
         tags = info.get("tags")
         if isinstance(tags, list) and tags:
@@ -290,10 +355,31 @@ def _compact_card(
 def _compact_cards(
     cards: list[Any],
     detail_level: str = DETAIL_LEVEL_FULL,
+    generation: int | None = None,
+    auto_response: bool = False,
 ) -> list[dict[str, object]]:
+    """Compact a list of cards with detail level appropriate to the call context.
+
+    Proactive requests (auto_response=False): always return full detail per
+    detail_level — the agent explicitly asked for this data.
+
+    Auto-returned responses (auto_response=True): after submitting an action,
+    the server returns game state automatically. To reduce noise:
+      - 1st appearance of a card in a generation → full detail
+      - 2nd+ appearance → name only (e.g. {"name": "Aquifer Pumping"}),
+        unless dynamic fields (warnings, resources) changed since last seen
+
+    Disabled cards in auto-responses return just {"name": ..., "disabled": True}.
+    In proactive requests, disabled cards return full details with disabled flag.
+    """
     compact_cards: list[dict[str, object]] = []
     for card in cards:
-        compact = _compact_card(card, detail_level=detail_level)
+        compact = _compact_card(
+            card,
+            detail_level=detail_level,
+            generation=generation,
+            auto_response=auto_response,
+        )
         if compact:
             compact_cards.append(compact)
     return compact_cards

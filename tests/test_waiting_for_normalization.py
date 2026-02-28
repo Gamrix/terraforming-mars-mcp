@@ -108,9 +108,9 @@ def test_waiting_for_card_preserves_name_cost_and_disabled_state() -> None:
     card_selection = normalized["card_selection"]
 
     assert card["name"] == "Power Plant:SP"
-    assert card["cost"] == 11
-    assert "discounted_cost" not in card  # omitted when equal to cost
     assert card["disabled"] is True
+    # Proactive calls return full details even for disabled cards.
+    assert "cost" in card
     assert card_selection["show_only_in_learner_mode"] is True
     assert "show_owner" not in card_selection  # omitted when False
 

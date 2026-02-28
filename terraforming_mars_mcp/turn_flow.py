@@ -264,11 +264,17 @@ def _submit_and_return_state(response: Mapping[str, object]) -> dict[str, object
             player_model, initial_logs=initial_logs
         )
         result = _build_agent_state(
-            refreshed, base_url=CFG.base_url, player_id_fallback=CFG.player_id
+            refreshed,
+            base_url=CFG.base_url,
+            player_id_fallback=CFG.player_id,
+            auto_response=True,
         )
         if opponent_actions:
             result["opponent_actions_between_turns"] = opponent_actions
         return result
     return _build_agent_state(
-        player_model, base_url=CFG.base_url, player_id_fallback=CFG.player_id
+        player_model,
+        base_url=CFG.base_url,
+        player_id_fallback=CFG.player_id,
+        auto_response=True,
     )

@@ -16,6 +16,8 @@ from .waiting_for import _input_type_name, _normalize_waiting_for
 END_OF_GENERATION_PHASES = {"production", "solar", "intergeneration", "end"}
 
 _LAST_OPPONENT_TABLEAU: dict[str, dict[str, Counter[str]]] = {}
+# Tracks (generation, constants_dict) so we send full constants once per gen.
+_LAST_GAME_CONSTANTS: dict[str, tuple[int, dict[str, object]]] = {}
 
 
 @dataclass(frozen=True)
@@ -458,6 +460,7 @@ def _build_agent_state(
     detail_level: str = DETAIL_LEVEL_FULL,
     base_url: str | None = None,
     player_id_fallback: str | None = None,
+    auto_response: bool = False,
 ) -> dict[str, object]:
     game = player_model.game
     normalized_detail_level = _normalize_detail_level(detail_level)
@@ -471,16 +474,22 @@ def _build_agent_state(
         and phase in END_OF_GENERATION_PHASES
     )
 
+    generation = game.generation
+    player_id = player_model.id or player_id_fallback or ""
+    game_id = game.id or ""
+    constants_key = f"{game_id}:{player_id}"
+
+    # Build session and game constants, then check if they changed.
     session: dict[str, object] = {
-        "player_id": player_model.id or player_id_fallback or "",
+        "player_id": player_id,
     }
     if normalized_detail_level == DETAIL_LEVEL_FULL and base_url is not None:
         session["base_url"] = base_url
 
-    game_state: dict[str, object] = {
-        "id": game.id,
+    # Core game constants that rarely change mid-turn.
+    game_constants: dict[str, object] = {
         "phase": game.phase,
-        "generation": game.generation,
+        "generation": generation,
         "terraforming": {
             "temperature": game.temperature,
             "oxygen": game.oxygenLevel,
@@ -488,10 +497,28 @@ def _build_agent_state(
             "venus": game.venusScaleLevel,
             "terraformed": game.isTerraformed,
         },
+    }
+
+    prev = _LAST_GAME_CONSTANTS.get(constants_key)
+    prev_gen, prev_constants = prev if prev is not None else (None, None)
+    # Send full constants on first call, generation change, or value change.
+    constants_changed = (
+        prev_gen != generation or prev_constants != game_constants
+    )
+    _LAST_GAME_CONSTANTS[constants_key] = (generation, game_constants)
+
+    game_state: dict[str, object] = {
+        "id": game_id,
         "game_age": game.gameAge,
         "undo_count": game.undoCount,
         "passed_players": game.passedPlayers,
     }
+
+    if constants_changed:
+        game_state.update(game_constants)
+    else:
+        # Only include generation (always useful context) when constants unchanged.
+        game_state["generation"] = generation
 
     if normalized_detail_level == DETAIL_LEVEL_FULL:
         milestones = _summarize_milestones(game)
@@ -521,17 +548,21 @@ def _build_agent_state(
         opponents_state = [summary.to_minimal_payload() for summary in opponents]
         opponent_card_events = []
 
-    result: dict[str, object] = {
-        "session": session,
-        "game": game_state,
-        "you": you.to_full_payload(),
-        "opponents": opponents_state,
-        "waiting_for": _normalize_waiting_for(
-            waiting_for, detail_level=normalized_detail_level
-        ),
-        "suggested_tools": _action_tools_for_input_type(input_type),
-        "opponent_card_events": opponent_card_events,
-    }
+    result: dict[str, object] = {}
+    # Omit session when constants haven't changed (agent already knows it).
+    if constants_changed:
+        result["session"] = session
+    result["game"] = game_state
+    result["you"] = you.to_full_payload()
+    result["opponents"] = opponents_state
+    result["waiting_for"] = _normalize_waiting_for(
+        waiting_for,
+        detail_level=normalized_detail_level,
+        generation=generation,
+        auto_response=auto_response,
+    )
+    result["suggested_tools"] = _action_tools_for_input_type(input_type)
+    result["opponent_card_events"] = opponent_card_events
 
     if include_full_model:
         result["raw_player_model"] = player_model.model_dump(exclude_none=True)
