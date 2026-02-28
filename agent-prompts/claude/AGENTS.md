@@ -11,7 +11,7 @@ core strategies for playing well. Read through it before playing a game.
 
 ## Tharsis Board
 
-- Board square information is in `tharsis_board_shape.md`.
+- Board square information is in `tharsis-board-shape.md`.
 - The board coordinate system is a unique system.
 - Adjacent coordinate rule: candidates are left/right `(x-1,y),(x+1,y)` plus four diagonals:
   - for `y<4` use `(x-1,y-1),(x,y-1),(x-1,y+1),(x,y+1)`,
