@@ -234,30 +234,37 @@ def _card_info(card_name: Any, include_play_details: bool = False) -> dict[str, 
     return info
 
 
-def _best_effect_text(info: dict[str, object]) -> str | None:
-    on_play = info.get("on_play_effect_text")
-    if isinstance(on_play, str) and on_play.strip():
-        return on_play.strip()
+def _all_effect_texts(info: dict[str, object]) -> list[str]:
+    seen: set[str] = set()
+    effect_texts: list[str] = []
+
+    def add(value: object) -> None:
+        if not isinstance(value, str):
+            return
+        normalized = value.strip()
+        if not normalized or normalized in seen:
+            return
+        seen.add(normalized)
+        effect_texts.append(normalized)
 
     description = info.get("description_text")
-    if isinstance(description, str) and description.strip():
-        return description.strip()
+    add(description)
+    if not isinstance(description, str) or not description.strip():
+        add(info.get("on_play_effect_text"))
 
     for key in ("ongoing_effects", "activated_actions"):
         values = info.get(key)
         if not isinstance(values, list):
             continue
         for value in values:
-            if not isinstance(value, str):
-                continue
-            normalized = value.strip()
-            if not normalized:
-                continue
-            if normalized.startswith("Effect:") or normalized.startswith("Action:"):
-                _, _, normalized = normalized.partition(":")
-                normalized = normalized.strip() or value.strip()
-            return normalized
-    return None
+            add(value)
+
+    return effect_texts
+
+
+def _best_effect_text(info: dict[str, object]) -> str | None:
+    effect_texts = _all_effect_texts(info)
+    return effect_texts[0] if effect_texts else None
 
 
 def _compact_card(
@@ -344,6 +351,10 @@ def _compact_card(
         play_requirements_text = info.get("play_requirements_text")
         if isinstance(play_requirements_text, str) and play_requirements_text.strip():
             payload["play_requirements_text"] = play_requirements_text
+
+        effect_texts = _all_effect_texts(info)
+        if effect_texts:
+            payload["effect_texts"] = effect_texts
 
         effect_text = _best_effect_text(info)
         if isinstance(effect_text, str) and effect_text.strip():

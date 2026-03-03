@@ -84,6 +84,48 @@ def test_waiting_for_card_lists_accept_string_card_names() -> None:
     assert cards[1]["effect_text"]
 
 
+def test_waiting_for_card_includes_all_effect_texts_for_multi_action_cards() -> None:
+    server = importlib.reload(server_mod)
+    waiting_for = {
+        "type": "card",
+        "title": "Select initial cards to buy",
+        "buttonLabel": "Save",
+        "min": 0,
+        "max": 1,
+        "cards": ["Regolith Eaters"],
+    }
+
+    normalized = _normalize_waiting_for(server, waiting_for)
+    card = normalized["cards"][0]
+
+    assert card["effect_text"] == "Action: Add 1 microbe to this card."
+    assert card["effect_texts"] == [
+        "Action: Add 1 microbe to this card.",
+        "Action: Remove 2 microbes from this card to raise oxygen level 1 step.",
+    ]
+
+
+def test_waiting_for_card_includes_all_effect_texts_for_arctic_algae() -> None:
+    server = importlib.reload(server_mod)
+    waiting_for = {
+        "type": "card",
+        "title": "Select initial cards to buy",
+        "buttonLabel": "Save",
+        "min": 0,
+        "max": 1,
+        "cards": ["Arctic Algae"],
+    }
+
+    normalized = _normalize_waiting_for(server, waiting_for)
+    card = normalized["cards"][0]
+
+    assert card["effect_text"] == "It must be -12 C or colder to play. Gain 1 plant."
+    assert card["effect_texts"] == [
+        "It must be -12 C or colder to play. Gain 1 plant.",
+        "Effect: When anyone places an ocean tile, gain 2 plants.",
+    ]
+
+
 def test_waiting_for_card_preserves_name_cost_and_disabled_state() -> None:
     server = importlib.reload(server_mod)
     waiting_for = {
