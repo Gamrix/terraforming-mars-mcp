@@ -16,7 +16,13 @@ of that server is included to help with agentic coding.
 ```bash
 # Sync runtime + dev dependencies
 uv sync
+git submodule update --init --recursive
 
+# I use the server supply card data. Run a server on a differnet directory to prevent any
+# kind of agent cheating.
+cd submodules/tm-oss-server/
+npm install
+npm run build
 ```
 
 ## Type Checking
