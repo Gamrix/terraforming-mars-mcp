@@ -34,6 +34,32 @@ def _normalize_or_sub_response(
     raise ValueError("sub_response_json must be a JSON string or object")
 
 
+def _title_to_text(title: str | object) -> str:
+    if isinstance(title, str):
+        return title
+    if isinstance(title, dict):
+        message = title.get("message")
+        if isinstance(message, str):
+            return message
+    return ""
+
+
+def _is_sell_patents_prompt(title: str | object) -> bool:
+    return "sell patents" in _title_to_text(title).lower()
+
+
+def _is_undo_option(
+    *,
+    input_type: str | None,
+    title: str | object,
+    warnings: list[str] | None,
+) -> bool:
+    if warnings and "undoBestEffort" in warnings:
+        return True
+    title_text = _title_to_text(title).lower()
+    return input_type == InputType.SELECT_OPTION.value and "undo" in title_text
+
+
 def _find_or_option_index(
     waiting_for: ApiWaitingForInputModel, expected_type: str
 ) -> int:
@@ -121,6 +147,8 @@ def _normalize_waiting_for(
             card_selection["show_owner"] = True
         if card_selection:
             normalized["card_selection"] = card_selection
+        if _is_sell_patents_prompt(wf.title):
+            normalized.pop("cards", None)
 
     if wf.players:
         normalized["players"] = wf.players
@@ -174,6 +202,23 @@ def _normalize_waiting_for(
                         if key in ("input_type", "title"):
                             continue
                         option_payload[key] = value
+
+                option_warnings: list[str] | None = None
+                maybe_warnings = option_payload.get("warnings")
+                if isinstance(maybe_warnings, list):
+                    option_warnings = [
+                        warning for warning in maybe_warnings if isinstance(warning, str)
+                    ]
+                if _is_undo_option(
+                    input_type=option_payload.get("input_type")
+                    if isinstance(option_payload.get("input_type"), str)
+                    else None,
+                    title=option_payload.get("title", ""),
+                    warnings=option_warnings,
+                ):
+                    continue
+                if _is_sell_patents_prompt(option_payload.get("title", "")):
+                    option_payload.pop("cards", None)
 
                 normalized_options.append(option_payload)
 

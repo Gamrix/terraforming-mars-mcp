@@ -18,6 +18,8 @@ END_OF_GENERATION_PHASES = {"production", "solar", "intergeneration", "end"}
 _LAST_OPPONENT_TABLEAU: dict[str, dict[str, Counter[str]]] = {}
 # Tracks (generation, constants_dict) so we send full constants once per gen.
 _LAST_GAME_CONSTANTS: dict[str, tuple[int, dict[str, object]]] = {}
+_LAST_YOU_SUMMARY: dict[str, dict[str, object]] = {}
+_LAST_OPPONENT_SUMMARIES: dict[str, dict[str, dict[str, object]]] = {}
 
 
 @dataclass(frozen=True)
@@ -548,13 +550,38 @@ def _build_agent_state(
         opponents_state = [summary.to_minimal_payload() for summary in opponents]
         opponent_card_events = []
 
+    you_state = (
+        you.to_full_payload()
+        if normalized_detail_level == DETAIL_LEVEL_FULL
+        else you.to_minimal_payload()
+    )
+
+    player_deltas_key = f"{constants_key}:{normalized_detail_level}"
+    previous_you_state = _LAST_YOU_SUMMARY.get(player_deltas_key)
+    include_you = previous_you_state != you_state
+    _LAST_YOU_SUMMARY[player_deltas_key] = you_state
+
+    previous_opponents = _LAST_OPPONENT_SUMMARIES.get(player_deltas_key, {})
+    current_opponents: dict[str, dict[str, object]] = {}
+    changed_opponents: list[dict[str, object]] = []
+    for payload in opponents_state:
+        color_value = payload.get("color")
+        if not isinstance(color_value, str):
+            continue
+        current_opponents[color_value] = payload
+        if previous_opponents.get(color_value) != payload:
+            changed_opponents.append(payload)
+    _LAST_OPPONENT_SUMMARIES[player_deltas_key] = current_opponents
+
     result: dict[str, object] = {}
     # Omit session when constants haven't changed (agent already knows it).
     if constants_changed:
         result["session"] = session
     result["game"] = game_state
-    result["you"] = you.to_full_payload()
-    result["opponents"] = opponents_state
+    if include_you:
+        result["you"] = you_state
+    if changed_opponents:
+        result["opponents"] = changed_opponents
     result["waiting_for"] = _normalize_waiting_for(
         waiting_for,
         detail_level=normalized_detail_level,

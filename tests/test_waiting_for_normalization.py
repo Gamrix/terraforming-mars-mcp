@@ -221,3 +221,54 @@ def test_waiting_for_surfaces_resource_and_token_selectors() -> None:
     )
     assert normalized_tokens["tokens"][0]["id"] == 0
     assert normalized_tokens["tokens"][1]["label"] == "B"
+
+
+def test_sell_patents_omits_cards_field() -> None:
+    server = importlib.reload(server_mod)
+    waiting_for = {
+        "type": "or",
+        "title": "Take your next action",
+        "buttonLabel": "Take action",
+        "options": [
+            {
+                "type": "card",
+                "title": "Sell patents",
+                "buttonLabel": "Sell",
+                "min": 1,
+                "max": 2,
+                "cards": [{"name": "Comet", "calculatedCost": 21}],
+            }
+        ],
+    }
+
+    normalized = _normalize_waiting_for(server, waiting_for)
+    option = normalized["options"][0]
+    assert option["title"] == "Sell patents"
+    assert "cards" not in option
+
+
+def test_undo_option_is_omitted_from_options() -> None:
+    server = importlib.reload(server_mod)
+    waiting_for = {
+        "type": "or",
+        "title": "Take your next action",
+        "buttonLabel": "Take action",
+        "options": [
+            {
+                "type": "option",
+                "title": "Play something",
+                "buttonLabel": "Play",
+            },
+            {
+                "type": "option",
+                "title": "Undo last action",
+                "buttonLabel": "Undo",
+                "warnings": ["undoBestEffort"],
+            },
+        ],
+    }
+
+    normalized = _normalize_waiting_for(server, waiting_for)
+    options = normalized["options"]
+    assert len(options) == 1
+    assert options[0]["title"] == "Play something"
