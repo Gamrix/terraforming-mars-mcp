@@ -1,22 +1,27 @@
 # terraforming-mars-mcp
-A Terraforming Mars MCP server (WIP)
 
-This MCP server lets an agent play an existing Terraforming Mars game by calling this repo's HTTP API:
-- `GET /api/player?id=<playerId>`
-- `GET /api/waitingfor?id=<playerId>&gameAge=<n>&undoCount=<n>`
-- `POST /player/input?id=<playerId>`
+MCP server for controlling a player in an existing Terraforming Mars game.
 
-## References
+This project bridges agent tool calls to the Terraforming Mars Open Source Server
+(`tm-oss-server`) API, so an MCP-compatible client can inspect game state and
+submit legal actions.
 
-This MCP server interacts with the [Terraforming Mars Open Source Server](https://github.com/terraforming-mars/terraforming-mars), and submodule linked version
-of that server is included to help with agentic coding.
+Status: beta / work in progress.
 
-## Setup
+
+## Quick start
+
+### Prerequisites
+
+- Python 3.11+
+- `uv`
+- Node.js 16-22 and `npm` (if you run TM OSS locally)
+
+### 1. Install dependencies
 
 ```bash
-# Sync runtime + dev dependencies
-uv sync
 git submodule update --init --recursive
+uv sync
 
 # I use the server supply card data. Run a server on a differnet directory to prevent any
 # kind of agent cheating.
@@ -25,24 +30,10 @@ npm install
 npm run build
 ```
 
-## Type Checking
 
-```bash
-uv run zuban check
-```
+## Add to MCP clients
 
-## Run
-
-```bash
-TM_SERVER_URL=http://localhost:8080 \
-uv run python -m terraforming_mars_mcp.server
-```
-
-`--player-id` is optional. Agents can also set it later with the `configure_session` tool.
-
-## Add to Claude
-
-Register this MCP server with Claude Code (stdio transport):
+### Claude Code
 
 ```bash
 claude mcp add terraforming-mars \
@@ -50,21 +41,30 @@ claude mcp add terraforming-mars \
   -- uv run --directory "$PWD" python -m terraforming_mars_mcp.server
 ```
 
-Verify it was added:
+Verify:
 
 ```bash
 claude mcp list
 claude mcp get terraforming-mars
 ```
 
-For Claude Desktop, add the following to your `claude_desktop_config.json`:
+### Claude Desktop
+
+Add to `claude_desktop_config.json`:
 
 ```json
 {
   "mcpServers": {
     "terraforming-mars": {
       "command": "uv",
-      "args": ["run", "--directory", "/path/to/terraforming-mars-mcp", "python", "-m", "terraforming_mars_mcp.server"],
+      "args": [
+        "run",
+        "--directory",
+        "/path/to/terraforming-mars-mcp",
+        "python",
+        "-m",
+        "terraforming_mars_mcp.server"
+      ],
       "env": {
         "TM_SERVER_URL": "http://localhost:8080"
       }
@@ -73,9 +73,7 @@ For Claude Desktop, add the following to your `claude_desktop_config.json`:
 }
 ```
 
-## Add to Codex
-
-Register this MCP server with Codex (stdio transport):
+### Codex
 
 ```bash
 codex mcp add terraforming-mars \
@@ -83,33 +81,103 @@ codex mcp add terraforming-mars \
   -- uv run --directory "$PWD" python -m terraforming_mars_mcp.server
 ```
 
-Verify it was added:
+Verify:
 
 ```bash
 codex mcp list
 codex mcp get terraforming-mars
 ```
 
-Then, at the start of a game/session, have the agent call:
+### Start a game
+
+Start your agent of choice, ask it to play a game of Terraforming Mars,
+and give it a URL to the their game ID like `http://localhost:8080/player?id=pd90e2c66f638`
+The agent will figure out all the rest!
+
+## How it works
 
 ```text
-configure_session(player_id="<playerId>")
+MCP client (Claude/Codex/etc.)
+        |
+        | stdio MCP
+        v
+terraforming-mars-mcp (this repo)
+        |
+        | HTTP
+        v
+Terraforming Mars Open Source Server
+  - GET  /api/player?id=<playerId>
+  - GET  /api/waitingfor?id=<playerId>&gameAge=<n>&undoCount=<n>
+  - POST /player/input?id=<playerId>
 ```
 
-This lets the agent choose player IDs per session without re-registering the server.
+## Tool surface
 
-## Card Data in MCP Responses
+State and inspection tools:
 
-Card payloads are enriched from `src/genfiles/cards.json` so agents do not need external card knowledge.
+- `configure_session`
+- `get_game_state`
+- `wait_for_turn`
+- `get_mars_board_state`
+- `get_my_hand_cards`
+- `get_my_played_cards`
+- `get_opponents_played_cards`
 
-- Default card fields (all surfaced cards):
-  - `name`
-  - `tags`
-  - `ongoing_effects` (rules text from `Effect:` blocks when present)
-  - `activated_actions` (rules text from `Action:` blocks when present)
+Action tools:
 
-- Additional fields for playable/future cards (e.g. `waiting_for.cards`) and newly observed opponent plays:
-  - `play_requirements` (structured requirement objects)
-  - `play_requirements_text` (human-readable requirement sentence when available)
-  - `cost` (calculated if available, else base cost)
-  - `on_play_effect_text` (human-readable immediate play effect text when available)
+- `choose_or_option`, `confirm_option`, `submit_and_options`
+- `select_amount`, `select_cards`, `select_space`, `select_player`, `select_party`, `select_colony`
+- `pay_for_action`, `pay_for_project_card`
+- `select_delegate_target`, `select_policy`, `select_global_event`
+- `select_resource`, `select_resources`, `select_production_to_lose`
+- `select_initial_cards`, `shift_ares_global_parameters`, `select_claimed_underground_tokens`
+- `submit_raw_entity` (escape hatch for unsupported/novel input shapes)
+
+## Development
+
+### Manually running the MCP server
+
+```bash
+TM_SERVER_URL=http://localhost:8080 \
+uv run python -m terraforming_mars_mcp.server
+```
+
+Run tests:
+
+```bash
+uv run pytest -q
+```
+
+Run static checks:
+
+```bash
+uv run zuban check
+uv run ruff check .
+```
+
+Note: this is an active WIP repository; static-check output can change between commits.
+
+## Repository layout
+
+- `terraforming_mars_mcp/`: MCP server implementation and tool handlers
+- `tests/`: Python test suite for state shaping and tool behavior
+- `submodules/tm-oss-server/`: upstream Terraforming Mars server source
+- `agent-prompts/`: prompt artifacts and strategy notes
+- `scripts/tm_learning.py`: helper script for gameplay-learning dataset maintenance
+
+## Troubleshooting
+
+- Error `player_id is not set. Call configure_session first.`
+  - Set `TM_PLAYER_ID` before start, or call `configure_session(player_id=...)`.
+- Error `Cannot reach server at ...`
+  - Verify TM OSS server is running and `TM_SERVER_URL` matches it.
+- Missing/empty card metadata in responses
+  - Ensure TM OSS submodule is initialized and built so `src/genfiles/cards.json` exists.
+
+## References
+
+- Upstream TM OSS project: https://github.com/terraforming-mars/terraforming-mars
+
+## License
+
+This project is GPL-3.0 licensed, as is the upstream TM OSS project.
