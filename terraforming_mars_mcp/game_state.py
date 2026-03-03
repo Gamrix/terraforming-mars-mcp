@@ -455,6 +455,168 @@ def _detect_new_opponent_cards(
     return events
 
 
+# Expansion keys that map to groups of fields to strip when disabled.
+_EXPANSION_FIELD_GROUPS: dict[str, dict[str, list[str]]] = {
+    "venus": {
+        "player": ["venusScaleLevel"],
+        "globalParameterSteps": ["venus"],
+    },
+    "moon": {
+        "player": [],
+        "globalParameterSteps": [
+            "moon-habitat",
+            "moon-mining",
+            "moon-logistics",
+        ],
+        "victoryPointsBreakdown": [
+            "moonHabitats",
+            "moonMines",
+            "moonRoads",
+        ],
+    },
+    "colonies": {
+        "player": ["coloniesCount", "fleetSize", "tradesThisGeneration"],
+    },
+    "turmoil": {
+        "player": ["influence"],
+    },
+    "underworld": {
+        "player": ["underworldData"],
+    },
+    "pathfinders": {
+        "victoryPointsBreakdown": ["planetaryTracks"],
+    },
+}
+
+
+def _strip_expansion_fields(
+    player_data: dict[str, object],
+    disabled_expansions: set[str],
+) -> None:
+    """Remove fields from a player dict that belong to disabled expansions."""
+    for expansion in disabled_expansions:
+        groups = _EXPANSION_FIELD_GROUPS.get(expansion)
+        if groups is None:
+            continue
+        for key in groups.get("player", []):
+            player_data.pop(key, None)
+
+        gps = player_data.get("globalParameterSteps")
+        if isinstance(gps, dict):
+            for key in groups.get("globalParameterSteps", []):
+                gps.pop(key, None)
+
+        vpb = player_data.get("victoryPointsBreakdown")
+        if isinstance(vpb, dict):
+            for key in groups.get("victoryPointsBreakdown", []):
+                vpb.pop(key, None)
+
+
+def _strip_zero_resources_from_tableau(
+    tableau: list[dict[str, object]],
+) -> None:
+    """Remove ``resources: 0`` entries from tableau card dicts."""
+    for card in tableau:
+        if card.get("resources") == 0:
+            card.pop("resources", None)
+
+
+def _thin_raw_player_model(
+    raw: dict[str, object],
+    this_color: str,
+) -> dict[str, object]:
+    """Apply all thinning passes to a raw ``model_dump`` of the player model."""
+
+    # 1. Drop `thisPlayer` — it duplicates one entry in `players`.
+    raw.pop("thisPlayer", None)
+
+    # Determine disabled expansions from gameOptions.
+    game = raw.get("game")
+    disabled_expansions: set[str] = set()
+    phase: str = ""
+    if isinstance(game, dict):
+        phase = game.get("phase", "")
+        game_options = game.get("gameOptions")
+        if isinstance(game_options, dict):
+            expansions = game_options.get("expansions")
+            if isinstance(expansions, dict):
+                for exp_name, enabled in expansions.items():
+                    if not enabled:
+                        disabled_expansions.add(exp_name)
+
+    # 3. Strip disabled-expansion fields from game-level globals.
+    if isinstance(game, dict):
+        # Strip venus scale from game when venus is disabled.
+        if "venus" in disabled_expansions:
+            game.pop("venusScaleLevel", None)
+        # Strip globalsPerGeneration venus entries.
+        gpg = game.get("globalsPerGeneration")
+        if isinstance(gpg, list) and "venus" in disabled_expansions:
+            for entry in gpg:
+                if isinstance(entry, dict):
+                    entry.pop("venus", None)
+
+    # Process each player.
+    players = raw.get("players")
+    if isinstance(players, list):
+        for player_data in players:
+            if not isinstance(player_data, dict):
+                continue
+
+            # 2. Filter resources: 0 from tableau cards.
+            tableau = player_data.get("tableau")
+            if isinstance(tableau, list):
+                _strip_zero_resources_from_tableau(tableau)
+
+            # 3. Strip disabled-expansion fields from player data.
+            _strip_expansion_fields(player_data, disabled_expansions)
+
+            # 4. Gate dealtX cards on phase == "end".
+            if phase != "end":
+                player_data.pop("dealtCorporationCards", None)
+                player_data.pop("dealtPreludeCards", None)
+                player_data.pop("dealtProjectCards", None)
+                player_data.pop("dealtCeoCards", None)
+
+            # 5. Gate VP breakdown details on phase == "end".
+            vpb = player_data.get("victoryPointsBreakdown")
+            if isinstance(vpb, dict) and phase != "end":
+                vpb.pop("detailsCards", None)
+                vpb.pop("detailsMilestones", None)
+                vpb.pop("detailsAwards", None)
+                vpb.pop("detailsPlanetaryTracks", None)
+
+            # 9. Strip empty selfReplicatingRobotsCards and all-off
+            #    protectedResources/protectedProduction.
+            if player_data.get("selfReplicatingRobotsCards") == []:
+                player_data.pop("selfReplicatingRobotsCards", None)
+            pr = player_data.get("protectedResources")
+            if isinstance(pr, dict) and all(v == "off" for v in pr.values()):
+                player_data.pop("protectedResources", None)
+            pp = player_data.get("protectedProduction")
+            if isinstance(pp, dict) and all(v == "off" for v in pp.values()):
+                player_data.pop("protectedProduction", None)
+
+            # 10. Strip victoryPointsByGeneration mid-game.
+            if phase != "end":
+                player_data.pop("victoryPointsByGeneration", None)
+
+            # 11. Strip zero-valued tags.
+            tags = player_data.get("tags")
+            if isinstance(tags, dict):
+                player_data["tags"] = {k: v for k, v in tags.items() if v}
+
+    # Also strip dealtX and VP details from the top-level model (outside players).
+    if phase != "end":
+        raw.pop("dealtCorporationCards", None)
+        raw.pop("dealtPreludeCards", None)
+        raw.pop("dealtProjectCards", None)
+        raw.pop("dealtCeoCards", None)
+        raw.pop("dealtCeoCards", None)
+
+    return raw
+
+
 def _build_agent_state(
     player_model: ApiPlayerViewModel,
     include_full_model: bool = False,
@@ -592,5 +754,8 @@ def _build_agent_state(
     result["opponent_card_events"] = opponent_card_events
 
     if include_full_model:
-        result["raw_player_model"] = player_model.model_dump(exclude_none=True)
+        result["raw_player_model"] = _thin_raw_player_model(
+            player_model.model_dump(exclude_none=True),
+            this_color=player_model.thisPlayer.color,
+        )
     return result
