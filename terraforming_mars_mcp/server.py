@@ -103,7 +103,7 @@ def get_my_hand_cards() -> dict[str, object]:
 
 
 @mcp.tool()
-def choose_or_option(
+async def choose_or_option(
     option_index: int | None = None,
     sub_response_json: str | dict[str, object] | None = None,
     request: str | dict[str, object] | None = None,
@@ -159,7 +159,7 @@ def choose_or_option(
     if option_index is None:
         raise ValueError("option_index is required")
 
-    return _submit_and_return_state(
+    return await _submit_and_return_state(
         {
             "type": "or",
             "index": int(option_index),
@@ -169,7 +169,7 @@ def choose_or_option(
 
 
 @mcp.tool()
-def confirm_option() -> dict[str, object]:
+async def confirm_option() -> dict[str, object]:
     """Respond to `type: option`."""
     player_model = _get_player()
     waiting_for = player_model.waitingFor
@@ -185,14 +185,14 @@ def confirm_option() -> dict[str, object]:
                     if option.type == InputType.SELECT_OPTION.value:
                         index = idx
                         break
-        return _submit_and_return_state(
+        return await _submit_and_return_state(
             {"type": "or", "index": index, "response": {"type": "option"}}
         )
-    return _submit_and_return_state({"type": "option"})
+    return await _submit_and_return_state({"type": "option"})
 
 
 @mcp.tool()
-def pay_for_project_card(
+async def pay_for_project_card(
     card_name: str,
     mega_credits: int = 0,
     steel: int = 0,
@@ -237,7 +237,7 @@ def pay_for_project_card(
         option_index = _find_or_option_index(
             waiting_for, InputType.SELECT_PROJECT_CARD_TO_PLAY.value
         )
-        return _submit_and_return_state(
+        return await _submit_and_return_state(
             {
                 "type": "or",
                 "index": option_index,
@@ -245,7 +245,7 @@ def pay_for_project_card(
             }
         )
 
-    return _submit_and_return_state(project_card_response)
+    return await _submit_and_return_state(project_card_response)
 
 
 # Import _tools_extra to register its @mcp.tool() handlers on the shared mcp instance

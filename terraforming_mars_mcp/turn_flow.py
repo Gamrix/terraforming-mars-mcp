@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import re
@@ -14,10 +15,12 @@ from .api_response_models import (
     PlayerViewModel as ApiPlayerViewModel,
     WaitingForStatusModel as ApiWaitingForStatusModel,
 )
+from ._app import mcp
 from .game_state import _build_agent_state
 
 TURN_WAIT_TIMEOUT_SECONDS = 2 * 60 * 60
 TURN_WAIT_POLL_INTERVAL_SECONDS = 2
+TURN_WAIT_PROGRESS_INTERVAL_SECONDS = 30
 # TM-OSS serializes LogMessageDataType.PLAYER as numeric enum value 2.
 PLAYER_LOG_DATA_TYPE_NUMERIC = 2
 
@@ -201,7 +204,7 @@ def _is_player_log_data_type(data_type: int | str | None) -> bool:
     return False
 
 
-def _wait_for_turn_from_player_model(
+async def _wait_for_turn_from_player_model(
     player_model: ApiPlayerViewModel,
     initial_logs: Sequence[ApiGameLogEntryModel] | None = None,
 ) -> tuple[ApiPlayerViewModel, list[str]]:
@@ -216,8 +219,11 @@ def _wait_for_turn_from_player_model(
 
     game_age = int(game.gameAge)
     undo_count = int(game.undoCount)
-    deadline = time.monotonic() + TURN_WAIT_TIMEOUT_SECONDS
+    wait_started_at = time.monotonic()
+    deadline = wait_started_at + TURN_WAIT_TIMEOUT_SECONDS
+    next_progress_report_at = wait_started_at + TURN_WAIT_PROGRESS_INTERVAL_SECONDS
     last_waitingfor: dict[str, JsonValue] | None = None
+    context = mcp.get_context()
 
     while True:
         waiting = _get_waiting_for_state(game_age, undo_count)
@@ -248,19 +254,32 @@ def _wait_for_turn_from_player_model(
                 )
                 return refreshed, opponent_actions
 
-        if time.monotonic() >= deadline:
+        now = time.monotonic()
+        while now >= next_progress_report_at:
+            elapsed_seconds = int(now - wait_started_at)
+            await context.report_progress(
+                progress=float(elapsed_seconds),
+                total=float(TURN_WAIT_TIMEOUT_SECONDS),
+                message=(
+                    "Waiting for opponent actions to complete "
+                    f"({elapsed_seconds}s elapsed)"
+                ),
+            )
+            next_progress_report_at += TURN_WAIT_PROGRESS_INTERVAL_SECONDS
+
+        if now >= deadline:
             raise TimeoutError(
                 f"Timed out waiting for turn after {TURN_WAIT_TIMEOUT_SECONDS} seconds. "
                 f"Last waitingfor={last_waitingfor}"
             )
-        time.sleep(TURN_WAIT_POLL_INTERVAL_SECONDS)
+        await asyncio.sleep(TURN_WAIT_POLL_INTERVAL_SECONDS)
 
 
-def _submit_and_return_state(response: Mapping[str, object]) -> dict[str, object]:
+async def _submit_and_return_state(response: Mapping[str, object]) -> dict[str, object]:
     player_model = _post_input(cast(dict[str, JsonValue], dict(response)))
     if player_model.waitingFor is None:
         initial_logs = _get_game_logs()
-        refreshed, opponent_actions = _wait_for_turn_from_player_model(
+        refreshed, opponent_actions = await _wait_for_turn_from_player_model(
             player_model, initial_logs=initial_logs
         )
         result = _build_agent_state(

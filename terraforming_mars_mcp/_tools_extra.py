@@ -74,7 +74,7 @@ def get_mars_board_state(include_empty_spaces: bool = False) -> dict[str, object
 
 
 @mcp.tool()
-def wait_for_turn() -> dict[str, object]:
+async def wait_for_turn() -> dict[str, object]:
     """Poll /api/waitingfor until it's your turn using fixed server defaults."""
     player_model = _get_player()
     if player_model.waitingFor is not None:
@@ -84,7 +84,7 @@ def wait_for_turn() -> dict[str, object]:
                 player_model, base_url=CFG.base_url, player_id_fallback=CFG.player_id
             ),
         }
-    refreshed, opponent_actions = _wait_for_turn_from_player_model(player_model)
+    refreshed, opponent_actions = await _wait_for_turn_from_player_model(player_model)
     result: dict[str, object] = {
         "status": "GO",
         "state": _build_agent_state(
@@ -97,7 +97,7 @@ def wait_for_turn() -> dict[str, object]:
 
 
 @mcp.tool()
-def submit_raw_entity(request: RawInputEntityRequest) -> dict[str, object]:
+async def submit_raw_entity(request: RawInputEntityRequest) -> dict[str, object]:
     """Submit any raw /player/input payload as a JSON object with `type`."""
     import json as _json
 
@@ -106,13 +106,13 @@ def submit_raw_entity(request: RawInputEntityRequest) -> dict[str, object]:
         raise ValueError("entity_json must decode to an object")
     if "type" not in entity:
         raise ValueError("entity_json must include a 'type' field")
-    return _submit_and_return_state(
+    return await _submit_and_return_state(
         _normalize_raw_input_entity(cast(dict[str, object], entity))
     )
 
 
 @mcp.tool()
-def submit_and_options(responses_json: str) -> dict[str, object]:
+async def submit_and_options(responses_json: str) -> dict[str, object]:
     """Respond to `type: and` with JSON list of InputResponse objects."""
     import json as _json
 
@@ -124,69 +124,69 @@ def submit_and_options(responses_json: str) -> dict[str, object]:
         if not isinstance(item, dict):
             raise ValueError("Each response must be an object")
         normalized_responses.append(cast(dict[str, JsonValue], item))
-    return _submit_and_return_state(
+    return await _submit_and_return_state(
         {"type": "and", "responses": cast(JsonValue, normalized_responses)}
     )
 
 
 @mcp.tool()
-def select_amount(amount: int) -> dict[str, object]:
+async def select_amount(amount: int) -> dict[str, object]:
     """Respond to `type: amount`."""
-    return _submit_and_return_state({"type": "amount", "amount": int(amount)})
+    return await _submit_and_return_state({"type": "amount", "amount": int(amount)})
 
 
 @mcp.tool()
-def select_cards(card_names: list[str]) -> dict[str, object]:
+async def select_cards(card_names: list[str]) -> dict[str, object]:
     """Respond to `type: card` with chosen card names."""
-    return _submit_and_return_state(
+    return await _submit_and_return_state(
         {"type": "card", "cards": cast(JsonValue, card_names)}
     )
 
 
 @mcp.tool()
-def select_player(player_color: str) -> dict[str, object]:
+async def select_player(player_color: str) -> dict[str, object]:
     """Respond to `type: player`."""
     if not player_color:
         raise ValueError("player_color is required")
-    return _submit_and_return_state({"type": "player", "player": player_color})
+    return await _submit_and_return_state({"type": "player", "player": player_color})
 
 
 @mcp.tool()
-def select_delegate_target(player_color_or_neutral: str) -> dict[str, object]:
+async def select_delegate_target(player_color_or_neutral: str) -> dict[str, object]:
     """Respond to `type: delegate` with a player color or `NEUTRAL`."""
     if not player_color_or_neutral:
         raise ValueError("player_color_or_neutral is required")
-    return _submit_and_return_state(
+    return await _submit_and_return_state(
         {"type": "delegate", "player": player_color_or_neutral}
     )
 
 
 @mcp.tool()
-def select_space(space_id: str) -> dict[str, object]:
+async def select_space(space_id: str) -> dict[str, object]:
     """Respond to `type: space` using a board space ID from `waiting_for.spaces`."""
     if not space_id:
         raise ValueError("space_id is required")
-    return _submit_and_return_state({"type": "space", "spaceId": space_id})
+    return await _submit_and_return_state({"type": "space", "spaceId": space_id})
 
 
 @mcp.tool()
-def select_party(party_name: str) -> dict[str, object]:
+async def select_party(party_name: str) -> dict[str, object]:
     """Respond to `type: party`."""
     if not party_name:
         raise ValueError("party_name is required")
-    return _submit_and_return_state({"type": "party", "partyName": party_name})
+    return await _submit_and_return_state({"type": "party", "partyName": party_name})
 
 
 @mcp.tool()
-def select_colony(colony_name: str) -> dict[str, object]:
+async def select_colony(colony_name: str) -> dict[str, object]:
     """Respond to `type: colony`."""
     if not colony_name:
         raise ValueError("colony_name is required")
-    return _submit_and_return_state({"type": "colony", "colonyName": colony_name})
+    return await _submit_and_return_state({"type": "colony", "colonyName": colony_name})
 
 
 @mcp.tool()
-def pay_for_action(
+async def pay_for_action(
     mega_credits: int = 0,
     steel: int = 0,
     titanium: int = 0,
@@ -202,7 +202,7 @@ def pay_for_action(
     kuiper_asteroids: int = 0,
 ) -> dict[str, object]:
     """Respond to `type: payment`."""
-    return _submit_and_return_state(
+    return await _submit_and_return_state(
         {
             "type": "payment",
             "payment": {
@@ -225,7 +225,7 @@ def pay_for_action(
 
 
 @mcp.tool()
-def select_initial_cards(request: InitialCardsSelectionModel) -> dict[str, object]:
+async def select_initial_cards(request: InitialCardsSelectionModel) -> dict[str, object]:
     """Respond to `type: initialCards` using current waiting-for option order."""
     player_model = _get_player()
     waiting_for = player_model.waitingFor
@@ -247,13 +247,13 @@ def select_initial_cards(request: InitialCardsSelectionModel) -> dict[str, objec
             cards = request.project_cards
         responses.append({"type": "card", "cards": cast(JsonValue, cards)})
 
-    return _submit_and_return_state(
+    return await _submit_and_return_state(
         {"type": "initialCards", "responses": cast(JsonValue, responses)}
     )
 
 
 @mcp.tool()
-def select_production_to_lose(
+async def select_production_to_lose(
     megacredits: int = 0,
     steel: int = 0,
     titanium: int = 0,
@@ -262,7 +262,7 @@ def select_production_to_lose(
     heat: int = 0,
 ) -> dict[str, object]:
     """Respond to `type: productionToLose`."""
-    return _submit_and_return_state(
+    return await _submit_and_return_state(
         {
             "type": "productionToLose",
             "units": {
@@ -278,14 +278,14 @@ def select_production_to_lose(
 
 
 @mcp.tool()
-def shift_ares_global_parameters(
+async def shift_ares_global_parameters(
     low_ocean_delta: int = 0,
     high_ocean_delta: int = 0,
     temperature_delta: int = 0,
     oxygen_delta: int = 0,
 ) -> dict[str, object]:
     """Respond to `type: aresGlobalParameters`. Values are expected in {-1,0,1}."""
-    return _submit_and_return_state(
+    return await _submit_and_return_state(
         {
             "type": "aresGlobalParameters",
             "response": {
@@ -299,33 +299,33 @@ def shift_ares_global_parameters(
 
 
 @mcp.tool()
-def select_global_event(global_event_name: str) -> dict[str, object]:
+async def select_global_event(global_event_name: str) -> dict[str, object]:
     """Respond to `type: globalEvent`."""
     if not global_event_name:
         raise ValueError("global_event_name is required")
-    return _submit_and_return_state(
+    return await _submit_and_return_state(
         {"type": "globalEvent", "globalEventName": global_event_name}
     )
 
 
 @mcp.tool()
-def select_policy(policy_id: str) -> dict[str, object]:
+async def select_policy(policy_id: str) -> dict[str, object]:
     """Respond to `type: policy`."""
     if not policy_id:
         raise ValueError("policy_id is required")
-    return _submit_and_return_state({"type": "policy", "policyId": policy_id})
+    return await _submit_and_return_state({"type": "policy", "policyId": policy_id})
 
 
 @mcp.tool()
-def select_resource(resource: str) -> dict[str, object]:
+async def select_resource(resource: str) -> dict[str, object]:
     """Respond to `type: resource`."""
     if not resource:
         raise ValueError("resource is required")
-    return _submit_and_return_state({"type": "resource", "resource": resource})
+    return await _submit_and_return_state({"type": "resource", "resource": resource})
 
 
 @mcp.tool()
-def select_resources(
+async def select_resources(
     megacredits: int = 0,
     steel: int = 0,
     titanium: int = 0,
@@ -334,7 +334,7 @@ def select_resources(
     heat: int = 0,
 ) -> dict[str, object]:
     """Respond to `type: resources`."""
-    return _submit_and_return_state(
+    return await _submit_and_return_state(
         {
             "type": "resources",
             "units": {
@@ -350,8 +350,8 @@ def select_resources(
 
 
 @mcp.tool()
-def select_claimed_underground_tokens(selected: list[int]) -> dict[str, object]:
+async def select_claimed_underground_tokens(selected: list[int]) -> dict[str, object]:
     """Respond to `type: claimedUndergroundToken`."""
-    return _submit_and_return_state(
+    return await _submit_and_return_state(
         {"type": "claimedUndergroundToken", "selected": cast(JsonValue, selected)}
     )
