@@ -88,6 +88,15 @@ codex mcp list
 codex mcp get terraforming-mars
 ```
 
+Optional:
+
+Add the following to `~/.codex/config.toml` to increase timeouts:
+
+```toml
+[mcp_servers.terraforming-mars]
+tool_timeout_sec = 600
+```
+
 ### Start a game
 
 Start your agent of choice, ask it to play a game of Terraforming Mars,

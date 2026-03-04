@@ -1,0 +1,97 @@
+{
+  "game_date": "2026-03-03",
+  "game_url": "http://localhost:8080/player?id=pa415365389dc",
+  "game_id": "pa415365389dc",
+  "board": "tharsis",
+  "self_player": "Codex",
+  "opponent_player": "John",
+  "self_corp": "Valley Trust",
+  "opponent_corp": "CrediCor",
+  "planned_strategy": "hybrid",
+  "pivot_generation": 10,
+  "finish_generation": 12,
+  "score": {
+    "self": 88,
+    "opponent": 142
+  },
+  "breakdown": {
+    "self": {
+      "tr": 48,
+      "milestones": 15,
+      "awards": 0,
+      "greenery": 6,
+      "city": 4,
+      "card_vp": 15
+    },
+    "opponent": {
+      "tr": 44,
+      "milestones": 0,
+      "awards": 15,
+      "greenery": 18,
+      "city": 14,
+      "card_vp": 51
+    }
+  },
+  "opponent_engine_tags": [
+    "science",
+    "earth",
+    "plant",
+    "animal"
+  ],
+  "mistake_tags": [
+    "insufficient_card_vp_scaling",
+    "opponent_engine_underrated",
+    "award_funding_mislock",
+    "endgame_conversion_miss",
+    "tool_timeout",
+    "resource_stranding"
+  ],
+  "key_turning_points": [
+    {
+      "generation": 8,
+      "title": "Opponent discount and draw stack matured into high card VP ceiling",
+      "impact_vp_est": 15
+    },
+    {
+      "generation": 10,
+      "title": "Opponent secured Scientist and Landlord trajectories while Banker became contested",
+      "impact_vp_est": 10
+    },
+    {
+      "generation": 11,
+      "title": "Late closure started after opponent had already established dominant board/animal conversion",
+      "impact_vp_est": 8
+    }
+  ],
+  "counterfactuals": [
+    {
+      "change": "Shift to hard closure and engine denial one generation earlier (Gen 8)",
+      "swing_vp_est": 10,
+      "confidence": "med"
+    },
+    {
+      "change": "Do not fund Banker unless second-place lock is durable",
+      "swing_vp_est": 5,
+      "confidence": "high"
+    },
+    {
+      "change": "Convert additional MC into immediate board VP before opponent final greenery bursts",
+      "swing_vp_est": 6,
+      "confidence": "med"
+    }
+  ],
+  "rule_updates": [
+    "If opponent projected card_vp exceeds 40 by Gen 9, then prioritize closure/denial over economy setup.",
+    "If award lock confidence is not high, do not fund and convert actions to direct VP instead.",
+    "If oceans and oxygen are near cap by Gen 10, reserve MC for guaranteed temperature/TR closure actions."
+  ],
+  "tool_mismatches": [
+    {
+      "tool": "choose_or_option",
+      "expected": "Pass action returns with immediate next-turn state",
+      "actual": "Pass call timed out while action still executed",
+      "mitigation": "After timeout, poll get_game_state before any retry to avoid duplicate submissions."
+    }
+  ],
+  "postmortem_path": "agent-prompts/agent_game_notes/2026_03_03/postmortem-localhost-pa415365389dc.md"
+}
