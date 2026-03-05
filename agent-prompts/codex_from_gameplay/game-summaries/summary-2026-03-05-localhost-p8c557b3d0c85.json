@@ -1,0 +1,90 @@
+{
+  "game_date": "2026-03-05",
+  "game_url": "http://localhost:8080/player?id=p8c557b3d0c85",
+  "game_id": "p8c557b3d0c85",
+  "board": "tharsis",
+  "self_player": "Codex",
+  "opponent_player": "John",
+  "self_corp": "Valley Trust",
+  "opponent_corp": "Saturn Systems",
+  "planned_strategy": "hybrid",
+  "pivot_generation": 9,
+  "finish_generation": 12,
+  "score": {
+    "self": 115,
+    "opponent": 137
+  },
+  "breakdown": {
+    "self": {
+      "tr": 55,
+      "milestones": 10,
+      "awards": 5,
+      "greenery": 24,
+      "city": 14,
+      "card_vp": 7
+    },
+    "opponent": {
+      "tr": 45,
+      "milestones": 5,
+      "awards": 10,
+      "greenery": 7,
+      "city": 21,
+      "card_vp": 49
+    }
+  },
+  "opponent_engine_tags": [
+    "science",
+    "space",
+    "animal",
+    "city",
+    "earth"
+  ],
+  "mistake_tags": [
+    "insufficient_card_vp_scaling",
+    "opponent_engine_underrated",
+    "vp_ceiling_miscalculated",
+    "resource_stranding",
+    "endgame_conversion_miss"
+  ],
+  "key_turning_points": [
+    {
+      "generation": 7,
+      "title": "Public point split locked into Landlord vs Miner race",
+      "impact_vp_est": 5
+    },
+    {
+      "generation": 9,
+      "title": "Hard closure pivot stabilized TR/board floor but did not catch card-VP gap",
+      "impact_vp_est": 8
+    },
+    {
+      "generation": 10,
+      "title": "Opponent city/animal/card stack conversion outscaled our late VP conversion",
+      "impact_vp_est": 15
+    }
+  ],
+  "counterfactuals": [
+    {
+      "change": "Build one additional city anchor by Gen 8 and route greeneries to own city network sooner",
+      "swing_vp_est": 8,
+      "confidence": "med"
+    },
+    {
+      "change": "Shift one generation earlier from setup cards to direct VP liquidation",
+      "swing_vp_est": 6,
+      "confidence": "high"
+    },
+    {
+      "change": "Force temperature closure by Gen 10-11 once opponent card-VP ceiling became clear",
+      "swing_vp_est": 7,
+      "confidence": "med"
+    }
+  ],
+  "rule_updates": [
+    "If opponent projected card_vp is 35 or higher by Gen 8, pivot immediately to forced closure and city-denial lines.",
+    "If entering Gen 10+ with 40+ MC and only one global track unfinished, pre-commit to a two-action liquidation plan before passing.",
+    "If opponent is likely to lock Banker or Miner by midgame, either commit to contest immediately or ignore and spend actions on guaranteed board/card VP."
+  ],
+  "tool_mismatches": [],
+  "postmortem_path": "agent-prompts/agent_game_notes/2026_03_05/postmortem-localhost-p8c557b3d0c85.md"
+}
