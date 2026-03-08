@@ -26,7 +26,7 @@ core strategies for playing well. Read through it before playing a game.
 - `get_my_played_cards`: all cards currently in your tableau.
 - `get_my_hand_cards`: all cards currently in your hand.
 - `get_mars_board_state`: detailed Mars board state (occupied spaces by default).
-- `wait_for_turn`: manually wait until your turn (fixed 2-hour timeout, fixed poll interval).
+- `wait_for_turn`: manually wait until your turn when needed.
 - `submit_raw_entity`: submit any raw `InputResponse` JSON object.
 
 ## How Actions Work
@@ -34,13 +34,14 @@ core strategies for playing well. Read through it before playing a game.
 - The server always exposes one current prompt at `get_game_state().waiting_for`.
 - `waiting_for.input_type` tells you which tool to call.
 - After every write/action tool call, the MCP server now auto-waits for your next turn when your action ends your turn.
-- Auto-wait uses a fixed timeout of 2 hours and a fixed poll interval of 2 seconds.
 - When opponents act between your turns, responses include `opponent_actions_between_turns` (rendered from new game log entries).
 - For compound prompts:
 - `or`: choose one branch and provide a nested response for that branch.
 - `and`: provide one response for each branch.
 - You can always bypass helpers and send a raw response with `submit_raw_entity`.
 - Every write tool returns state; post-turn state is rebuilt after waiting when opponent actions were detected between turns.
+- Treat action-tool responses as the primary state source after each move (`choose_or_option`, `select_cards`, `select_space`, `pay_for_project_card`, etc.).
+- Use `get_game_state` for explicit inspection, planning context, or verification, not as the default follow-up after every action.
 
 ## Action Reference
 
@@ -178,9 +179,9 @@ Use these exact shapes when you are unsure about setup or nested prompts.
 }
 ```
 
-- Timeout recovery rule:
-- If a write call times out, call `get_game_state` before retrying.
-- Some actions execute server-side even when the MCP call times out.
+- State sync rule:
+- After a write/action call, continue from that tool's returned state by default.
+- Call `get_game_state` when you need a fresh full snapshot (for example, deep board review or cross-checking legal options).
 
 ## Game State for Agents
 

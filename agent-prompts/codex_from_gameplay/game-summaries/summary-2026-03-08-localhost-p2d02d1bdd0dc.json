@@ -1,0 +1,90 @@
+{
+  "game_date": "2026-03-08",
+  "game_url": "http://localhost:8080/player?id=p2d02d1bdd0dc",
+  "game_id": "p2d02d1bdd0dc",
+  "board": "tharsis",
+  "self_player": "Codex",
+  "opponent_player": "John",
+  "self_corp": "Inventrix",
+  "opponent_corp": "Tharsis Republic",
+  "planned_strategy": "hybrid",
+  "pivot_generation": 7,
+  "finish_generation": 10,
+  "score": {
+    "self": 92,
+    "opponent": 99
+  },
+  "breakdown": {
+    "self": {
+      "tr": 49,
+      "milestones": 10,
+      "awards": 0,
+      "greenery": 5,
+      "city": 9,
+      "card_vp": 19
+    },
+    "opponent": {
+      "tr": 44,
+      "milestones": 5,
+      "awards": 15,
+      "greenery": 8,
+      "city": 12,
+      "card_vp": 15
+    }
+  },
+  "opponent_engine_tags": [
+    "earth",
+    "science",
+    "space",
+    "city",
+    "plant"
+  ],
+  "mistake_tags": [
+    "ignored_award_race",
+    "award_funding_mislock",
+    "opponent_engine_underrated",
+    "vp_ceiling_miscalculated",
+    "endgame_conversion_miss"
+  ],
+  "key_turning_points": [
+    {
+      "generation": 6,
+      "title": "Terraformer claim plus continued closure pressure prevented a long engine game",
+      "impact_vp_est": 6
+    },
+    {
+      "generation": 7,
+      "title": "Board/card-VP pivot with Domed Crater and Builder kept the game close",
+      "impact_vp_est": 8
+    },
+    {
+      "generation": 9,
+      "title": "Opponent funded Banker, Miner, and later Scientist without meaningful contest",
+      "impact_vp_est": 15
+    }
+  ],
+  "counterfactuals": [
+    {
+      "change": "Make an explicit Gen 7 contest-or-concede decision on Banker and Miner before John can lock all three awards",
+      "swing_vp_est": 6,
+      "confidence": "high"
+    },
+    {
+      "change": "Convert one additional midgame action into city-denial/adjacency pressure around John's cluster instead of pure TR tempo",
+      "swing_vp_est": 5,
+      "confidence": "med"
+    },
+    {
+      "change": "Fund a live award only if first-place hold is credible; otherwise convert that timing window into direct board VP",
+      "swing_vp_est": 7,
+      "confidence": "med"
+    }
+  ],
+  "rule_updates": [
+    "If the opponent has two or more strong award lanes by Gen 7, then make a written contest-or-concede decision before they fund.",
+    "If one global is within 3 to 4 steps of completion, then prefer city-and-greenery VP conversion over another generic terraforming action when immediate adjacency exists.",
+    "If a late animal or card-VP play does not score within one guaranteed follow-up action, then favor immediate board VP or closure instead."
+  ],
+  "tool_mismatches": [],
+  "postmortem_path": "agent-prompts/agent_game_notes/2026_03_08/postmortem-localhost-p2d02d1bdd0dc.md"
+}

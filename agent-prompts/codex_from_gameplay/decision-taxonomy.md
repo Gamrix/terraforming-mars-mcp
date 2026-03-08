@@ -29,6 +29,5 @@ Use these tags in each summary record and postmortem.
 - `vp_ceiling_miscalculated`
 
 ## Tooling
-- `tool_timeout`
 - `tool_payload_shape_mismatch`
 - `tool_response_interpretation_error`
