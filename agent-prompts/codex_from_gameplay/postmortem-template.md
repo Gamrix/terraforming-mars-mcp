@@ -7,9 +7,10 @@
 - Final result: **<Opponent> <opponent_score> - <self_score> <Self>**
 - Ended in **Generation <N>**
 - Board: `<tharsis|hellas|elysium|other>`
-- Initial strategy call (Gen 2-3): `<rush|hybrid|engine>`
+- Initial strategy call (Gen 2-3): `<hard close|hybrid leaning close|outscale>`
 - Did we pivot? `<yes/no>`
 - Pivot generation: `<N or n/a>`
+- Was the macro call actually specific enough to constrain play? `<yes/no>`
 
 ## 2) Score Decomposition
 
@@ -22,6 +23,21 @@
 | City |  |  |  |
 | Card VP |  |  |  |
 | **Total** |  |  |  |
+
+## 2A) Forecast Accuracy
+
+Record the best in-game forecast you had by Gen 6 to 8.
+
+| Category | Self Forecast | Self Actual | Opp Forecast | Opp Actual |
+|---|---:|---:|---:|---:|
+| TR |  |  |  |  |
+| Awards |  |  |  |  |
+| Greenery |  |  |  |  |
+| City |  |  |  |  |
+| Card VP |  |  |  |  |
+
+- What did the forecast miss?
+- Did we think we were ahead because of TR while actually behind on VP ceiling?
 
 ## 3) Timeline by Generation
 
@@ -42,13 +58,16 @@
 
 ### Self
 - Core plan:
+- Why this macro plan was chosen:
 - What worked:
 - What failed:
+- Did we drift into an under-defined hybrid line?:
 
 ### Opponent
 - Core plan:
 - How they converted into VP:
 - What we failed to deny:
+- Which explicit engine alarms should have fired:
 
 ## 5) Critical Turning Points
 
@@ -86,10 +105,31 @@ Use tags from `agent-prompts/codex_from_gameplay/decision-taxonomy.md`.
 2. If `<condition>`, then `<action>`.
 3. If `<condition>`, then `<action>`.
 
-## 10) Next-Game Checklist
+## 10) Active Hypotheses Check
+
+List 1 to 3 hypotheses that were being tested in this game.
+
+| Hypothesis | Result in this game | Status |
+|---|---|---|
+|  | strengthened / weakened / unresolved |  |
+|  | strengthened / weakened / unresolved |  |
+|  | strengthened / weakened / unresolved |  |
+
+## 11) Endgame Conversion Review
+
+- Did we write a liquidation plan by Gen 10+?:
+- Did we check whether actions continued after terraforming completed?:
+- Which resources were stranded at pass or game end?:
+- Best missed `MC -> VP` conversion:
+- Best missed board placement:
+
+## 12) Next-Game Checklist
 
 - [ ] Strategy call logged by Gen 3.
+- [ ] Macro call is specific enough to exclude strategic drift.
 - [ ] Milestone contest plan explicit by Gen 4.
 - [ ] Award funding lock confidence checked.
 - [ ] Card VP race estimate written by Gen 6.
+- [ ] Gen 8 score forecast revised after opponent engine update.
 - [ ] Endgame conversion plan written at start of final generation.
+- [ ] After Mars is terraformed, live prompt checked before passing.

@@ -7,8 +7,9 @@
   "opponent_player": "John",
   "self_corp": "Unknown",
   "opponent_corp": "Unknown",
-  "planned_strategy": "rush",
+  "planned_strategy": "hard close",
   "pivot_generation": 0,
+  "macro_call_specific": true,
   "finish_generation": 12,
   "score": {
     "self": 0,
@@ -36,6 +37,24 @@
     "science",
     "space"
   ],
+  "forecast": {
+    "generation": 6,
+    "self": {
+      "tr": 0,
+      "awards": 0,
+      "greenery": 0,
+      "city": 0,
+      "card_vp": 0
+    },
+    "opponent": {
+      "tr": 0,
+      "awards": 0,
+      "greenery": 0,
+      "city": 0,
+      "card_vp": 0
+    },
+    "miss_summary": "short summary"
+  },
   "mistake_tags": [
     "insufficient_card_vp_scaling"
   ],
@@ -56,6 +75,21 @@
   "rule_updates": [
     "If condition, then action"
   ],
+  "active_hypotheses": [
+    {
+      "hypothesis": "short summary",
+      "result": "short summary",
+      "status": "unresolved"
+    }
+  ],
+  "endgame_review": {
+    "liquidation_plan_written": false,
+    "post_terraform_actions_checked": true,
+    "stranded_resources": [
+      "MC"
+    ],
+    "best_missed_conversion": "short summary"
+  },
   "tool_mismatches": [
     {
       "tool": "choose_or_option",

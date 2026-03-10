@@ -4,7 +4,7 @@ This guide is a practical, decision-oriented reference for playing Terraforming 
 It includes:
 - Core rules and flow so the game is playable from this document.
 - Advanced strategy and decision frameworks for consistent wins.
-- Specific lessons learned from the 2026-02-14 match (Codex 75 vs John 127).
+- Structural learning updates from repeated losses against the same opponent.
 
 ## 1. Objective and Core Scoring
 
@@ -85,9 +85,11 @@ Each generation has four phases:
 - Gain resources by production tracks.
 - MC gain = TR + MC production.
 
-Final greenery conversion:
-- After game-end trigger and final production, players still place final greeneries from plants.
-- Do not forget this; it changes final board VP.
+Game-end discipline:
+- After all three global parameters are maxed, do not assume actions are over unless the prompt proves it.
+- In this implementation, the rest of the generation may still be live.
+- Before passing, re-check the prompt and liquidate remaining MC, steel, titanium, plants, and live card actions into VP whenever legal.
+- After production, players still place final greeneries from plants.
 
 ## 3. Resource System and Practical Value
 
@@ -181,6 +183,11 @@ There are two macro archetypes:
 
 Good play is adaptive, not ideological.
 
+Important structural rule:
+- Do not hide inside a vague `hybrid` label.
+- By Gen 3 to 4, define which side of the hybrid matters more.
+- If the plan is not clearly closer to `hard close` or `outscale`, it is usually strategic drift.
+
 Terraforming rush works best when:
 - You are ahead on TR and board.
 - Opponents are in setup mode.
@@ -191,12 +198,18 @@ Engine scaling works best when:
 - You have strong draw/discount loops.
 - You can still pivot to direct VP before end.
 
+Macro commitment test:
+- `Hard close`: only keep economy/setup actions that shorten the game or directly improve public points.
+- `Outscale`: only choose this if you can plausibly beat the opponent in `card_vp + city_vp`, not merely stay close in TR.
+- If neither statement is true, the current plan is under-specified and should be revised immediately.
+
 ## 9. Game-Phase Strategy Framework
 
 Early game (Gen 1-3):
 - Build income and flexible production.
 - Avoid dead VP cards unless they are exceptionally efficient.
 - Establish probable milestone lanes.
+- Write an initial macro call: `hard close`, `hybrid leaning close`, or `outscale`.
 
 Mid game (Gen 4-7):
 - Convert engine to practical position:
@@ -204,12 +217,63 @@ Mid game (Gen 4-7):
 - Board anchors (cities/greenery scaffolding).
 - Award threshold tracking.
 - Keep one eye on remaining global steps.
+- By Gen 6, write a score forecast instead of relying on intuition:
+- Expected self final TR.
+- Expected self final greenery + city.
+- Expected self final card VP.
+- Expected opponent final card VP.
+- Likely award outcomes if nothing changes.
+- If the forecast says you are ahead only on TR, you are probably not actually ahead.
 
 Late game (Gen 8+):
 - Shift from production to points.
 - Count remaining generations every round.
 - Convert all resources aggressively.
 - Prioritize guaranteed VP over future-value setup.
+- Recompute whether the game should end this generation.
+- Recompute whether the opponent gains more from one extra generation than you do.
+
+## 9A. Opponent Alarm System
+
+Repeated losses show that generic "watch the engine" language is too weak.
+Use explicit alarms:
+
+- `Science alarm`:
+- If the opponent has `AI Central + Mass Converter`, treat the game as one generation from engine takeoff.
+
+- `Discount stack alarm`:
+- If the opponent adds `Quantum Extractor`, `Anti-Gravity Technology`, `Shuttles`, `Earth Office`, or another meaningful discount to an existing science engine, switch to closure-first mode unless your own scaling is already superior.
+
+- `VP ceiling alarm`:
+- If opponent projected `card_vp >= 35` by Gen 8 or `>= 40` by Gen 9, stop generic setup.
+- Spend actions on closure, city/greenery pressure, or specific denial.
+
+- `Award lock alarm`:
+- If an award you funded is no longer favored by Gen 9 to 10, stop treating it as committed value.
+- Re-plan from the new scoreboard, not from sunk-cost pride.
+
+## 9B. Score Forecast Protocol
+
+At minimum, write these checkpoints every game:
+
+- Gen 3:
+- Which macro plan is live?
+- Which milestone races are real?
+
+- Gen 6:
+- Expected final score by category for both players.
+- Whether one extra generation helps you or the opponent more.
+
+- Gen 8:
+- Updated card-VP projection.
+- Explicit award contest-or-concede decision.
+- Exact closure estimate in actions or generations.
+
+- Gen 10+:
+- Best `MC -> VP` liquidation line.
+- Best `plants -> greenery` line.
+- Best `city + adjacency` line.
+- Whether terraforming completion still leaves actions in the generation.
 
 ## 10. Player-Count Adjustments
 
@@ -249,7 +313,35 @@ Late game (Gen 8+):
 - In final generations, cards in hand are often MC reservoirs via sell patents.
 - Plan this one generation ahead, not at the last second.
 
-## 12. Lessons Learned From the 2026-02-14 Match
+7. Post-terraform action verification
+- If Mars is completed mid-generation, poll the live prompt before assuming only cleanup remains.
+- Continue spending actions until no positive-EV conversions remain.
+
+8. Category-first action choice
+- When multiple actions are good, prefer the one that improves your losing category rather than the one that merely looks efficient in isolation.
+- Against John specifically, this usually means prioritizing `card_vp`, `city`, award denial, or hard closure over more generic TR.
+
+## 12. Structural Lessons From Repeated Losses
+
+Observed repeated pattern:
+- Average category delta remains positive in TR but sharply negative in `card_vp`, `city`, and awards.
+- This means the main issue is not a lack of tempo.
+- The main issue is an incorrect model of what wins this matchup.
+
+Therefore:
+- Stop evaluating positions primarily through TR.
+- Stop accepting loose `hybrid` plans.
+- Stop assuming a close public-point game is enough if the opponent's card-VP ceiling is much higher.
+- Stop improvising endgames.
+
+Required structural behaviors:
+- Pre-commit to a macro plan early.
+- Forecast final categories midgame.
+- Use explicit engine alarms.
+- Run a scripted liquidation plan in Gen 10+.
+- Track a small set of falsifiable hypotheses across games instead of adding endless narrative rules.
+
+## 13. Lessons Learned From the 2026-02-14 Match
 
 Match result:
 - Codex 75.

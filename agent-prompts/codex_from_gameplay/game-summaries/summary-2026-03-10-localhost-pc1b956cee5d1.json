@@ -1,0 +1,100 @@
+{
+  "game_date": "2026-03-10",
+  "game_url": "http://localhost:8080/player?id=pc1b956cee5d1",
+  "game_id": "pc1b956cee5d1",
+  "board": "tharsis",
+  "self_player": "Codex",
+  "opponent_player": "John",
+  "self_corp": "Cheung Shing MARS",
+  "opponent_corp": "CrediCor",
+  "planned_strategy": "hybrid",
+  "pivot_generation": 8,
+  "finish_generation": 11,
+  "score": {
+    "self": 83,
+    "opponent": 142
+  },
+  "breakdown": {
+    "self": {
+      "tr": 48,
+      "milestones": 10,
+      "awards": 0,
+      "greenery": 8,
+      "city": 9,
+      "card_vp": 8
+    },
+    "opponent": {
+      "tr": 53,
+      "milestones": 5,
+      "awards": 15,
+      "greenery": 9,
+      "city": 14,
+      "card_vp": 46
+    }
+  },
+  "opponent_engine_tags": [
+    "science",
+    "space",
+    "plant",
+    "animal",
+    "jovian",
+    "city",
+    "earth"
+  ],
+  "mistake_tags": [
+    "opponent_engine_underrated",
+    "vp_ceiling_miscalculated",
+    "endgame_conversion_miss",
+    "resource_stranding",
+    "ignored_award_race",
+    "insufficient_card_vp_scaling"
+  ],
+  "key_turning_points": [
+    {
+      "generation": 8,
+      "title": "Pivoted into Zeppelins and board conversion, but John's discount stack still matured",
+      "impact_vp_est": 8
+    },
+    {
+      "generation": 10,
+      "title": "John funded Miner and overtook Banker while his late-game card engine remained intact",
+      "impact_vp_est": 10
+    },
+    {
+      "generation": 11,
+      "title": "Passed after terraforming instead of liquidating the rest of the generation into board VP",
+      "impact_vp_est": 12
+    }
+  ],
+  "counterfactuals": [
+    {
+      "change": "After finishing Mars in Gen 11, continue the rest of the generation and convert MC into one more standard city plus follow-up greenery instead of passing",
+      "swing_vp_est": 12,
+      "confidence": "high"
+    },
+    {
+      "change": "Treat AI Central plus Mass Converter plus Quantum Extractor as a hard closure emergency by Gen 8 and reserve more Gen 9-10 cash for guaranteed closing actions",
+      "swing_vp_est": 9,
+      "confidence": "med"
+    },
+    {
+      "change": "Concede Banker earlier once John overtook the category and redirect one award/conversion window into direct board VP",
+      "swing_vp_est": 5,
+      "confidence": "med"
+    }
+  ],
+  "rule_updates": [
+    "If Mars becomes fully terraformed during the action phase, then assume the rest of the generation is still live until the prompt proves otherwise and liquidate all remaining MC/plants/steel before passing.",
+    "If John has AI Central plus Mass Converter and adds another science or space discount by Gen 8, then reserve Gen 9-10 actions primarily for guaranteed closure and board VP, not additional setup.",
+    "If a funded award trajectory flips by Gen 10, then stop defending sunk-cost pride and convert the remaining windows into guaranteed points instead of leaving the category to drift away."
+  ],
+  "tool_mismatches": [
+    {
+      "tool": "rules interpretation",
+      "expected": "After Mars is terraformed, continue taking remaining actions in the generation until no profitable conversions remain",
+      "actual": "Treated post-terraform state as if only final greenery cleanup remained and passed with large MC and steel stranded",
+      "mitigation": "After any terraforming-complete action, explicitly verify whether the generation is still live and exhaust all positive-EV conversions before passing"
+    }
+  ],
+  "postmortem_path": "agent-prompts/agent_game_notes/2026_03_10/postmortem-localhost-pc1b956cee5d1.md"
+}
