@@ -27,7 +27,7 @@
 ## 2A) Forecast Accuracy
 
 The key structural problem in this game was not just that John outscaled us.
-It was that I still did not forecast that outscaling accurately enough early enough.
+It was that I still did not forecast that outscaling accurately enough early enough, so I kept making locally reasonable plays inside the wrong global plan.
 
 | Category | Self Forecast | Self Actual | Opp Forecast | Opp Actual |
 |---|---:|---:|---:|---:|
@@ -37,7 +37,7 @@ It was that I still did not forecast that outscaling accurately enough early eno
 | City | ~8 to 10 | 9 | ~10 to 12 | 14 |
 | Card VP | ~10 to 15 | 8 | ~30 to 35 | 46 |
 
-- What did the forecast miss?: I still underestimated the size of John's final-generation card dump and overestimated how much public-point control would matter once his discount stack survived to Gen 11.
+- What did the forecast miss?: I underestimated the size of John's eventual `card_vp` explosion, overestimated the durability of my award/public-point shell, and failed to see that the handicap was already being neutralized because John was winning both `TR` and the higher-density scoring categories.
 - Did we think we were ahead because of TR while actually behind on VP ceiling?: `yes`
 
 ## 3) Timeline by Generation
@@ -59,31 +59,31 @@ It was that I still did not forecast that outscaling accurately enough early eno
 ### Self
 - Core plan: Hybrid board-and-closure line using early cities, building discounts, and later oxygen/ocean pressure to end before John's engine fully cashed out.
 - Why this macro plan was chosen: The opening had enough city/building quality to avoid pure rush, but not enough obvious card-VP scaling to commit to a long outscale game.
-- What worked: Milestones were strong, the `Landlord` funding was initially sound, and the Gen 8-10 closure line was much more disciplined than in earlier losses.
-- What failed: The macro call was still too vague to fully constrain play. I drifted inside "hybrid" rather than explicitly deciding whether I was hard-closing or trying to compete on VP ceiling, and the largest self-inflicted error was the Gen 11 endgame conversion miss after Mars was already terraformed.
+- What worked: Milestones were strong, the city shell was established early, and the Gen 8-10 closure line was more disciplined than in earlier losses.
+- What failed: The plan never became a true winning identity. It was not fast enough to deny John's engine, not scalable enough to beat it in `card_vp + city`, and not controlling enough to hold awards once his production exploded. The Gen 11 endgame conversion miss was large, but it sat on top of a deeper failure: I had already allowed the game to become exactly the sort of Generation 11 payoff environment John's deck wanted.
 - Did we drift into an under-defined hybrid line?: `yes`
 
 ### Opponent
 - Core plan: CrediCor production into stacked science discounts, card draw, and late plant/animal/Jovian conversion.
-- How they converted into VP: They turned `AI Central`, `Mass Converter`, `Quantum Extractor`, `Anti-Gravity Technology`, and multiple card-flow actions into a giant final-generation dump that produced `46` card VP plus superior award and city totals.
-- What we failed to deny: The science-discount stack itself, the late `Predators/Decomposers/Ganymede/Terraforming Ganymede` payoff window, and the final action cycle after Mars was completed.
+- How they converted into VP: They assembled a layered late-game scoring architecture rather than just a good engine. `AI Central`, `Mass Converter`, `Quantum Extractor`, `Anti-Gravity Technology`, `Shuttles`, `Earth Office`, and repeated draw actions made every surviving generation dramatically more valuable. That engine then converted into `46` card VP, `15` award VP, a stronger city network, and enough `TR` to erase the handicap.
+- What we failed to deny: The science-discount stack itself, the transition from "engine" into "scoring engine", the award flips once his economy overtook ours, and the exact game length his deck wanted.
 - Which explicit engine alarms should have fired: `AI Central + Mass Converter` at Gen 6 to 7 should have triggered a hard-closure posture, and `Quantum Extractor` at Gen 8 should have been treated as a full emergency rather than just another strong card.
 
 ## 5) Critical Turning Points
 
 | Gen | Decision | Why it mattered | VP impact estimate |
 |---:|---|---|---:|
-| 8 | Pivoted into `Zeppelins`, `Bushes`, and board conversion instead of more abstract setup | This was correct and kept the game close enough to force a Gen 11 finish | 8 |
-| 10 | John's `Miner` funding plus continued Banker growth were not contested | Public-point control flipped away from us despite earlier award discipline | 10 |
-| 11 | Passed after post-terraform greenery instead of liquidating remaining `MC`/`steel` into more board VP during the rest of the generation | This stranded a large amount of guaranteed value and let John keep the last word on board and card conversion | 12 |
+| 7-8 | Failed to convert the engine alarm into a truly different macro plan | From this point on, I still played many "good hybrid" actions in a game state that required either hard close or a real VP race. This let John keep building the exact endgame his deck wanted | 15 |
+| 9-10 | Lost scoreboard control on awards and late category forecasting | John overtook `Banker`, funded and won `Miner`, and closed the gap on `Landlord`, which meant the public-point shell I thought I was protecting was already collapsing | 12 |
+| 11 | Passed after post-terraform greenery instead of liquidating remaining `MC`/`steel` into more board VP during the rest of the generation | This stranded a large amount of guaranteed value and turned a bad position into a blowout | 12 |
 
 ## 6) Counterfactuals
 
 | Alternative line | Realism | Estimated swing |
 |---|---|---:|
-| After finishing Mars in Gen 11, continue taking the rest of the generation and convert `MC` into one more `standard city` plus follow-up greenery instead of passing | high | 12 |
-| Treat `AI Central + Mass Converter + Quantum Extractor` as a hard closure emergency by Gen 8 and reserve more Gen 9-10 cash for guaranteed closing actions | med | 9 |
-| Concede `Banker` earlier once John overtook the category and redirect one funding/conversion window into direct board VP | med | 5 |
+| Replace the vague Gen 7-8 hybrid posture with a true hard-close plan once John's science-discount stack is live, even if that means giving up medium-value setup cards and some economy | med | 15 |
+| Re-run the midgame score model around categories instead of TR, recognize that John is winning the future `card_vp + city + awards` race, and redirect Gen 9-10 actions into closure and board denial accordingly | med | 12 |
+| After finishing Mars in Gen 11, continue the rest of the generation and liquidate `MC` and `steel` into at least one more city/greenery sequence instead of passing | high | 12 |
 
 ## 7) Mistake Taxonomy Tags
 
@@ -96,6 +96,8 @@ It was that I still did not forecast that outscaling accurately enough early eno
 - `resource_stranding`
 - `ignored_award_race`
 - `insufficient_card_vp_scaling`
+- `alarm_threshold_missed`
+- `sunk_cost_award_defense`
 
 ## 8) Tool Mismatches
 
@@ -113,9 +115,9 @@ It was that I still did not forecast that outscaling accurately enough early eno
 
 | Hypothesis | Result in this game | Status |
 |---|---|---|
-| Earlier city anchors and greeneries will reduce the city-gap enough to keep the game close | Helped, but not nearly enough once John's card-VP ceiling exploded | unresolved |
-| Stricter award discipline will improve net VP | Helped relative to some earlier games, but John still swept `Banker` and `Miner` once the race flipped | unresolved |
-| Earlier hard-close pressure against John's science engine performs better than generic hybrid drift | The game only fully broke once the closure pressure softened and the engine lived to Gen 11 | strengthened |
+| Earlier city anchors and greeneries will reduce the city-gap enough to keep the game close | The board was more stable than in some earlier losses, but the city improvement was far too small to matter against a `-38` card-VP gap | weakened |
+| Stricter award discipline will improve net VP | It helped avoid the worst earlier award punts, but it was not enough without stronger scoreboard forecasting and earlier contest-or-concede decisions | unresolved |
+| Earlier hard-close pressure against John's science engine performs better than generic hybrid drift | This game strongly supports that view; once the engine lived to Gen 11, the outcome was structurally bad | strengthened |
 
 ## 11) Endgame Conversion Review
 
@@ -125,7 +127,32 @@ It was that I still did not forecast that outscaling accurately enough early eno
 - Best missed `MC -> VP` conversion: one more `standard city` followed by stronger post-end greenery placement
 - Best missed board placement: preserving a better late city/greenery shell for the post-terraform portion of Gen 11 instead of ending the turn early
 
-## 12) Next-Game Checklist
+## 12) Structural Why-Loss
+
+John did not win by `59` because of one missed line.
+He won because he won the shape of the game.
+
+The structural reasons:
+
+- He erased the handicap and still finished ahead on `TR`.
+- He built a real scoring engine, while I built a partially effective tempo shell.
+- He won `awards`, `city`, and especially `card_vp` at the same time.
+- I never forced a game length that punished his deck.
+- I kept making individually reasonable actions inside a strategically losing game state.
+
+The result was a layered defeat:
+
+- `TR`: I failed to turn the handicap into either a short game or a stable public-point edge.
+- `Awards`: I misread durability and let the scoreboard flip.
+- `City/board`: I created a board shell but not a dominant board engine.
+- `Card VP`: I never matched his scoring density, so every extra generation favored him heavily.
+- `Endgame`: after Mars was complete, I still left points on the table.
+
+That is why the margin was so large.
+The game was not close and then thrown away.
+It was structurally unfavorable by late midgame, then made worse by the final conversion error.
+
+## 13) Next-Game Checklist
 
 - [x] Strategy call logged by Gen 3.
 - [ ] Macro call is specific enough to exclude strategic drift.
