@@ -1,0 +1,98 @@
+{
+  "game_date": "2026-03-10",
+  "game_url": "http://localhost:8080/player?id=pef7a44ee9077",
+  "game_id": "pef7a44ee9077",
+  "board": "tharsis",
+  "self_player": "Codex",
+  "opponent_player": "John",
+  "self_corp": "CrediCor",
+  "opponent_corp": "Saturn Systems",
+  "planned_strategy": "hybrid",
+  "pivot_generation": 8,
+  "finish_generation": 13,
+  "score": {
+    "self": 97,
+    "opponent": 181
+  },
+  "breakdown": {
+    "self": {
+      "tr": 45,
+      "milestones": 10,
+      "awards": 5,
+      "greenery": 9,
+      "city": 11,
+      "card_vp": 17
+    },
+    "opponent": {
+      "tr": 53,
+      "milestones": 5,
+      "awards": 10,
+      "greenery": 12,
+      "city": 17,
+      "card_vp": 84
+    }
+  },
+  "opponent_engine_tags": [
+    "jovian",
+    "space",
+    "earth",
+    "science",
+    "plant",
+    "animal"
+  ],
+  "mistake_tags": [
+    "opponent_engine_underrated",
+    "insufficient_card_vp_scaling",
+    "vp_ceiling_miscalculated",
+    "resource_stranding",
+    "late_strategy_pivot"
+  ],
+  "key_turning_points": [
+    {
+      "generation": 8,
+      "title": "John's Saturn discount and draw engine was already beyond a fair late-game race, but closure pressure stayed too soft",
+      "impact_vp_est": 15
+    },
+    {
+      "generation": 10,
+      "title": "Late Jovian, animal, and card-draw scaling created an unrecoverable card-VP gap",
+      "impact_vp_est": 20
+    },
+    {
+      "generation": 11,
+      "title": "Even with better board play and public points, too much late steel and MC still failed to convert into maximum VP-per-action",
+      "impact_vp_est": 8
+    }
+  ],
+  "counterfactuals": [
+    {
+      "change": "Force a hard-close from Generation 8 once the Saturn discount and draw stack is clearly ahead on final ceiling",
+      "swing_vp_est": 12,
+      "confidence": "med"
+    },
+    {
+      "change": "Do not fund Scientist unless the lead is durable against the opponent's visible science follow-up",
+      "swing_vp_est": 5,
+      "confidence": "high"
+    },
+    {
+      "change": "Convert stranded steel and MC into board VP earlier instead of preserving optionality",
+      "swing_vp_est": 8,
+      "confidence": "high"
+    }
+  ],
+  "rule_updates": [
+    "If a Saturn or equivalent titanium-discount engine has strong draw and large MC production by Gen 7, then switch to hard-close mode immediately.",
+    "If a funded award can realistically flip under the opponent's visible engine path, then do not fund it.",
+    "If stranded steel exceeds one good building play in the late midgame, then prioritize board-scoring buildings or standard projects before taking more setup cards."
+  ],
+  "tool_mismatches": [
+    {
+      "tool": "choose_or_option",
+      "expected": "Steel payments should only be used when the server clearly allows them for that card",
+      "actual": "Some non-building cards rejected mixed steel and MC payments with HTTP 400 errors",
+      "mitigation": "Default to MC-only unless the card is clearly steel-payable and the server has already accepted that pattern"
+    }
+  ],
+  "postmortem_path": "agent-prompts/agent_game_notes/2026_03_10/postmortem-localhost-pef7a44ee9077.md"
+}

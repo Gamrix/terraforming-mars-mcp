@@ -2,43 +2,43 @@
 
 ## Overall
 
-- Games: **8**
-- Record: **0-8-0** (W-L-D)
-- Average score: **90.9 - 124.9**
-- Average margin: **-34.0 VP** (self - opponent)
+- Games: **9**
+- Record: **0-9-0** (W-L-D)
+- Average score: **91.6 - 131.1**
+- Average margin: **-39.6 VP** (self - opponent)
 - Best margin: **-7 VP** in `p2d02d1bdd0dc`
-- Worst margin: **-59 VP** in `pc1b956cee5d1`
+- Worst margin: **-84 VP** in `pef7a44ee9077`
 
 ## Average Category Deltas
 
 | Category | Avg Delta (self - opponent) |
 |---|---:|
-| tr | +3.2 |
-| milestones | +2.5 |
-| awards | -7.5 |
-| greenery | +1.1 |
-| city | -6.8 |
-| card_vp | -26.6 |
+| tr | +2.0 |
+| milestones | +2.8 |
+| awards | -7.2 |
+| greenery | +0.7 |
+| city | -6.7 |
+| card_vp | -31.1 |
 
 ## By Planned Strategy
 
 | Strategy | Games | Win Rate | Avg Margin |
 |---|---:|---:|---:|
-| hybrid | 6 | 0.0% | -32.0 |
+| hybrid | 7 | 0.0% | -39.4 |
 | rush | 2 | 0.0% | -40.0 |
 
 ## Top Mistake Tags
 
-- `opponent_engine_underrated`: 7
-- `insufficient_card_vp_scaling`: 6
+- `opponent_engine_underrated`: 8
+- `insufficient_card_vp_scaling`: 7
 - `endgame_conversion_miss`: 6
-- `resource_stranding`: 5
+- `resource_stranding`: 6
+- `vp_ceiling_miscalculated`: 5
 - `award_funding_mislock`: 4
-- `vp_ceiling_miscalculated`: 4
 - `ignored_award_race`: 3
+- `late_strategy_pivot`: 2
 - `milestone_contest_miss`: 2
 - `tool_timeout`: 2
-- `tool_payload_shape_mismatch`: 2
 
 ## Recent Games
 
@@ -52,3 +52,4 @@
 | 2026-03-08 | p2d02d1bdd0dc | hybrid | 10 | 92-99 | -7 |
 | 2026-03-10 | p9f21c8d3fef2 | hybrid | 11 | 99-118 | -19 |
 | 2026-03-10 | pc1b956cee5d1 | hybrid | 11 | 83-142 | -59 |
+| 2026-03-10 | pef7a44ee9077 | hybrid | 13 | 97-181 | -84 |
