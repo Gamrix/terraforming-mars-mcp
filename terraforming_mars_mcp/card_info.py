@@ -408,34 +408,11 @@ def _extract_played_cards(
     cards: list[dict[str, object]] = []
     if isinstance(tableau, list):
         for card in tableau:
-            info = _card_info(card.name, include_play_details=include_play_details)
-            payload: dict[str, object] = {
-                "name": card.name,
-                "resources": card.resources,
-                "is_disabled": card.isDisabled is True,
-                "clone_tag": card.cloneTag,
-                "tags": info.get("tags", []),
-                "ongoing_effects": info.get("ongoing_effects", []),
-                "activated_actions": info.get("activated_actions", []),
-            }
-            vp = info.get("vp")
-            if vp is not None:
-                payload["vp"] = vp
-            if include_play_details:
-                base_cost = info.get("base_cost")
-                discounted_cost = (
-                    card.calculatedCost
-                    if card.calculatedCost is not None
-                    else base_cost
+            cards.append(
+                _compact_card(
+                    card,
+                    detail_level=DETAIL_LEVEL_FULL,
+                    auto_response=False,
                 )
-                payload.update(
-                    {
-                        "play_requirements": info.get("play_requirements", []),
-                        "play_requirements_text": info.get("play_requirements_text"),
-                        "on_play_effect_text": info.get("on_play_effect_text"),
-                        "cost": base_cost if base_cost is not None else discounted_cost,
-                        "discounted_cost": discounted_cost,
-                    }
-                )
-            cards.append(payload)
+            )
     return cards
