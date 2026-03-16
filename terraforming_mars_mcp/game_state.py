@@ -416,6 +416,7 @@ def _full_board_state(
         "game_id": game.id,
         "phase": game.phase,
         "generation": game.generation,
+        "reminder": "Read agent-prompts/no_guide/tharsis-board-shape.md for full board guide",
         "globals": {
             "temperature": game.temperature,
             "oxygen": game.oxygenLevel,

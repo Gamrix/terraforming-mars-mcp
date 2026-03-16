@@ -40,6 +40,10 @@ def test_full_board_state_translates_tile_type_labels() -> None:
     )
     board_state = game_state._full_board_state(game_model)
 
+    assert (
+        board_state["reminder"]
+        == "Read agent-prompts/no_guide/tharsis-board-shape.md for full board guide"
+    )
     assert board_state["spaces"][0]["tile_type"] == "greenery"
     assert board_state["spaces"][1]["tile_type"] == "ocean"
 
