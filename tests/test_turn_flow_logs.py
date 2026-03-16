@@ -58,3 +58,18 @@ def test_extract_opponent_actions_accepts_string_player_data_type() -> None:
     )
 
     assert opponent_actions == ["John placed ocean tile at E5"]
+
+
+def test_game_log_entry_accepts_list_value_payloads() -> None:
+    entry = turn_flow.ApiGameLogEntryModel.model_validate(
+        {
+            "timestamp": 1,
+            "message": "${0} added ${1}",
+            "data": [
+                {"type": 2, "value": "blue"},
+                {"type": 3, "value": ["Livestock"]},
+            ],
+        }
+    )
+
+    assert entry.data[1].value == ["Livestock"]

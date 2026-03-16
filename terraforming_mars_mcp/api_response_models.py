@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Literal, TypeAlias
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, JsonValue as PydanticJsonValue
 
 
 class TMBaseModel(BaseModel):
@@ -92,7 +92,7 @@ class LogMessageDataAttrsModel(TMBaseModel):
 
 class LogMessageDataModel(TMBaseModel):
     type: int | str
-    value: JsonScalar
+    value: PydanticJsonValue
     attrs: LogMessageDataAttrsModel | None = None
 
 
