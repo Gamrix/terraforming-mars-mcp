@@ -89,7 +89,6 @@ def test_extract_played_cards_keeps_non_default_values(monkeypatch) -> None:
             "disabled": True,
             "tags": ["science"],
             "vp": 1,
-            "play_requirements": [{"oxygen": 8, "max": True, "count": 8}],
             "play_requirements_text": "Oxygen must be 8% or less.",
             "cost": 10,
             "discounted_cost": 7,

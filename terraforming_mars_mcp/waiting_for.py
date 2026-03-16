@@ -107,16 +107,6 @@ def _normalize_waiting_for(
     if wf.initialIdx is not None:
         normalized["initial_index"] = wf.initialIdx
 
-    if wf.min is not None or wf.max is not None:
-        amount_range: dict[str, object] = {}
-        if wf.min is not None:
-            amount_range["min"] = wf.min
-        if wf.max is not None:
-            amount_range["max"] = wf.max
-        if wf.maxByDefault is not None:
-            amount_range["max_by_default"] = wf.maxByDefault
-        normalized["amount_range"] = amount_range
-
     if wf.amount is not None:
         normalized["amount"] = wf.amount
 
@@ -138,6 +128,8 @@ def _normalize_waiting_for(
             card_selection["min"] = wf.min
         if wf.max is not None:
             card_selection["max"] = wf.max
+        if wf.maxByDefault is not None:
+            card_selection["max_by_default"] = wf.maxByDefault
         if wf.selectBlueCardAction is True:
             card_selection["select_blue_card_action"] = True
         if wf.showOnlyInLearnerMode is True:
@@ -148,6 +140,15 @@ def _normalize_waiting_for(
             normalized["card_selection"] = card_selection
         if _is_sell_patents_prompt(wf.title):
             normalized.pop("cards", None)
+    elif wf.min is not None or wf.max is not None:
+        amount_range: dict[str, object] = {}
+        if wf.min is not None:
+            amount_range["min"] = wf.min
+        if wf.max is not None:
+            amount_range["max"] = wf.max
+        if wf.maxByDefault is not None:
+            amount_range["max_by_default"] = wf.maxByDefault
+        normalized["amount_range"] = amount_range
 
     if wf.players:
         normalized["players"] = wf.players
@@ -170,7 +171,9 @@ def _normalize_waiting_for(
         normalized["pay_production"] = wf.payProduction.model_dump(exclude_none=True)
 
     if wf.paymentOptions is not None:
-        normalized["payment_options"] = wf.paymentOptions.model_dump(exclude_none=True)
+        payment_options = wf.paymentOptions.model_dump(exclude_none=True)
+        if any(payment_options.values()):
+            normalized["payment_options"] = payment_options
 
     if wf.aresData is not None:
         ares_data = wf.aresData.model_dump(exclude_none=True)

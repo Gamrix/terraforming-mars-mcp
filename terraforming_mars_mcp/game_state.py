@@ -491,7 +491,6 @@ def _detect_new_opponent_cards(
                     "tags": info.get("tags", []),
                     "ongoing_effects": info.get("ongoing_effects", []),
                     "activated_actions": info.get("activated_actions", []),
-                    "play_requirements": info.get("play_requirements", []),
                     "play_requirements_text": info.get("play_requirements_text"),
                     "on_play_effect_text": info.get("on_play_effect_text"),
                     "cost": info.get("base_cost"),
@@ -702,16 +701,22 @@ def _build_agent_state(
         session["base_url"] = base_url
 
     # Core game constants that rarely change mid-turn.
+    terraforming: dict[str, object] = {
+        "temperature": game.temperature,
+        "oxygen": game.oxygenLevel,
+        "oceans": game.oceans,
+        "terraformed": game.isTerraformed,
+    }
+    game_extra = game.model_extra or {}
+    game_options_raw = game_extra.get("gameOptions")
+    if isinstance(game_options_raw, dict):
+        expansions = game_options_raw.get("expansions")
+        if isinstance(expansions, dict) and expansions.get("venus"):
+            terraforming["venus"] = game.venusScaleLevel
     game_constants: dict[str, object] = {
         "phase": game.phase,
         "generation": generation,
-        "terraforming": {
-            "temperature": game.temperature,
-            "oxygen": game.oxygenLevel,
-            "oceans": game.oceans,
-            "venus": game.venusScaleLevel,
-            "terraformed": game.isTerraformed,
-        },
+        "terraforming": terraforming,
     }
 
     prev = _LAST_GAME_CONSTANTS.get(constants_key)
@@ -721,11 +726,14 @@ def _build_agent_state(
     _LAST_GAME_CONSTANTS[constants_key] = (generation, game_constants)
 
     game_state: dict[str, object] = {
-        "id": game_id,
         "game_age": game.gameAge,
-        "undo_count": game.undoCount,
-        "passed_players": game.passedPlayers,
     }
+    if game_id:
+        game_state["id"] = game_id
+    if game.undoCount:
+        game_state["undo_count"] = game.undoCount
+    if game.passedPlayers:
+        game_state["passed_players"] = game.passedPlayers
 
     if constants_changed:
         game_state.update(game_constants)
@@ -750,9 +758,6 @@ def _build_agent_state(
     if show_board:
         game_state["board"] = _summarize_board(game)
         game_state["board_visible"] = True
-    elif normalized_detail_level == DETAIL_LEVEL_FULL:
-        game_state["board"] = None
-        game_state["board_visible"] = False
 
     if normalized_detail_level == DETAIL_LEVEL_FULL:
         opponents_state = [summary.to_full_payload() for summary in opponents]

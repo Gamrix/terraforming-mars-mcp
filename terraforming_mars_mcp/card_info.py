@@ -344,10 +344,6 @@ def _compact_card(
         if isinstance(tags, list) and tags:
             payload["tags"] = tags
 
-        play_requirements = info.get("play_requirements")
-        if isinstance(play_requirements, list) and play_requirements:
-            payload["play_requirements"] = play_requirements
-
         play_requirements_text = info.get("play_requirements_text")
         if isinstance(play_requirements_text, str) and play_requirements_text.strip():
             payload["play_requirements_text"] = play_requirements_text
