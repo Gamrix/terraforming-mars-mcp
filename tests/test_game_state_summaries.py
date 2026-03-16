@@ -9,8 +9,16 @@ import terraforming_mars_mcp.server as server_mod
 from terraforming_mars_mcp.api_response_models import PlayerViewModel
 
 
+def _reload_server() -> Any:
+    return importlib.reload(server_mod)
+
+
+def _reload_card_info() -> Any:
+    return importlib.reload(card_info_mod)
+
+
 def test_get_game_state_surfaces_milestones_and_awards() -> None:
-    server = importlib.reload(server_mod)
+    server = _reload_server()
     player_model: dict[str, Any] = {
         "id": "player-1",
         "game": {
@@ -92,7 +100,7 @@ def test_get_game_state_surfaces_milestones_and_awards() -> None:
 
 
 def test_get_my_hand_cards_returns_cards_in_hand() -> None:
-    server = importlib.reload(server_mod)
+    server = _reload_server()
     player_model: dict[str, Any] = {
         "id": "player-1",
         "game": {
@@ -169,7 +177,7 @@ def _make_player_model(
 
 def test_game_constants_sent_on_first_call_and_omitted_on_repeat() -> None:
     """Session and game constants are sent on first call, omitted on repeat."""
-    server = importlib.reload(server_mod)
+    server = _reload_server()
     importlib.reload(game_state_mod)
 
     raw = _make_player_model(generation=4, game_age=100)
@@ -197,7 +205,7 @@ def test_game_constants_sent_on_first_call_and_omitted_on_repeat() -> None:
 
 def test_game_constants_resent_on_generation_change() -> None:
     """Constants are re-sent when the generation changes."""
-    server = importlib.reload(server_mod)
+    server = _reload_server()
     importlib.reload(game_state_mod)
 
     raw_gen4 = _make_player_model(generation=4, game_age=100)
@@ -221,7 +229,7 @@ def test_game_constants_resent_on_generation_change() -> None:
 
 def test_game_constants_resent_on_value_change_within_generation() -> None:
     """Constants are re-sent when a value changes even within the same gen."""
-    server = importlib.reload(server_mod)
+    server = _reload_server()
     importlib.reload(game_state_mod)
 
     raw = _make_player_model(generation=4, temperature=-20, game_age=100)
@@ -242,7 +250,7 @@ def test_game_constants_resent_on_value_change_within_generation() -> None:
 
 
 def test_you_summary_omitted_when_unchanged() -> None:
-    server = importlib.reload(server_mod)
+    server = _reload_server()
     importlib.reload(game_state_mod)
 
     raw = _make_player_model(generation=4, game_age=100)
@@ -259,7 +267,7 @@ def test_you_summary_omitted_when_unchanged() -> None:
 
 
 def test_opponents_summary_only_includes_changed_players() -> None:
-    server = importlib.reload(server_mod)
+    server = _reload_server()
     importlib.reload(game_state_mod)
 
     raw: dict[str, Any] = {
@@ -309,9 +317,9 @@ def test_opponents_summary_only_includes_changed_players() -> None:
 
 def test_proactive_calls_always_return_full_card_details() -> None:
     """Proactive get_game_state calls always return full card details."""
-    server = importlib.reload(server_mod)
+    server = _reload_server()
     importlib.reload(game_state_mod)
-    importlib.reload(card_info_mod)
+    _reload_card_info()
     card_info_mod._CARD_TRACKER.reset()
 
     waiting_for = {
@@ -348,7 +356,7 @@ def test_proactive_calls_always_return_full_card_details() -> None:
 def test_auto_response_returns_name_only_on_repeat() -> None:
     """Auto-returned responses reduce to name-only after first appearance."""
     importlib.reload(game_state_mod)
-    importlib.reload(card_info_mod)
+    _reload_card_info()
     card_info_mod._CARD_TRACKER.reset()
 
     waiting_for = {
@@ -380,7 +388,7 @@ def test_auto_response_returns_name_only_on_repeat() -> None:
 def test_auto_response_resends_on_warning_change() -> None:
     """Auto-returned responses re-send details when dynamic fields change."""
     importlib.reload(game_state_mod)
-    importlib.reload(card_info_mod)
+    _reload_card_info()
     card_info_mod._CARD_TRACKER.reset()
 
     wf1 = {
@@ -418,7 +426,7 @@ def test_auto_response_resends_on_warning_change() -> None:
 def test_auto_response_resets_on_new_generation() -> None:
     """Auto-returned card details reset when the generation changes."""
     importlib.reload(game_state_mod)
-    importlib.reload(card_info_mod)
+    _reload_card_info()
     card_info_mod._CARD_TRACKER.reset()
 
     waiting_for = {
@@ -449,7 +457,7 @@ def test_auto_response_includes_generation_start_context_on_new_generation(
     monkeypatch,
 ) -> None:
     importlib.reload(game_state_mod)
-    importlib.reload(card_info_mod)
+    _reload_card_info()
     card_info_mod._CARD_TRACKER.reset()
 
     def fake_card_info(
@@ -574,9 +582,9 @@ def test_auto_response_includes_generation_start_context_on_new_generation(
 
 def test_proactive_disabled_cards_return_full_details() -> None:
     """Proactive calls return full details for disabled cards with disabled flag."""
-    server = importlib.reload(server_mod)
+    server = _reload_server()
     importlib.reload(game_state_mod)
-    importlib.reload(card_info_mod)
+    _reload_card_info()
     card_info_mod._CARD_TRACKER.reset()
 
     waiting_for = {
@@ -613,7 +621,7 @@ def test_proactive_disabled_cards_return_full_details() -> None:
 def test_auto_response_disabled_cards_return_minimal_payload() -> None:
     """Auto-returned disabled cards return only name + disabled flag."""
     importlib.reload(game_state_mod)
-    importlib.reload(card_info_mod)
+    _reload_card_info()
     card_info_mod._CARD_TRACKER.reset()
 
     waiting_for = {

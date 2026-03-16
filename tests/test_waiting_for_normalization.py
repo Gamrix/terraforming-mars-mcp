@@ -8,6 +8,14 @@ import terraforming_mars_mcp.server as server_mod
 from terraforming_mars_mcp.api_response_models import WaitingForInputModel
 
 
+def _reload_server() -> Any:
+    return importlib.reload(server_mod)
+
+
+def _reload_card_info() -> Any:
+    return importlib.reload(card_info_mod)
+
+
 def _normalize_waiting_for(
     server: Any, waiting_for: Mapping[str, Any]
 ) -> dict[str, Any]:
@@ -18,7 +26,7 @@ def _normalize_waiting_for(
 
 
 def test_initial_cards_options_include_effect_text_previews() -> None:
-    server = importlib.reload(server_mod)
+    server = _reload_server()
     waiting_for = {
         "type": "initialCards",
         "title": " ",
@@ -66,7 +74,7 @@ def test_initial_cards_options_include_effect_text_previews() -> None:
 
 
 def test_waiting_for_card_lists_accept_string_card_names() -> None:
-    server = importlib.reload(server_mod)
+    server = _reload_server()
     waiting_for = {
         "type": "card",
         "title": "Select initial cards to buy",
@@ -85,7 +93,7 @@ def test_waiting_for_card_lists_accept_string_card_names() -> None:
 
 
 def test_waiting_for_card_includes_all_effect_texts_for_multi_action_cards() -> None:
-    server = importlib.reload(server_mod)
+    server = _reload_server()
     waiting_for = {
         "type": "card",
         "title": "Select initial cards to buy",
@@ -105,7 +113,7 @@ def test_waiting_for_card_includes_all_effect_texts_for_multi_action_cards() -> 
 
 
 def test_waiting_for_card_includes_all_effect_texts_for_arctic_algae() -> None:
-    server = importlib.reload(server_mod)
+    server = _reload_server()
     waiting_for = {
         "type": "card",
         "title": "Select initial cards to buy",
@@ -125,7 +133,7 @@ def test_waiting_for_card_includes_all_effect_texts_for_arctic_algae() -> None:
 
 
 def test_waiting_for_card_preserves_name_cost_and_disabled_state() -> None:
-    server = importlib.reload(server_mod)
+    server = _reload_server()
     waiting_for = {
         "type": "card",
         "title": "Standard projects",
@@ -156,8 +164,8 @@ def test_waiting_for_card_preserves_name_cost_and_disabled_state() -> None:
 
 
 def test_waiting_for_card_surfaces_base_and_discounted_cost() -> None:
-    server = importlib.reload(server_mod)
-    card_info = importlib.reload(card_info_mod)
+    server = _reload_server()
+    card_info = _reload_card_info()
     original_card_info_fn = card_info._card_info
     card_info._card_info = lambda card_name, include_play_details=False: {
         "name": card_name,
@@ -189,7 +197,7 @@ def test_waiting_for_card_surfaces_base_and_discounted_cost() -> None:
 
 
 def test_waiting_for_surfaces_warnings_and_branch_metadata() -> None:
-    server = importlib.reload(server_mod)
+    server = _reload_server()
     waiting_for = {
         "type": "or",
         "title": "Take your next action",
@@ -225,7 +233,7 @@ def test_waiting_for_surfaces_warnings_and_branch_metadata() -> None:
 
 
 def test_waiting_for_surfaces_resource_and_token_selectors() -> None:
-    server = importlib.reload(server_mod)
+    server = _reload_server()
 
     normalized_resource = _normalize_waiting_for(
         server,
@@ -265,7 +273,7 @@ def test_waiting_for_surfaces_resource_and_token_selectors() -> None:
 
 
 def test_sell_patents_omits_cards_field() -> None:
-    server = importlib.reload(server_mod)
+    server = _reload_server()
     waiting_for = {
         "type": "or",
         "title": "Take your next action",
@@ -289,7 +297,7 @@ def test_sell_patents_omits_cards_field() -> None:
 
 
 def test_undo_option_is_omitted_from_options() -> None:
-    server = importlib.reload(server_mod)
+    server = _reload_server()
     waiting_for = {
         "type": "or",
         "title": "Take your next action",

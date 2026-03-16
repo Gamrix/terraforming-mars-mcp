@@ -9,7 +9,7 @@ import terraforming_mars_mcp.server as server_mod
 from terraforming_mars_mcp.api_response_models import WaitingForInputModel
 
 
-def _reload_server():
+def _reload_server() -> Any:
     return importlib.reload(server_mod)
 
 
