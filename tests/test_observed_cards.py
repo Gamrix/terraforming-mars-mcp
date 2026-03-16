@@ -7,7 +7,9 @@ from terraforming_mars_mcp.api_response_models import PlayerViewModel
 from terraforming_mars_mcp.observed_cards import observe_player_model
 
 
-def _player_model(*, phase: str, waiting_for: dict | None, drafted_cards: list[str]) -> PlayerViewModel:
+def _player_model(
+    *, phase: str, waiting_for: dict | None, drafted_cards: list[str]
+) -> PlayerViewModel:
     return PlayerViewModel.model_validate(
         {
             "id": "player-1",
@@ -50,11 +52,17 @@ def _player_model(*, phase: str, waiting_for: dict | None, drafted_cards: list[s
 
 def test_observe_player_model_flushes_only_at_end(monkeypatch, tmp_path: Path) -> None:
     repo_root = tmp_path / "repo"
-    monkeypatch.setattr("terraforming_mars_mcp.observed_cards._REPO_OUTPUT_ROOT", repo_root)
+    monkeypatch.setattr(
+        "terraforming_mars_mcp.observed_cards._REPO_OUTPUT_ROOT", repo_root
+    )
     monkeypatch.setattr("terraforming_mars_mcp.observed_cards._IN_MEMORY_STATE", {})
     monkeypatch.setattr(
         "terraforming_mars_mcp.observed_cards.datetime",
-        type("FixedDatetime", (), {"now": staticmethod(lambda: __import__("datetime").datetime(2026, 3, 15))}),
+        type(
+            "FixedDatetime",
+            (),
+            {"now": staticmethod(lambda: __import__("datetime").datetime(2026, 3, 15))},
+        ),
     )
 
     draft_prompt = {
@@ -64,7 +72,9 @@ def test_observe_player_model_flushes_only_at_end(monkeypatch, tmp_path: Path) -
         "cards": [{"name": "Comet"}, {"name": "Research"}],
     }
     observe_player_model(
-        _player_model(phase="drafting", waiting_for=draft_prompt, drafted_cards=["Research"])
+        _player_model(
+            phase="drafting", waiting_for=draft_prompt, drafted_cards=["Research"]
+        )
     )
 
     final_path = repo_root / "2026_03_15" / "observed-cards-game-1.json"

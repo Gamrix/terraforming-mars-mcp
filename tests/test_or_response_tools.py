@@ -17,7 +17,9 @@ def _run(coro):
     return asyncio.run(coro)
 
 
-def _set_submit_capture(server, captured: dict[str, Any], result: dict[str, Any] | None = None) -> None:
+def _set_submit_capture(
+    server, captured: dict[str, Any], result: dict[str, Any] | None = None
+) -> None:
     response = {"ok": True} if result is None else result
 
     async def _submit(payload: dict[str, Any]) -> dict[str, Any]:
@@ -95,9 +97,7 @@ def test_pay_for_project_card_submits_direct_project_card_payload() -> None:
     )
     server._get_player = lambda player_id=None: SimpleNamespace(waitingFor=waiting_for)
     _set_submit_capture(server, captured)
-    result = _run(
-        server.pay_for_project_card(card_name="Noctis City", mega_credits=18)
-    )
+    result = _run(server.pay_for_project_card(card_name="Noctis City", mega_credits=18))
 
     assert result == {"ok": True}
     assert captured["type"] == "projectCard"
@@ -123,9 +123,7 @@ def test_pay_for_project_card_wraps_outer_or_menu() -> None:
     )
     server._get_player = lambda player_id=None: SimpleNamespace(waitingFor=waiting_for)
     _set_submit_capture(server, captured)
-    result = _run(
-        server.pay_for_project_card(card_name="Noctis City", mega_credits=18)
-    )
+    result = _run(server.pay_for_project_card(card_name="Noctis City", mega_credits=18))
 
     assert result == {"ok": True}
     assert captured["type"] == "or"

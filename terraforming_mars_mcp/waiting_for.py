@@ -97,7 +97,6 @@ def _normalize_waiting_for(
     normalized: dict[str, object] = {
         "input_type": _input_type_name(wf),
         "title": wf.title,
-        "button_label": wf.buttonLabel,
     }
 
     if wf.warning is not None:
@@ -195,8 +194,6 @@ def _normalize_waiting_for(
                     "title": option.title,
                     "input_type": _input_type_name(option),
                 }
-                if wf.initialIdx is not None:
-                    option_payload["is_initial"] = idx == wf.initialIdx
                 if option_detail is not None:
                     for key, value in option_detail.items():
                         if key in ("input_type", "title"):
@@ -207,7 +204,9 @@ def _normalize_waiting_for(
                 maybe_warnings = option_payload.get("warnings")
                 if isinstance(maybe_warnings, list):
                     option_warnings = [
-                        warning for warning in maybe_warnings if isinstance(warning, str)
+                        warning
+                        for warning in maybe_warnings
+                        if isinstance(warning, str)
                     ]
                 if _is_undo_option(
                     input_type=option_payload.get("input_type")

@@ -16,6 +16,7 @@ _DRAFT_TITLE_PATTERNS = (
     re.compile(r"select card\(s\) to buy", re.IGNORECASE),
 )
 
+
 def _card_name(card: CardModel | str | object) -> str | None:
     if isinstance(card, str):
         return card.strip() or None

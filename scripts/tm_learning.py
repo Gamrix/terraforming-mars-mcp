@@ -19,7 +19,9 @@ from urllib.parse import parse_qs, urlparse
 
 DATASET_DEFAULT = Path("agent-prompts/codex_from_gameplay/game-learning-dataset.jsonl")
 ROLLUP_DEFAULT = Path("agent-prompts/codex_from_gameplay/game-learning-rollup.md")
-SUMMARY_TEMPLATE_DEFAULT = Path("agent-prompts/codex_from_gameplay/game-summary-template.json")
+SUMMARY_TEMPLATE_DEFAULT = Path(
+    "agent-prompts/codex_from_gameplay/game-summary-template.json"
+)
 
 CATEGORIES = ("tr", "milestones", "awards", "greenery", "city", "card_vp")
 STRATEGIES = {"rush", "hybrid", "engine"}
@@ -50,7 +52,9 @@ def _read_dataset(path: Path) -> list[dict[str, Any]]:
             try:
                 row = json.loads(line)
             except json.JSONDecodeError as exc:
-                raise ValidationError(f"Invalid JSONL at {path}:{lineno}: {exc}") from exc
+                raise ValidationError(
+                    f"Invalid JSONL at {path}:{lineno}: {exc}"
+                ) from exc
             if not isinstance(row, dict):
                 raise ValidationError(f"Expected object at {path}:{lineno}")
             records.append(row)
@@ -154,11 +158,15 @@ def _validate_record(record: dict[str, Any]) -> None:
         )
 
     mistake_tags = record["mistake_tags"]
-    if not isinstance(mistake_tags, list) or not all(isinstance(x, str) and x for x in mistake_tags):
+    if not isinstance(mistake_tags, list) or not all(
+        isinstance(x, str) and x for x in mistake_tags
+    ):
         raise ValidationError("mistake_tags must be a list of non-empty strings")
 
     rule_updates = record["rule_updates"]
-    if not isinstance(rule_updates, list) or not all(isinstance(x, str) and x for x in rule_updates):
+    if not isinstance(rule_updates, list) or not all(
+        isinstance(x, str) and x for x in rule_updates
+    ):
         raise ValidationError("rule_updates must be a list of non-empty strings")
 
     counterfactuals = record["counterfactuals"]
@@ -168,13 +176,17 @@ def _validate_record(record: dict[str, Any]) -> None:
         if not isinstance(cf, dict):
             raise ValidationError(f"counterfactuals[{idx}] must be an object")
         if not isinstance(cf.get("change"), str) or not cf["change"]:
-            raise ValidationError(f"counterfactuals[{idx}].change must be non-empty string")
+            raise ValidationError(
+                f"counterfactuals[{idx}].change must be non-empty string"
+            )
         swing_vp_est = cf.get("swing_vp_est")
         if not isinstance(swing_vp_est, int):
             raise ValidationError(f"counterfactuals[{idx}].swing_vp_est must be an int")
         confidence = cf.get("confidence", "med")
         if confidence not in CONFIDENCE:
-            raise ValidationError(f"counterfactuals[{idx}].confidence must be in {sorted(CONFIDENCE)}")
+            raise ValidationError(
+                f"counterfactuals[{idx}].confidence must be in {sorted(CONFIDENCE)}"
+            )
 
 
 def _build_rollup(records: list[dict[str, Any]]) -> str:
@@ -187,7 +199,9 @@ def _build_rollup(records: list[dict[str, Any]]) -> str:
         lines.append("")
         return "\n".join(lines)
 
-    records_sorted = sorted(records, key=lambda r: (r.get("game_date", ""), r.get("game_id", "")))
+    records_sorted = sorted(
+        records, key=lambda r: (r.get("game_date", ""), r.get("game_id", ""))
+    )
     total_games = len(records_sorted)
     margins = [r["score"]["self"] - r["score"]["opponent"] for r in records_sorted]
     wins = sum(1 for m in margins if m > 0)
@@ -221,7 +235,8 @@ def _build_rollup(records: list[dict[str, Any]]) -> str:
     lines.append("|---|---:|")
     for cat in CATEGORIES:
         delta = statistics.fmean(
-            r["breakdown"]["self"][cat] - r["breakdown"]["opponent"][cat] for r in records_sorted
+            r["breakdown"]["self"][cat] - r["breakdown"]["opponent"][cat]
+            for r in records_sorted
         )
         lines.append(f"| {cat} | {delta:+.1f} |")
     lines.append("")
@@ -240,7 +255,9 @@ def _build_rollup(records: list[dict[str, Any]]) -> str:
         group_wins = sum(1 for m in group_margins if m > 0)
         win_rate = (100.0 * group_wins / len(group)) if group else 0.0
         avg_group_margin = statistics.fmean(group_margins) if group_margins else 0.0
-        lines.append(f"| {strategy} | {len(group)} | {win_rate:.1f}% | {avg_group_margin:+.1f} |")
+        lines.append(
+            f"| {strategy} | {len(group)} | {win_rate:.1f}% | {avg_group_margin:+.1f} |"
+        )
     lines.append("")
 
     by_opponent: dict[str, list[dict[str, Any]]] = defaultdict(list)
@@ -250,7 +267,9 @@ def _build_rollup(records: list[dict[str, Any]]) -> str:
 
     lines.append("## By Opponent")
     lines.append("")
-    lines.append("| Opponent | Games | Record (W-L-D) | Avg Margin | Avg Score (self-opp) |")
+    lines.append(
+        "| Opponent | Games | Record (W-L-D) | Avg Margin | Avg Score (self-opp) |"
+    )
     lines.append("|---|---:|---|---:|---|")
     for opponent in sorted(by_opponent):
         group = by_opponent[opponent]
@@ -290,7 +309,9 @@ def _build_rollup(records: list[dict[str, Any]]) -> str:
 
     lines.append("## Recent Games")
     lines.append("")
-    lines.append("| Date | Game ID | Opponent | Strategy | Gen | Score (self-opp) | Margin |")
+    lines.append(
+        "| Date | Game ID | Opponent | Strategy | Gen | Score (self-opp) | Margin |"
+    )
     lines.append("|---|---|---|---|---:|---|---:|")
     for rec in records_sorted[-10:]:
         margin = rec["score"]["self"] - rec["score"]["opponent"]
@@ -326,7 +347,9 @@ def cmd_init_summary(args: argparse.Namespace) -> int:
     output = args.output
     output.parent.mkdir(parents=True, exist_ok=True)
     if output.exists() and not args.force:
-        raise ValidationError(f"Output already exists: {output}. Use --force to overwrite.")
+        raise ValidationError(
+            f"Output already exists: {output}. Use --force to overwrite."
+        )
 
     with output.open("w", encoding="utf-8") as f:
         json.dump(template, f, indent=2, ensure_ascii=True)

@@ -14,7 +14,10 @@ def test_wait_for_turn_reports_progress_every_30_seconds(
 
     class FakeContext:
         async def report_progress(
-            self, progress: float, total: float | None = None, message: str | None = None
+            self,
+            progress: float,
+            total: float | None = None,
+            message: str | None = None,
         ) -> None:
             progress_updates.append((progress, total, message))
 
@@ -58,7 +61,10 @@ def test_wait_for_turn_reports_progress_every_30_seconds(
     assert refreshed is player_model
     assert opponent_actions == []
     assert [int(progress) for progress, _, _ in progress_updates] == [30, 60]
-    assert all(total == float(turn_flow.TURN_WAIT_TIMEOUT_SECONDS) for _, total, _ in progress_updates)
+    assert all(
+        total == float(turn_flow.TURN_WAIT_TIMEOUT_SECONDS)
+        for _, total, _ in progress_updates
+    )
     assert all(
         message is not None and "Waiting for opponent actions to complete" in message
         for _, _, message in progress_updates

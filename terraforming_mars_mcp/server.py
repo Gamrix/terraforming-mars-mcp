@@ -36,6 +36,7 @@ DEFAULT_LOG_FILE = os.environ.get(
     str(Path(__file__).parent / "tmp" / "terraforming-mars-mcp.log"),
 )
 
+
 def _configure_server_logging(log_level: str, log_file: str) -> Path:
     normalized_level = log_level.upper()
     if normalized_level not in {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}:
@@ -207,7 +208,7 @@ async def pay_for_project_card(
     aurorai_data: int = 0,
     graphene: int = 0,
     kuiper_asteroids: int = 0,
-    ) -> dict[str, object]:
+) -> dict[str, object]:
     """Respond to `type: projectCard`."""
     if not card_name:
         raise ValueError("card_name is required")

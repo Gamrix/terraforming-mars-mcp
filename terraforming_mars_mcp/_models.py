@@ -26,9 +26,7 @@ def _parse_card_list(value: list[str] | str | None, field_name: str) -> list[str
 
 CardListField = Annotated[
     list[str],
-    BeforeValidator(
-        lambda value, info: _parse_card_list(value, str(info.field_name))
-    ),
+    BeforeValidator(lambda value, info: _parse_card_list(value, str(info.field_name))),
 ]
 
 

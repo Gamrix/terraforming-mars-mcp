@@ -5,7 +5,9 @@ from terraforming_mars_mcp.card_info import _extract_played_cards
 
 
 def test_extract_played_cards_omits_default_values(monkeypatch) -> None:
-    def fake_card_info(card_name: str, include_play_details: bool = False) -> dict[str, object]:
+    def fake_card_info(
+        card_name: str, include_play_details: bool = False
+    ) -> dict[str, object]:
         assert include_play_details is True
         return {
             "name": card_name,
@@ -39,11 +41,13 @@ def test_extract_played_cards_omits_default_values(monkeypatch) -> None:
 
     cards = _extract_played_cards(player, include_play_details=True)
 
-    assert cards == [{"name": "Protected Habitats", "resources": 0, "cost": 12}]
+    assert cards == [{"name": "Protected Habitats", "cost": 12}]
 
 
 def test_extract_played_cards_keeps_non_default_values(monkeypatch) -> None:
-    def fake_card_info(card_name: str, include_play_details: bool = False) -> dict[str, object]:
+    def fake_card_info(
+        card_name: str, include_play_details: bool = False
+    ) -> dict[str, object]:
         assert include_play_details is True
         return {
             "name": card_name,
@@ -94,7 +98,6 @@ def test_extract_played_cards_keeps_non_default_values(monkeypatch) -> None:
                 "Effect: Something happens.",
                 "Action: Do the thing.",
             ],
-            "effect_text": "Draw a card.",
         }
     ]
 
@@ -102,7 +105,9 @@ def test_extract_played_cards_keeps_non_default_values(monkeypatch) -> None:
 def test_extract_played_card_effects_and_actions(monkeypatch) -> None:
     from terraforming_mars_mcp.card_info import _extract_played_card_effects_and_actions
 
-    def fake_card_info(card_name: str, include_play_details: bool = False) -> dict[str, object]:
+    def fake_card_info(
+        card_name: str, include_play_details: bool = False
+    ) -> dict[str, object]:
         assert include_play_details is True
         if card_name == "Media Group":
             return {
@@ -114,7 +119,9 @@ def test_extract_played_card_effects_and_actions(monkeypatch) -> None:
             return {
                 "name": card_name,
                 "ongoing_effects": [],
-                "activated_actions": ["Action: Look at the top card and either buy it or discard it."],
+                "activated_actions": [
+                    "Action: Look at the top card and either buy it or discard it."
+                ],
             }
         return {
             "name": card_name,
@@ -153,7 +160,9 @@ def test_extract_played_card_effects_and_actions(monkeypatch) -> None:
     ]
 
 
-def test_extract_played_card_effects_and_actions_omits_real_cards_without_text() -> None:
+def test_extract_played_card_effects_and_actions_omits_real_cards_without_text() -> (
+    None
+):
     from terraforming_mars_mcp.card_info import _extract_played_card_effects_and_actions
 
     player = PublicPlayerModel.model_validate(
@@ -176,10 +185,14 @@ def test_extract_played_card_effects_and_actions_omits_real_cards_without_text()
     assert summaries == [
         {
             "name": "Media Group",
-            "effect_texts": ["Effect: After you play an event card, you gain 3 M\u20ac."],
+            "effect_texts": [
+                "Effect: After you play an event card, you gain 3 M\u20ac."
+            ],
         },
         {
             "name": "Inventors' Guild",
-            "action_texts": ["Action: Look at the top card and either buy it or discard it"],
+            "action_texts": [
+                "Action: Look at the top card and either buy it or discard it"
+            ],
         },
     ]

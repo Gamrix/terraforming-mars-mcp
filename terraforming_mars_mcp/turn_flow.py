@@ -218,9 +218,7 @@ async def _wait_for_turn_from_player_model(
     this_color = player_model.thisPlayer.color
     color_to_name = _build_color_name_map(player_model)
     opponent_colors = {color for color in color_to_name if color != this_color}
-    start_logs = (
-        list(initial_logs) if initial_logs is not None else _get_game_logs()
-    )
+    start_logs = list(initial_logs) if initial_logs is not None else _get_game_logs()
 
     game_age = int(game.gameAge)
     undo_count = int(game.undoCount)

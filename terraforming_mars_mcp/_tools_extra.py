@@ -70,7 +70,9 @@ def get_my_played_cards() -> dict[str, object]:
 def get_mars_board_state(include_empty_spaces: bool = False) -> dict[str, object]:
     """Return detailed Mars board state. This is the explicit board-inspection tool."""
     player_model = _get_player()
-    return _full_board_state(player_model.game, include_empty_spaces=include_empty_spaces)
+    return _full_board_state(
+        player_model.game, include_empty_spaces=include_empty_spaces
+    )
 
 
 @mcp.tool()
@@ -225,7 +227,9 @@ async def pay_for_action(
 
 
 @mcp.tool()
-async def select_initial_cards(request: InitialCardsSelectionModel) -> dict[str, object]:
+async def select_initial_cards(
+    request: InitialCardsSelectionModel,
+) -> dict[str, object]:
     """Respond to `type: initialCards` using current waiting-for option order."""
     player_model = _get_player()
     waiting_for = player_model.waitingFor
@@ -235,7 +239,9 @@ async def select_initial_cards(request: InitialCardsSelectionModel) -> dict[str,
 
     responses: list[dict[str, JsonValue]] = []
     for option in options:
-        title_text = option.title if isinstance(option.title, str) else option.title.message
+        title_text = (
+            option.title if isinstance(option.title, str) else option.title.message
+        )
         title = title_text.lower()
         if "corporation" in title:
             cards = [request.corporation_card] if request.corporation_card else []

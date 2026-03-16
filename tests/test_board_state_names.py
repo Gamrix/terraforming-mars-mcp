@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from typing import Any
 
 import terraforming_mars_mcp.game_state as game_state
 
@@ -118,7 +117,7 @@ def test_board_summary_uses_tile_type_labels() -> None:
                     "bonus": [],
                     "tileType": 999,
                 },
-            ]
+            ],
         }
     )
     summary = game_state._summarize_board(game_model)

@@ -56,13 +56,13 @@ def test_initial_cards_options_include_effect_text_previews() -> None:
 
     assert options[0]["cards"][0]["name"] == "Helion"
     assert options[0]["cards"][0]["tags"]
-    assert options[0]["cards"][0]["effect_text"]
+    assert options[0]["cards"][0]["effect_texts"]
     assert options[1]["cards"][0]["name"] == "Business Empire"
     assert options[1]["cards"][0]["tags"]
-    assert options[1]["cards"][0]["effect_text"]
+    assert options[1]["cards"][0]["effect_texts"]
     assert options[2]["cards"][0]["name"] == "Comet"
     assert options[2]["cards"][0]["tags"]
-    assert options[2]["cards"][0]["effect_text"]
+    assert options[2]["cards"][0]["effect_texts"]
 
 
 def test_waiting_for_card_lists_accept_string_card_names() -> None:
@@ -80,8 +80,8 @@ def test_waiting_for_card_lists_accept_string_card_names() -> None:
     cards = normalized["cards"]
 
     assert [card["name"] for card in cards] == ["Helion", "Comet"]
-    assert cards[0]["effect_text"]
-    assert cards[1]["effect_text"]
+    assert cards[0]["effect_texts"]
+    assert cards[1]["effect_texts"]
 
 
 def test_waiting_for_card_includes_all_effect_texts_for_multi_action_cards() -> None:
@@ -98,7 +98,6 @@ def test_waiting_for_card_includes_all_effect_texts_for_multi_action_cards() -> 
     normalized = _normalize_waiting_for(server, waiting_for)
     card = normalized["cards"][0]
 
-    assert card["effect_text"] == "Action: Add 1 microbe to this card."
     assert card["effect_texts"] == [
         "Action: Add 1 microbe to this card.",
         "Action: Remove 2 microbes from this card to raise oxygen level 1 step.",
@@ -119,7 +118,6 @@ def test_waiting_for_card_includes_all_effect_texts_for_arctic_algae() -> None:
     normalized = _normalize_waiting_for(server, waiting_for)
     card = normalized["cards"][0]
 
-    assert card["effect_text"] == "It must be -12 C or colder to play. Gain 1 plant."
     assert card["effect_texts"] == [
         "It must be -12 C or colder to play. Gain 1 plant.",
         "Effect: When anyone places an ocean tile, gain 2 plants.",
@@ -220,8 +218,9 @@ def test_waiting_for_surfaces_warnings_and_branch_metadata() -> None:
 
     assert normalized["warning"] == "Some context warning"
     assert normalized["initial_index"] == 1
-    assert normalized["options"][0]["is_initial"] is False
-    assert normalized["options"][1]["is_initial"] is True
+    assert "is_initial" not in normalized["options"][0]
+    assert "is_initial" not in normalized["options"][1]
+    assert normalized["initial_index"] == 1
     assert normalized["options"][1]["warnings"] == ["pass"]
 
 

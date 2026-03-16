@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass
-from typing import Literal, TypedDict
+from typing import Literal, NotRequired, TypedDict
 
 from .api_response_models import (
     GameModel as ApiGameModel,
@@ -111,10 +111,10 @@ class _MilestoneScorePayload(TypedDict):
 class _MilestonePayload(TypedDict):
     name: str
     status: Literal["claimed", "available"]
-    owner_color: str | None
-    owner_name: str | None
-    scores: list[_MilestoneScorePayload]
-    claimable_by: list[str]
+    owner_color: NotRequired[str]
+    owner_name: NotRequired[str]
+    scores: NotRequired[list[_MilestoneScorePayload]]
+    claimable_by: NotRequired[list[str]]
 
 
 class _AwardScorePayload(TypedDict):
@@ -125,9 +125,10 @@ class _AwardScorePayload(TypedDict):
 class _AwardPayload(TypedDict):
     name: str
     status: Literal["funded", "unfunded"]
-    funder_color: str | None
-    funder_name: str | None
-    scores: list[_AwardScorePayload]
+    funder_color: NotRequired[str]
+    funder_name: NotRequired[str]
+    scores: NotRequired[list[_AwardScorePayload]]
+
 
 _TILE_TYPE_LABELS = (
     "greenery",
@@ -306,16 +307,16 @@ def _summarize_milestones(game: ApiGameModel) -> list[_MilestonePayload]:
             if score.claimable is True:
                 claimable_by.append(score.color)
 
-        summarized.append(
-            {
-                "name": milestone.name,
-                "status": status,
-                "owner_color": owner_color,
-                "owner_name": owner_name,
-                "scores": scores,
-                "claimable_by": claimable_by,
-            }
-        )
+        entry: _MilestonePayload = {"name": milestone.name, "status": status}
+        if owner_color is not None:
+            entry["owner_color"] = owner_color
+        if owner_name is not None:
+            entry["owner_name"] = owner_name
+        if scores:
+            entry["scores"] = scores
+        if claimable_by:
+            entry["claimable_by"] = claimable_by
+        summarized.append(entry)
     return summarized
 
 
@@ -332,15 +333,14 @@ def _summarize_awards(game: ApiGameModel) -> list[_AwardPayload]:
         for score in award.scores or []:
             scores.append({"color": score.color, "score": score.score})
 
-        summarized.append(
-            {
-                "name": award.name,
-                "status": status,
-                "funder_color": funder_color,
-                "funder_name": funder_name,
-                "scores": scores,
-            }
-        )
+        award_entry: _AwardPayload = {"name": award.name, "status": status}
+        if funder_color is not None:
+            award_entry["funder_color"] = funder_color
+        if funder_name is not None:
+            award_entry["funder_name"] = funder_name
+        if scores:
+            award_entry["scores"] = scores
+        summarized.append(award_entry)
     return summarized
 
 
@@ -717,9 +717,7 @@ def _build_agent_state(
     prev = _LAST_GAME_CONSTANTS.get(constants_key)
     prev_gen, prev_constants = prev if prev is not None else (None, None)
     # Send full constants on first call, generation change, or value change.
-    constants_changed = (
-        prev_gen != generation or prev_constants != game_constants
-    )
+    constants_changed = prev_gen != generation or prev_constants != game_constants
     _LAST_GAME_CONSTANTS[constants_key] = (generation, game_constants)
 
     game_state: dict[str, object] = {
@@ -801,7 +799,11 @@ def _build_agent_state(
         generation=generation,
         auto_response=auto_response,
     )
-    if auto_response and normalized_detail_level == DETAIL_LEVEL_FULL and prev_gen != generation:
+    if (
+        auto_response
+        and normalized_detail_level == DETAIL_LEVEL_FULL
+        and prev_gen != generation
+    ):
         result["generation_start"] = _generation_start_context(player_model)
     result["suggested_tools"] = _action_tools_for_input_type(input_type)
     result["opponent_card_events"] = opponent_card_events

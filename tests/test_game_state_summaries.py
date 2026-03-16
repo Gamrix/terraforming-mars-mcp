@@ -331,7 +331,7 @@ def test_proactive_calls_always_return_full_card_details() -> None:
     card1 = state1["waiting_for"]["cards"][0]
     assert card1["name"] == "Comet"
     assert "tags" in card1
-    assert "effect_text" in card1
+    assert "effect_texts" in card1
 
     # Second proactive call same gen: still full details (proactive = no caching).
     raw2 = _make_player_model(generation=4, game_age=101, waiting_for=waiting_for)
@@ -342,7 +342,7 @@ def test_proactive_calls_always_return_full_card_details() -> None:
     card2 = state2["waiting_for"]["cards"][0]
     assert card2["name"] == "Comet"
     assert "tags" in card2
-    assert "effect_text" in card2
+    assert "effect_texts" in card2
 
 
 def test_auto_response_returns_name_only_on_repeat() -> None:
@@ -367,7 +367,7 @@ def test_auto_response_returns_name_only_on_repeat() -> None:
     card1 = state1["waiting_for"]["cards"][0]
     assert card1["name"] == "Comet"
     assert "tags" in card1
-    assert "effect_text" in card1
+    assert "effect_texts" in card1
 
     # Second auto-response same gen: name only.
     raw2 = _make_player_model(generation=4, game_age=101, waiting_for=waiting_for)
@@ -442,7 +442,7 @@ def test_auto_response_resets_on_new_generation() -> None:
     card = state["waiting_for"]["cards"][0]
     assert card["name"] == "Comet"
     assert "tags" in card
-    assert "effect_text" in card
+    assert "effect_texts" in card
 
 
 def test_auto_response_includes_generation_start_context_on_new_generation(
@@ -452,7 +452,9 @@ def test_auto_response_includes_generation_start_context_on_new_generation(
     importlib.reload(card_info_mod)
     card_info_mod._CARD_TRACKER.reset()
 
-    def fake_card_info(card_name: str, include_play_details: bool = False) -> dict[str, object]:
+    def fake_card_info(
+        card_name: str, include_play_details: bool = False
+    ) -> dict[str, object]:
         assert include_play_details is True
         if card_name == "Comet":
             return {

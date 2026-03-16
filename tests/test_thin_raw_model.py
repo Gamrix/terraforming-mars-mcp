@@ -14,8 +14,15 @@ def _make_raw_model(
 ) -> dict[str, Any]:
     """Build a minimal raw model_dump structure for testing."""
     if expansions is None:
-        expansions = {"corpera": True, "venus": False, "moon": False, "colonies": False,
-                      "turmoil": False, "underworld": False, "pathfinders": False}
+        expansions = {
+            "corpera": True,
+            "venus": False,
+            "moon": False,
+            "colonies": False,
+            "turmoil": False,
+            "underworld": False,
+            "pathfinders": False,
+        }
     player: dict[str, Any] = {
         "name": "Alice",
         "color": "red",
@@ -31,13 +38,24 @@ def _make_raw_model(
         "influence": 0,
         "underworldData": {"corruption": 0, "tokens": []},
         "globalParameterSteps": {
-            "oceans": 3, "oxygen": 5, "temperature": 8,
-            "venus": 0, "moon-habitat": 0, "moon-mining": 0, "moon-logistics": 0,
+            "oceans": 3,
+            "oxygen": 5,
+            "temperature": 8,
+            "venus": 0,
+            "moon-habitat": 0,
+            "moon-mining": 0,
+            "moon-logistics": 0,
         },
         "victoryPointsBreakdown": {
-            "terraformRating": 30, "milestones": 0, "awards": 0,
-            "greenery": 4, "city": 6, "total": 40,
-            "moonHabitats": 0, "moonMines": 0, "moonRoads": 0,
+            "terraformRating": 30,
+            "milestones": 0,
+            "awards": 0,
+            "greenery": 4,
+            "city": 6,
+            "total": 40,
+            "moonHabitats": 0,
+            "moonMines": 0,
+            "moonRoads": 0,
             "planetaryTracks": 0,
             "detailsCards": [{"cardName": "Card B", "victoryPoint": 2}],
             "detailsMilestones": [],
@@ -115,10 +133,17 @@ def test_disabled_expansion_fields_stripped() -> None:
 
 
 def test_enabled_expansion_fields_kept() -> None:
-    raw = _make_raw_model(expansions={
-        "corpera": True, "venus": True, "moon": True, "colonies": True,
-        "turmoil": True, "underworld": True, "pathfinders": True,
-    })
+    raw = _make_raw_model(
+        expansions={
+            "corpera": True,
+            "venus": True,
+            "moon": True,
+            "colonies": True,
+            "turmoil": True,
+            "underworld": True,
+            "pathfinders": True,
+        }
+    )
     result = _thin_raw_player_model(raw, this_color="red")
     player = result["players"][0]
     assert "coloniesCount" in player
@@ -175,24 +200,36 @@ def test_empty_self_replicating_robots_stripped() -> None:
 
 
 def test_nonempty_self_replicating_robots_kept() -> None:
-    raw = _make_raw_model(player_extras={
-        "selfReplicatingRobotsCards": [{"name": "Something"}],
-    })
+    raw = _make_raw_model(
+        player_extras={
+            "selfReplicatingRobotsCards": [{"name": "Something"}],
+        }
+    )
     result = _thin_raw_player_model(raw, this_color="red")
     assert result["players"][0]["selfReplicatingRobotsCards"] == [{"name": "Something"}]
 
 
 def test_all_off_protected_resources_stripped() -> None:
-    raw = _make_raw_model(player_extras={
-        "protectedResources": {
-            "megacredits": "off", "steel": "off", "titanium": "off",
-            "plants": "off", "energy": "off", "heat": "off",
-        },
-        "protectedProduction": {
-            "megacredits": "off", "steel": "off", "titanium": "off",
-            "plants": "off", "energy": "off", "heat": "off",
-        },
-    })
+    raw = _make_raw_model(
+        player_extras={
+            "protectedResources": {
+                "megacredits": "off",
+                "steel": "off",
+                "titanium": "off",
+                "plants": "off",
+                "energy": "off",
+                "heat": "off",
+            },
+            "protectedProduction": {
+                "megacredits": "off",
+                "steel": "off",
+                "titanium": "off",
+                "plants": "off",
+                "energy": "off",
+                "heat": "off",
+            },
+        }
+    )
     result = _thin_raw_player_model(raw, this_color="red")
     player = result["players"][0]
     assert "protectedResources" not in player
@@ -200,16 +237,26 @@ def test_all_off_protected_resources_stripped() -> None:
 
 
 def test_protected_resources_kept_when_some_on() -> None:
-    raw = _make_raw_model(player_extras={
-        "protectedResources": {
-            "megacredits": "off", "steel": "off", "titanium": "off",
-            "plants": "on", "energy": "off", "heat": "off",
-        },
-        "protectedProduction": {
-            "megacredits": "off", "steel": "off", "titanium": "off",
-            "plants": "off", "energy": "off", "heat": "off",
-        },
-    })
+    raw = _make_raw_model(
+        player_extras={
+            "protectedResources": {
+                "megacredits": "off",
+                "steel": "off",
+                "titanium": "off",
+                "plants": "on",
+                "energy": "off",
+                "heat": "off",
+            },
+            "protectedProduction": {
+                "megacredits": "off",
+                "steel": "off",
+                "titanium": "off",
+                "plants": "off",
+                "energy": "off",
+                "heat": "off",
+            },
+        }
+    )
     result = _thin_raw_player_model(raw, this_color="red")
     player = result["players"][0]
     assert "protectedResources" in player
@@ -217,28 +264,42 @@ def test_protected_resources_kept_when_some_on() -> None:
 
 
 def test_victory_points_by_generation_stripped_mid_game() -> None:
-    raw = _make_raw_model(phase="action", player_extras={
-        "victoryPointsByGeneration": [20, 22, 25, 30],
-    })
+    raw = _make_raw_model(
+        phase="action",
+        player_extras={
+            "victoryPointsByGeneration": [20, 22, 25, 30],
+        },
+    )
     result = _thin_raw_player_model(raw, this_color="red")
     assert "victoryPointsByGeneration" not in result["players"][0]
 
 
 def test_victory_points_by_generation_kept_at_end() -> None:
-    raw = _make_raw_model(phase="end", player_extras={
-        "victoryPointsByGeneration": [20, 22, 25, 30],
-    })
+    raw = _make_raw_model(
+        phase="end",
+        player_extras={
+            "victoryPointsByGeneration": [20, 22, 25, 30],
+        },
+    )
     result = _thin_raw_player_model(raw, this_color="red")
     assert result["players"][0]["victoryPointsByGeneration"] == [20, 22, 25, 30]
 
 
 def test_zero_valued_tags_stripped() -> None:
-    raw = _make_raw_model(player_extras={
-        "tags": {
-            "building": 10, "space": 5, "science": 4,
-            "venus": 0, "moon": 0, "mars": 0, "crime": 0, "clone": 0,
-        },
-    })
+    raw = _make_raw_model(
+        player_extras={
+            "tags": {
+                "building": 10,
+                "space": 5,
+                "science": 4,
+                "venus": 0,
+                "moon": 0,
+                "mars": 0,
+                "crime": 0,
+                "clone": 0,
+            },
+        }
+    )
     result = _thin_raw_player_model(raw, this_color="red")
     tags = result["players"][0]["tags"]
     assert tags == {"building": 10, "space": 5, "science": 4}
@@ -247,8 +308,10 @@ def test_zero_valued_tags_stripped() -> None:
 
 
 def test_all_nonzero_tags_kept() -> None:
-    raw = _make_raw_model(player_extras={
-        "tags": {"building": 3, "space": 1},
-    })
+    raw = _make_raw_model(
+        player_extras={
+            "tags": {"building": 3, "space": 1},
+        }
+    )
     result = _thin_raw_player_model(raw, this_color="red")
     assert result["players"][0]["tags"] == {"building": 3, "space": 1}

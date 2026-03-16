@@ -332,7 +332,7 @@ def _compact_card(
         payload["warning"] = warning
     if isinstance(warnings, list) and warnings:
         payload["warnings"] = warnings
-    if resources is not None:
+    if resources is not None and resources != 0:
         payload["resources"] = resources
     vp = info.get("vp")
     if vp is not None:
@@ -355,10 +355,6 @@ def _compact_card(
         effect_texts = _all_effect_texts(info)
         if effect_texts:
             payload["effect_texts"] = effect_texts
-
-        effect_text = _best_effect_text(info)
-        if isinstance(effect_text, str) and effect_text.strip():
-            payload["effect_text"] = effect_text
 
     return payload
 
