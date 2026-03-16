@@ -243,6 +243,38 @@ def _build_rollup(records: list[dict[str, Any]]) -> str:
         lines.append(f"| {strategy} | {len(group)} | {win_rate:.1f}% | {avg_group_margin:+.1f} |")
     lines.append("")
 
+    by_opponent: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for rec in records_sorted:
+        opponent = rec.get("opponent_player", "Unknown")
+        by_opponent[opponent].append(rec)
+
+    lines.append("## By Opponent")
+    lines.append("")
+    lines.append("| Opponent | Games | Record (W-L-D) | Avg Margin | Avg Score (self-opp) |")
+    lines.append("|---|---:|---|---:|---|")
+    for opponent in sorted(by_opponent):
+        group = by_opponent[opponent]
+        group_margins = [r["score"]["self"] - r["score"]["opponent"] for r in group]
+        group_wins = sum(1 for m in group_margins if m > 0)
+        group_losses = sum(1 for m in group_margins if m < 0)
+        group_draws = len(group) - group_wins - group_losses
+        avg_group_margin = statistics.fmean(group_margins) if group_margins else 0.0
+        avg_group_self = statistics.fmean(r["score"]["self"] for r in group)
+        avg_group_opp = statistics.fmean(r["score"]["opponent"] for r in group)
+        lines.append(
+            "| {opponent} | {games} | {wins}-{losses}-{draws} | {margin:+.1f} | {self_score:.1f}-{opp_score:.1f} |".format(
+                opponent=opponent,
+                games=len(group),
+                wins=group_wins,
+                losses=group_losses,
+                draws=group_draws,
+                margin=avg_group_margin,
+                self_score=avg_group_self,
+                opp_score=avg_group_opp,
+            )
+        )
+    lines.append("")
+
     mistake_counter: Counter[str] = Counter()
     for rec in records_sorted:
         mistake_counter.update(rec.get("mistake_tags", []))
@@ -258,14 +290,15 @@ def _build_rollup(records: list[dict[str, Any]]) -> str:
 
     lines.append("## Recent Games")
     lines.append("")
-    lines.append("| Date | Game ID | Strategy | Gen | Score (self-opp) | Margin |")
-    lines.append("|---|---|---|---:|---|---:|")
+    lines.append("| Date | Game ID | Opponent | Strategy | Gen | Score (self-opp) | Margin |")
+    lines.append("|---|---|---|---|---:|---|---:|")
     for rec in records_sorted[-10:]:
         margin = rec["score"]["self"] - rec["score"]["opponent"]
         lines.append(
-            "| {date} | {gid} | {strategy} | {gen} | {s}-{o} | {m:+d} |".format(
+            "| {date} | {gid} | {opponent} | {strategy} | {gen} | {s}-{o} | {m:+d} |".format(
                 date=rec["game_date"],
                 gid=rec["game_id"],
+                opponent=rec.get("opponent_player", "Unknown"),
                 strategy=rec["planned_strategy"],
                 gen=rec["finish_generation"],
                 s=rec["score"]["self"],

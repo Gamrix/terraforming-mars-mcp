@@ -1,0 +1,142 @@
+{
+  "game_date": "2026-03-15",
+  "game_url": "http://localhost:8080/player?id=pe9b969c7d069",
+  "game_id": "pe9b969c7d069",
+  "board": "tharsis",
+  "self_player": "Codex",
+  "opponent_player": "Claude",
+  "self_corp": "Cheung Shing MARS",
+  "opponent_corp": "Point Luna",
+  "planned_strategy": "hybrid",
+  "pivot_generation": 8,
+  "macro_call_specific": true,
+  "finish_generation": 12,
+  "score": {
+    "self": 101,
+    "opponent": 99
+  },
+  "breakdown": {
+    "self": {
+      "tr": 48,
+      "milestones": 5,
+      "awards": 10,
+      "greenery": 8,
+      "city": 16,
+      "card_vp": 14
+    },
+    "opponent": {
+      "tr": 49,
+      "milestones": 10,
+      "awards": 5,
+      "greenery": 10,
+      "city": 0,
+      "card_vp": 25
+    }
+  },
+  "opponent_engine_tags": [
+    "earth",
+    "space",
+    "titanium",
+    "action-economy",
+    "plant",
+    "jovian"
+  ],
+  "forecast": {
+    "generation": 8,
+    "self": {
+      "tr": 44,
+      "awards": 10,
+      "greenery": 7,
+      "city": 14,
+      "card_vp": 12
+    },
+    "opponent": {
+      "tr": 46,
+      "awards": 5,
+      "greenery": 8,
+      "city": 0,
+      "card_vp": 20
+    },
+    "miss_summary": "The forecast correctly identified a city-plus-awards win path, but it still understated Claude's late greenery and card-VP cleanup from action cards and final generation liquidation."
+  },
+  "mistake_tags": [
+    "vp_ceiling_miscalculated",
+    "opponent_engine_underrated",
+    "inefficient_city_placement"
+  ],
+  "key_turning_points": [
+    {
+      "generation": 6,
+      "title": "Mass Converter plus Big Asteroid and Comet created the tempo and denial window needed for a tight finish",
+      "impact_vp_est": 8
+    },
+    {
+      "generation": 7,
+      "title": "Cupola City plus Scientist and Thermalist funding established a real city-award win condition",
+      "impact_vp_est": 9
+    },
+    {
+      "generation": 12,
+      "title": "Immigrant City, Imported Nitrogen, Underground City, and double greenery liquidation produced the winning swing",
+      "impact_vp_est": 14
+    }
+  ],
+  "counterfactuals": [
+    {
+      "change": "Precompute all legal adjacency-maximizing city placements before paying for the decisive Gen 12 city cards",
+      "swing_vp_est": 3,
+      "confidence": "med"
+    },
+    {
+      "change": "Treat Claude's sustained blue-card action economy as a closure alarm one generation earlier and convert one extra action into board VP",
+      "swing_vp_est": 4,
+      "confidence": "med"
+    },
+    {
+      "change": "Convert one low-impact midgame setup action into earlier direct VP so the game does not rely on near-perfect Gen 12 liquidation",
+      "swing_vp_est": 3,
+      "confidence": "low"
+    }
+  ],
+  "rule_updates": [
+    "If the opponent is Claude, then classify the live engine directly instead of reusing John's science-discount alarm thresholds.",
+    "If a late city line is likely to decide the game, then inspect legal city spaces before paying for the card.",
+    "If terraforming completes during the action phase, then script the remaining actions and final greenery placement before passing."
+  ],
+  "active_hypotheses": [
+    {
+      "hypothesis": "Earlier explicit macro calls reduce hybrid drift and improve late conversion quality.",
+      "result": "The game had a clear macro path and materially cleaner endgame execution than the older losses.",
+      "status": "strengthened"
+    },
+    {
+      "hypothesis": "Early city anchors can offset a card-VP deficit if the finish is forced tightly enough.",
+      "result": "We still lost card VP badly, but the city delta was the main reason the final score swung in our favor.",
+      "status": "strengthened"
+    },
+    {
+      "hypothesis": "Continuing actions after terraforming completion changes close-game outcomes.",
+      "result": "The post-terraform action sequence and final greenery in Gen 12 were directly outcome-relevant.",
+      "status": "strengthened"
+    }
+  ],
+  "endgame_review": {
+    "liquidation_plan_written": true,
+    "post_terraform_actions_checked": true,
+    "stranded_resources": [
+      "MC",
+      "steel",
+      "heat"
+    ],
+    "best_missed_conversion": "The remaining edge was better city-placement quality, not another cash-to-VP line after the final greenery sequence."
+  },
+  "tool_mismatches": [
+    {
+      "tool": "choose_or_option",
+      "expected": "A direct greenery-space submit should work from the greenery prompt.",
+      "actual": "The first greenery placement failed because the prompt still required the enclosing or-response shape.",
+      "mitigation": "When waiting_for.input_type is or, route nested space placement through the or wrapper before retrying."
+    }
+  ],
+  "postmortem_path": "agent-prompts/agent_game_notes/2026_03_15/postmortem-localhost-pe9b969c7d069.md"
+}
