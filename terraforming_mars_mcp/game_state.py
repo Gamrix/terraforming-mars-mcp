@@ -10,7 +10,13 @@ from .api_response_models import (
     PublicPlayerModel as ApiPublicPlayerModel,
 )
 from ._enums import _action_tools_for_input_type
-from .card_info import DETAIL_LEVEL_FULL, _card_info, _normalize_detail_level
+from .card_info import (
+    DETAIL_LEVEL_FULL,
+    _card_info,
+    _compact_cards,
+    _extract_played_card_effects_and_actions,
+    _normalize_detail_level,
+)
 from .waiting_for import _input_type_name, _normalize_waiting_for
 
 END_OF_GENERATION_PHASES = {"production", "solar", "intergeneration", "end"}
@@ -240,6 +246,22 @@ def _summarize_players(
             others.append(summary)
 
     return (you or _player_summary(this_player)), others
+
+
+def _generation_start_context(player_model: ApiPlayerViewModel) -> dict[str, object]:
+    cards_in_hand = _compact_cards(
+        player_model.cardsInHand,
+        detail_level=DETAIL_LEVEL_FULL,
+        generation=player_model.game.generation,
+        auto_response=False,
+    )
+    return {
+        "cards_in_hand_count": len(cards_in_hand),
+        "cards_in_hand": cards_in_hand,
+        "played_card_effects_and_actions": _extract_played_card_effects_and_actions(
+            player_model.thisPlayer
+        ),
+    }
 
 
 def _summarize_board(game: ApiGameModel) -> dict[str, object]:
@@ -779,6 +801,8 @@ def _build_agent_state(
         generation=generation,
         auto_response=auto_response,
     )
+    if auto_response and normalized_detail_level == DETAIL_LEVEL_FULL and prev_gen != generation:
+        result["generation_start"] = _generation_start_context(player_model)
     result["suggested_tools"] = _action_tools_for_input_type(input_type)
     result["opponent_card_events"] = opponent_card_events
 

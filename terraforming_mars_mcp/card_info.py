@@ -416,3 +416,44 @@ def _extract_played_cards(
                 )
             )
     return cards
+
+
+def _extract_played_card_effects_and_actions(
+    player: ApiPublicPlayerModel | dict[str, object],
+) -> list[dict[str, object]]:
+    parsed_player = (
+        player
+        if isinstance(player, ApiPublicPlayerModel)
+        else ApiPublicPlayerModel.model_validate(player)
+    )
+    tableau = parsed_player.tableau
+    summaries: list[dict[str, object]] = []
+
+    def _normalized_texts(values: object) -> list[str]:
+        if not isinstance(values, list):
+            return []
+        texts: list[str] = []
+        for value in values:
+            if not isinstance(value, str):
+                continue
+            normalized = value.strip()
+            if normalized:
+                texts.append(normalized)
+        return texts
+
+    if isinstance(tableau, list):
+        for card in tableau:
+            info = _card_info(card.name, include_play_details=True)
+            effect_texts = _normalized_texts(info.get("ongoing_effects"))
+            action_texts = _normalized_texts(info.get("activated_actions"))
+            if not effect_texts and not action_texts:
+                continue
+
+            summary: dict[str, object] = {"name": card.name}
+            if effect_texts:
+                summary["effect_texts"] = effect_texts
+            if action_texts:
+                summary["action_texts"] = action_texts
+            summaries.append(summary)
+
+    return summaries

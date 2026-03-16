@@ -97,3 +97,89 @@ def test_extract_played_cards_keeps_non_default_values(monkeypatch) -> None:
             "effect_text": "Draw a card.",
         }
     ]
+
+
+def test_extract_played_card_effects_and_actions(monkeypatch) -> None:
+    from terraforming_mars_mcp.card_info import _extract_played_card_effects_and_actions
+
+    def fake_card_info(card_name: str, include_play_details: bool = False) -> dict[str, object]:
+        assert include_play_details is True
+        if card_name == "Media Group":
+            return {
+                "name": card_name,
+                "ongoing_effects": ["Effect: Gain 3 MC when you play an event card."],
+                "activated_actions": [],
+            }
+        if card_name == "Inventors' Guild":
+            return {
+                "name": card_name,
+                "ongoing_effects": [],
+                "activated_actions": ["Action: Look at the top card and either buy it or discard it."],
+            }
+        return {
+            "name": card_name,
+            "ongoing_effects": [],
+            "activated_actions": [],
+        }
+
+    monkeypatch.setattr("terraforming_mars_mcp.card_info._card_info", fake_card_info)
+
+    player = PublicPlayerModel.model_validate(
+        {
+            "name": "John",
+            "color": "blue",
+            "isActive": False,
+            "tableau": [
+                {"name": "Media Group"},
+                {"name": "Inventors' Guild"},
+                {"name": "Bushes"},
+            ],
+        }
+    )
+
+    summaries = _extract_played_card_effects_and_actions(player)
+
+    assert summaries == [
+        {
+            "name": "Media Group",
+            "effect_texts": ["Effect: Gain 3 MC when you play an event card."],
+        },
+        {
+            "name": "Inventors' Guild",
+            "action_texts": [
+                "Action: Look at the top card and either buy it or discard it."
+            ],
+        },
+    ]
+
+
+def test_extract_played_card_effects_and_actions_omits_real_cards_without_text() -> None:
+    from terraforming_mars_mcp.card_info import _extract_played_card_effects_and_actions
+
+    player = PublicPlayerModel.model_validate(
+        {
+            "name": "John",
+            "color": "blue",
+            "isActive": False,
+            "tableau": [
+                {"name": "Media Group"},
+                {"name": "Inventors' Guild"},
+                {"name": "Bushes"},
+                {"name": "Comet"},
+                {"name": "Industrial Microbes"},
+            ],
+        }
+    )
+
+    summaries = _extract_played_card_effects_and_actions(player)
+
+    assert summaries == [
+        {
+            "name": "Media Group",
+            "effect_texts": ["Effect: After you play an event card, you gain 3 M\u20ac."],
+        },
+        {
+            "name": "Inventors' Guild",
+            "action_texts": ["Action: Look at the top card and either buy it or discard it"],
+        },
+    ]

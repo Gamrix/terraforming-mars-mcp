@@ -132,7 +132,13 @@ def _make_player_model(
     game_age: int = 123,
     phase: str = "action",
     waiting_for: dict[str, Any] | None = None,
+    cards_in_hand: list[dict[str, Any]] | None = None,
+    tableau: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
+    player: dict[str, Any] = {"name": "Alice", "color": "red", "isActive": True}
+    if tableau is not None:
+        player["tableau"] = tableau
+
     model: dict[str, Any] = {
         "id": "player-1",
         "game": {
@@ -151,13 +157,13 @@ def _make_player_model(
             "milestones": [],
             "awards": [],
         },
-        "players": [
-            {"name": "Alice", "color": "red", "isActive": True},
-        ],
-        "thisPlayer": {"name": "Alice", "color": "red", "isActive": True},
+        "players": [player],
+        "thisPlayer": dict(player),
     }
     if waiting_for is not None:
         model["waitingFor"] = waiting_for
+    if cards_in_hand is not None:
+        model["cardsInHand"] = cards_in_hand
     return model
 
 
@@ -437,6 +443,131 @@ def test_auto_response_resets_on_new_generation() -> None:
     assert card["name"] == "Comet"
     assert "tags" in card
     assert "effect_text" in card
+
+
+def test_auto_response_includes_generation_start_context_on_new_generation(
+    monkeypatch,
+) -> None:
+    importlib.reload(game_state_mod)
+    importlib.reload(card_info_mod)
+    card_info_mod._CARD_TRACKER.reset()
+
+    def fake_card_info(card_name: str, include_play_details: bool = False) -> dict[str, object]:
+        assert include_play_details is True
+        if card_name == "Comet":
+            return {
+                "name": card_name,
+                "tags": ["space"],
+                "ongoing_effects": [],
+                "activated_actions": [],
+                "play_requirements": [],
+                "play_requirements_text": None,
+                "on_play_effect_text": "Raise temperature 1 step.",
+                "base_cost": 21,
+            }
+        if card_name == "Asteroid":
+            return {
+                "name": card_name,
+                "tags": ["space", "event"],
+                "ongoing_effects": [],
+                "activated_actions": [],
+                "play_requirements": [],
+                "play_requirements_text": None,
+                "on_play_effect_text": "Raise temperature 2 steps.",
+                "base_cost": 14,
+            }
+        if card_name == "Media Group":
+            return {
+                "name": card_name,
+                "tags": ["earth"],
+                "ongoing_effects": ["Effect: Gain 3 MC when you play an event card."],
+                "activated_actions": [],
+                "play_requirements": [],
+                "play_requirements_text": None,
+                "on_play_effect_text": None,
+                "base_cost": 6,
+            }
+        if card_name == "Inventors' Guild":
+            return {
+                "name": card_name,
+                "tags": ["science"],
+                "ongoing_effects": [],
+                "activated_actions": [
+                    "Action: Look at the top card and either buy it or discard it."
+                ],
+                "play_requirements": [],
+                "play_requirements_text": None,
+                "on_play_effect_text": None,
+                "base_cost": 9,
+            }
+        return {
+            "name": card_name,
+            "tags": [],
+            "ongoing_effects": [],
+            "activated_actions": [],
+            "play_requirements": [],
+            "play_requirements_text": None,
+            "on_play_effect_text": None,
+            "base_cost": 0,
+        }
+
+    monkeypatch.setattr("terraforming_mars_mcp.card_info._card_info", fake_card_info)
+
+    raw4 = _make_player_model(generation=4, game_age=100)
+    player_view4 = PlayerViewModel.model_validate(raw4)
+    game_state_mod._build_agent_state(player_view4, auto_response=True)
+
+    raw5 = _make_player_model(
+        generation=5,
+        game_age=200,
+        cards_in_hand=[
+            {"name": "Comet", "calculatedCost": 21},
+            {"name": "Asteroid", "calculatedCost": 14},
+        ],
+        tableau=[
+            {"name": "Media Group", "calculatedCost": 6},
+            {"name": "Inventors' Guild", "calculatedCost": 9},
+        ],
+    )
+    player_view5 = PlayerViewModel.model_validate(raw5)
+    state = game_state_mod._build_agent_state(player_view5, auto_response=True)
+
+    generation_start = state["generation_start"]
+    assert generation_start["cards_in_hand_count"] == 2
+    assert [card["name"] for card in generation_start["cards_in_hand"]] == [
+        "Comet",
+        "Asteroid",
+    ]
+    assert generation_start["played_card_effects_and_actions"] == [
+        {
+            "name": "Media Group",
+            "effect_texts": ["Effect: Gain 3 MC when you play an event card."],
+        },
+        {
+            "name": "Inventors' Guild",
+            "action_texts": [
+                "Action: Look at the top card and either buy it or discard it."
+            ],
+        },
+    ]
+
+    raw5_repeat = _make_player_model(
+        generation=5,
+        game_age=201,
+        cards_in_hand=[
+            {"name": "Comet", "calculatedCost": 21},
+            {"name": "Asteroid", "calculatedCost": 14},
+        ],
+        tableau=[
+            {"name": "Media Group", "calculatedCost": 6},
+            {"name": "Inventors' Guild", "calculatedCost": 9},
+        ],
+    )
+    player_view5_repeat = PlayerViewModel.model_validate(raw5_repeat)
+    repeat_state = game_state_mod._build_agent_state(
+        player_view5_repeat, auto_response=True
+    )
+    assert "generation_start" not in repeat_state
 
 
 def test_proactive_disabled_cards_return_full_details() -> None:
