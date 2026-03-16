@@ -104,7 +104,7 @@ def _normalize_waiting_for(
     if wf.warnings:
         normalized["warnings"] = wf.warnings
 
-    if wf.initialIdx is not None:
+    if wf.initialIdx:
         normalized["initial_index"] = wf.initialIdx
 
     if wf.amount is not None:

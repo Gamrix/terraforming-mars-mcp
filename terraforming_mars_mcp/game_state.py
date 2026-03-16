@@ -73,10 +73,9 @@ class _PlayerSummary:
     actions_this_generation: list[str]
 
     def to_full_payload(self) -> dict[str, object]:
-        return {
+        payload: dict[str, object] = {
             "name": self.name,
             "color": self.color,
-            "active": self.active,
             "tr": self.tr,
             "mc": self.mc,
             "steel": self.steel,
@@ -88,15 +87,20 @@ class _PlayerSummary:
             "cards_in_hand_count": self.cards_in_hand_count,
             "actions_this_generation": list(self.actions_this_generation),
         }
+        if self.active:
+            payload["active"] = True
+        return payload
 
     def to_minimal_payload(self) -> dict[str, object]:
-        return {
+        payload: dict[str, object] = {
             "name": self.name,
             "color": self.color,
-            "active": self.active,
             "tr": self.tr,
             "cards_in_hand_count": self.cards_in_hand_count,
         }
+        if self.active:
+            payload["active"] = True
+        return payload
 
 
 _LAST_MA_SNAPSHOT: dict[str, _MilestonesAwardsSnapshot] = {}
@@ -105,7 +109,7 @@ _LAST_MA_SNAPSHOT: dict[str, _MilestonesAwardsSnapshot] = {}
 class _MilestoneScorePayload(TypedDict):
     color: str
     score: int
-    claimable: bool
+    claimable: NotRequired[bool]
 
 
 class _MilestonePayload(TypedDict):
@@ -301,8 +305,9 @@ def _summarize_milestones(game: ApiGameModel) -> list[_MilestonePayload]:
             compact: _MilestoneScorePayload = {
                 "color": score.color,
                 "score": score.score,
-                "claimable": score.claimable is True,
             }
+            if score.claimable is True:
+                compact["claimable"] = True
             scores.append(compact)
             if score.claimable is True:
                 claimable_by.append(score.color)
@@ -705,8 +710,9 @@ def _build_agent_state(
         "temperature": game.temperature,
         "oxygen": game.oxygenLevel,
         "oceans": game.oceans,
-        "terraformed": game.isTerraformed,
     }
+    if game.isTerraformed:
+        terraforming["terraformed"] = True
     game_extra = game.model_extra or {}
     game_options_raw = game_extra.get("gameOptions")
     if isinstance(game_options_raw, dict):

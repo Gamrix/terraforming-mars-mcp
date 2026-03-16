@@ -33,7 +33,7 @@ def test_get_game_state_surfaces_milestones_and_awards() -> None:
                     "color": "red",
                     "scores": [
                         {"color": "red", "score": 8, "claimable": True},
-                        {"color": "blue", "score": 6, "claimable": False},
+                        {"color": "blue", "score": 6},
                     ],
                 },
                 {
@@ -41,7 +41,7 @@ def test_get_game_state_surfaces_milestones_and_awards() -> None:
                     "playerName": None,
                     "color": None,
                     "scores": [
-                        {"color": "red", "score": 2, "claimable": False},
+                        {"color": "red", "score": 2},
                         {"color": "blue", "score": 3, "claimable": True},
                     ],
                 },
