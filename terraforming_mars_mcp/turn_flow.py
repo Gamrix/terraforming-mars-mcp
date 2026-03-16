@@ -17,6 +17,7 @@ from .api_response_models import (
 )
 from ._app import mcp
 from .game_state import _build_agent_state
+from .observed_cards import observe_player_model
 
 TURN_WAIT_TIMEOUT_SECONDS = 2 * 60 * 60
 TURN_WAIT_POLL_INTERVAL_SECONDS = 2
@@ -83,7 +84,9 @@ def _get_player(player_id: str | None = None) -> ApiPlayerViewModel:
     result = _http_json("GET", "/api/player", {"id": pid})
     if not isinstance(result, dict):
         raise RuntimeError("Unexpected /api/player response")
-    return ApiPlayerViewModel.model_validate(result)
+    player_model = ApiPlayerViewModel.model_validate(result)
+    observe_player_model(player_model)
+    return player_model
 
 
 def _post_input(
@@ -93,7 +96,9 @@ def _post_input(
     result = _http_json("POST", "/player/input", {"id": pid}, response)
     if not isinstance(result, dict):
         raise RuntimeError("Unexpected /player/input response")
-    return ApiPlayerViewModel.model_validate(result)
+    player_model = ApiPlayerViewModel.model_validate(result)
+    observe_player_model(player_model)
+    return player_model
 
 
 def _get_waiting_for_state(

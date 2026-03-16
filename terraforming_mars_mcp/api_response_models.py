@@ -299,6 +299,8 @@ class PlayerViewModel(TMBaseModel):
     thisPlayer: PublicPlayerModel
     waitingFor: WaitingForInputModel | None = None
     cardsInHand: list[CardModel] = Field(default_factory=list)
+    draftedCards: list[CardModel] = Field(default_factory=list)
+    dealtProjectCards: list[CardModel] = Field(default_factory=list)
 
 
 class WaitingForStatusModel(TMBaseModel):
