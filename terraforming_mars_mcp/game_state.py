@@ -170,6 +170,34 @@ _TILE_TYPE_LABELS = (
     "new holland",
 )
 
+_SPACE_BONUS_LABELS = (
+    "titanium",
+    "steel",
+    "plant",
+    "draw card",
+    "heat",
+    "ocean",
+    "mega credits",
+    "animal",
+    "microbe",
+    "energy",
+    "data",
+    "science",
+    "energy production",
+    "temperature",
+    "restricted",
+    "asteroid",
+    "delegate",
+    "colony",
+    "temperature (4 MC)",
+)
+
+
+def _space_bonus_label(bonus: int) -> str:
+    if 0 <= bonus < len(_SPACE_BONUS_LABELS):
+        return _SPACE_BONUS_LABELS[bonus]
+    return str(bonus)
+
 
 def _player_summary(player: ApiPublicPlayerModel) -> _PlayerSummary:
     return _PlayerSummary(
@@ -356,7 +384,7 @@ def _full_board_state(
             "space_type": space.spaceType,
         }
         if space.bonus:
-            space_data["bonus"] = space.bonus
+            space_data["bonus"] = [_space_bonus_label(bonus) for bonus in space.bonus]
         if space.tileType is not None:
             tile_type = space.tileType
             space_data["tile_type"] = (

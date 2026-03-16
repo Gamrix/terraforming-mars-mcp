@@ -44,6 +44,40 @@ def test_full_board_state_translates_tile_type_labels() -> None:
     assert board_state["spaces"][1]["tile_type"] == "ocean"
 
 
+def test_full_board_state_translates_bonus_labels() -> None:
+    game_model = game_state.ApiGameModel.model_validate(
+        {
+            "id": "game-1",
+            "phase": "action",
+            "generation": 1,
+            "temperature": -30,
+            "oxygenLevel": 0,
+            "oceans": 0,
+            "venusScaleLevel": 0,
+            "isTerraformed": False,
+            "spaces": [
+                {
+                    "id": "03",
+                    "x": 0,
+                    "y": 0,
+                    "spaceType": "land",
+                    "bonus": [1, 1, 3, 18, 999],
+                },
+            ],
+        }
+    )
+
+    board_state = game_state._full_board_state(game_model, include_empty_spaces=True)
+
+    assert board_state["spaces"][0]["bonus"] == [
+        "steel",
+        "steel",
+        "draw card",
+        "temperature (4 MC)",
+        "999",
+    ]
+
+
 def test_board_summary_uses_tile_type_labels() -> None:
     game_model = game_state.ApiGameModel.model_validate(
         {
