@@ -17,6 +17,7 @@ from .game_state import (
     _detect_new_opponent_cards_since,
     _full_board_state,
 )
+from ._payment import _build_payment
 from .turn_flow import (
     CFG,
     _get_player,
@@ -213,21 +214,21 @@ async def pay_for_action(
     return await _submit_and_return_state(
         {
             "type": "payment",
-            "payment": {
-                "megaCredits": mega_credits,
-                "steel": steel,
-                "titanium": titanium,
-                "heat": heat,
-                "plants": plants,
-                "microbes": microbes,
-                "floaters": floaters,
-                "lunaArchivesScience": luna_archives_science,
-                "spireScience": spire_science,
-                "seeds": seeds,
-                "auroraiData": aurorai_data,
-                "graphene": graphene,
-                "kuiperAsteroids": kuiper_asteroids,
-            },
+            "payment": _build_payment(
+                mega_credits=mega_credits,
+                steel=steel,
+                titanium=titanium,
+                heat=heat,
+                plants=plants,
+                microbes=microbes,
+                floaters=floaters,
+                luna_archives_science=luna_archives_science,
+                spire_science=spire_science,
+                seeds=seeds,
+                aurorai_data=aurorai_data,
+                graphene=graphene,
+                kuiper_asteroids=kuiper_asteroids,
+            ),
         }
     )
 

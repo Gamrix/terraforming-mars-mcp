@@ -3,8 +3,8 @@ from __future__ import annotations
 import json
 
 from .api_response_models import WaitingForInputModel as ApiWaitingForInputModel
-from ._enums import InputType
-from .card_info import DETAIL_LEVEL_FULL, _compact_cards
+from ._enums import DetailLevel, InputType
+from .card_info import _compact_cards
 
 
 def _input_type_name(waiting_for: ApiWaitingForInputModel | None) -> str | None:
@@ -85,7 +85,7 @@ def _find_or_option_index(
 def _normalize_waiting_for(
     waiting_for: ApiWaitingForInputModel | None,
     depth: int = 0,
-    detail_level: str = DETAIL_LEVEL_FULL,
+    detail_level: str | DetailLevel = DetailLevel.FULL,
     generation: int | None = None,
     auto_response: bool = False,
 ) -> dict[str, object] | None:
@@ -117,12 +117,16 @@ def _normalize_waiting_for(
         normalized["include"] = wf.include
 
     if wf.cards is not None:
-        normalized["cards"] = _compact_cards(
+        is_blue_action = wf.selectBlueCardAction is True
+        cards_list = _compact_cards(
             wf.cards,
-            detail_level=detail_level,
+            detail_level=DetailLevel.MINIMAL if is_blue_action else detail_level,
             generation=generation,
             auto_response=auto_response,
         )
+        # Filter out disabled cards; only include ones the player can use.
+        cards_list = [c for c in cards_list if not c.get("disabled")]
+        normalized["cards"] = cards_list
         card_selection: dict[str, object] = {}
         if wf.min is not None:
             card_selection["min"] = wf.min
@@ -130,7 +134,7 @@ def _normalize_waiting_for(
             card_selection["max"] = wf.max
         if wf.maxByDefault is not None:
             card_selection["max_by_default"] = wf.maxByDefault
-        if wf.selectBlueCardAction is True:
+        if is_blue_action:
             card_selection["select_blue_card_action"] = True
         if wf.showOnlyInLearnerMode is True:
             card_selection["show_only_in_learner_mode"] = True
@@ -219,6 +223,19 @@ def _normalize_waiting_for(
                     warnings=option_warnings,
                 ):
                     continue
+
+                # Skip learner-mode-only options (e.g. all-disabled standard projects).
+                card_sel = option_payload.get("card_selection")
+                if isinstance(card_sel, dict) and card_sel.get(
+                    "show_only_in_learner_mode"
+                ):
+                    continue
+
+                # Skip options whose cards are all empty after disabled filtering.
+                option_cards = option_payload.get("cards")
+                if isinstance(option_cards, list) and len(option_cards) == 0:
+                    continue
+
                 if _is_sell_patents_prompt(option_payload.get("title", "")):
                     option_payload.pop("cards", None)
 

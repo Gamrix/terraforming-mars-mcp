@@ -5,14 +5,11 @@ import re
 from pathlib import Path
 from typing import Any
 
+from ._enums import DetailLevel
 from .api_response_models import (
     CardModel as ApiCardModel,
     PublicPlayerModel as ApiPublicPlayerModel,
 )
-
-DETAIL_LEVEL_FULL = "full"
-DETAIL_LEVEL_MINIMAL = "minimal"
-VALID_DETAIL_LEVELS = {DETAIL_LEVEL_FULL, DETAIL_LEVEL_MINIMAL}
 
 _CARD_INFO_INDEX: dict[str, dict[str, object]] | None = None
 
@@ -58,11 +55,17 @@ class _CardDetailTracker:
 _CARD_TRACKER = _CardDetailTracker()
 
 
-def _normalize_detail_level(detail_level: str) -> str:
+def _normalize_detail_level(detail_level: str | DetailLevel) -> DetailLevel:
+    """Accept string or enum, return validated DetailLevel."""
+    if isinstance(detail_level, DetailLevel):
+        return detail_level
     normalized = str(detail_level).strip().lower()
-    if normalized not in VALID_DETAIL_LEVELS:
-        raise ValueError(f"detail_level must be one of {sorted(VALID_DETAIL_LEVELS)}")
-    return normalized
+    try:
+        return DetailLevel(normalized)
+    except ValueError:
+        raise ValueError(
+            f"detail_level must be one of {sorted(v.value for v in DetailLevel)}"
+        ) from None
 
 
 def _load_card_info_index() -> dict[str, dict[str, object]]:
@@ -269,7 +272,7 @@ def _best_effect_text(info: dict[str, object]) -> str | None:
 
 def _compact_card(
     card: dict[str, object] | str | ApiCardModel,
-    detail_level: str = DETAIL_LEVEL_FULL,
+    detail_level: str | DetailLevel = DetailLevel.FULL,
     generation: int | None = None,
     auto_response: bool = False,
 ) -> dict[str, object]:
@@ -338,8 +341,12 @@ def _compact_card(
     if vp is not None:
         payload["vp"] = vp
 
+    # Minimal detail (e.g. blue card actions): name + dynamic fields only.
+    if normalized_detail_level == DetailLevel.MINIMAL:
+        return payload
+
     # Full detail: include tags, requirements, and effect text.
-    if normalized_detail_level == DETAIL_LEVEL_FULL:
+    if normalized_detail_level == DetailLevel.FULL:
         tags = info.get("tags")
         if isinstance(tags, list) and tags:
             payload["tags"] = tags
@@ -349,6 +356,20 @@ def _compact_card(
             payload["play_requirements_text"] = play_requirements_text
 
         effect_texts = _all_effect_texts(info)
+        # Strip duplicate requirement text from effect_texts[0].
+        if (
+            isinstance(play_requirements_text, str)
+            and play_requirements_text.strip()
+            and effect_texts
+        ):
+            req = play_requirements_text.strip()
+            first = effect_texts[0]
+            if first.startswith(req):
+                stripped = first[len(req) :].strip()
+                if stripped:
+                    effect_texts[0] = stripped
+                else:
+                    effect_texts = effect_texts[1:]
         if effect_texts:
             payload["effect_texts"] = effect_texts
 
@@ -357,7 +378,7 @@ def _compact_card(
 
 def _compact_cards(
     cards: list[Any],
-    detail_level: str = DETAIL_LEVEL_FULL,
+    detail_level: str | DetailLevel = DetailLevel.FULL,
     generation: int | None = None,
     auto_response: bool = False,
 ) -> list[dict[str, object]]:
@@ -403,7 +424,7 @@ def _extract_played_cards(
             cards.append(
                 _compact_card(
                     card,
-                    detail_level=DETAIL_LEVEL_FULL,
+                    detail_level=DetailLevel.FULL,
                     auto_response=False,
                 )
             )

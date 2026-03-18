@@ -20,6 +20,7 @@ from typing import Literal, cast
 
 from ._app import mcp
 from ._enums import InputType
+from ._payment import _build_payment
 from .api_response_models import JsonValue
 from .card_info import _compact_cards
 from .game_state import _build_agent_state
@@ -215,21 +216,21 @@ async def pay_for_project_card(
     project_card_response: dict[str, JsonValue] = {
         "type": "projectCard",
         "card": card_name,
-        "payment": {
-            "megaCredits": mega_credits,
-            "steel": steel,
-            "titanium": titanium,
-            "heat": heat,
-            "plants": plants,
-            "microbes": microbes,
-            "floaters": floaters,
-            "lunaArchivesScience": luna_archives_science,
-            "spireScience": spire_science,
-            "seeds": seeds,
-            "auroraiData": aurorai_data,
-            "graphene": graphene,
-            "kuiperAsteroids": kuiper_asteroids,
-        },
+        "payment": _build_payment(
+            mega_credits=mega_credits,
+            steel=steel,
+            titanium=titanium,
+            heat=heat,
+            plants=plants,
+            microbes=microbes,
+            floaters=floaters,
+            luna_archives_science=luna_archives_science,
+            spire_science=spire_science,
+            seeds=seeds,
+            aurorai_data=aurorai_data,
+            graphene=graphene,
+            kuiper_asteroids=kuiper_asteroids,
+        ),
     }
 
     player_model = _get_player()

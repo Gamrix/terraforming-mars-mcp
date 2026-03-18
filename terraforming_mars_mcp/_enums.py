@@ -3,6 +3,11 @@ from __future__ import annotations
 from enum import StrEnum
 
 
+class DetailLevel(StrEnum):
+    FULL = "full"
+    MINIMAL = "minimal"
+
+
 class InputType(StrEnum):
     AND_OPTIONS = "and"
     OR_OPTIONS = "or"

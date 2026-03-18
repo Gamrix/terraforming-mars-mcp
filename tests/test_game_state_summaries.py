@@ -641,8 +641,8 @@ def test_auto_response_includes_generation_start_context_on_new_generation(
     assert "generation_start" not in repeat_state
 
 
-def test_proactive_disabled_cards_return_full_details() -> None:
-    """Proactive calls return full details for disabled cards with disabled flag."""
+def test_disabled_cards_are_filtered_out() -> None:
+    """Disabled cards are filtered out of the card list entirely."""
     server = _reload_server()
     importlib.reload(game_state_mod)
     _reload_card_info()
@@ -666,21 +666,16 @@ def test_proactive_disabled_cards_return_full_details() -> None:
     state = server.get_game_state()
     cards = state["waiting_for"]["cards"]
 
-    enabled = cards[0]
-    assert enabled["name"] == "Comet"
-    assert "cost" in enabled
-    assert "tags" in enabled
-    assert "disabled" not in enabled
-
-    disabled = cards[1]
-    assert disabled["name"] == "Asteroid"
-    assert disabled["disabled"] is True
-    assert "cost" in disabled
-    assert "tags" in disabled
+    # Only enabled cards remain after filtering.
+    assert len(cards) == 1
+    assert cards[0]["name"] == "Comet"
+    assert "cost" in cards[0]
+    assert "tags" in cards[0]
+    assert "disabled" not in cards[0]
 
 
-def test_auto_response_disabled_cards_return_minimal_payload() -> None:
-    """Auto-returned disabled cards return only name + disabled flag."""
+def test_auto_response_all_disabled_cards_produce_empty_list() -> None:
+    """When all cards are disabled, the filtered list is empty."""
     importlib.reload(game_state_mod)
     _reload_card_info()
     card_info_mod._CARD_TRACKER.reset()
@@ -698,5 +693,4 @@ def test_auto_response_disabled_cards_return_minimal_payload() -> None:
     raw = _make_player_model(generation=4, game_age=100, waiting_for=waiting_for)
     player_view = PlayerViewModel.model_validate(raw)
     state = game_state_mod._build_agent_state(player_view, auto_response=True)
-    card = state["waiting_for"]["cards"][0]
-    assert card == {"name": "Asteroid", "disabled": True}
+    assert state["waiting_for"]["cards"] == []

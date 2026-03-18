@@ -126,13 +126,15 @@ def test_waiting_for_card_includes_all_effect_texts_for_arctic_algae() -> None:
     normalized = _normalize_waiting_for(server, waiting_for)
     card = normalized["cards"][0]
 
+    # Requirement text is stripped from effect_texts when play_requirements_text is present.
+    assert card["play_requirements_text"] == "It must be -12 C or colder to play."
     assert card["effect_texts"] == [
-        "It must be -12 C or colder to play. Gain 1 plant.",
+        "Gain 1 plant.",
         "Effect: When anyone places an ocean tile, gain 2 plants.",
     ]
 
 
-def test_waiting_for_card_preserves_name_cost_and_disabled_state() -> None:
+def test_disabled_cards_filtered_and_learner_mode_still_tagged() -> None:
     server = _reload_server()
     waiting_for = {
         "type": "card",
@@ -152,13 +154,10 @@ def test_waiting_for_card_preserves_name_cost_and_disabled_state() -> None:
     }
 
     normalized = _normalize_waiting_for(server, waiting_for)
-    card = normalized["cards"][0]
+    # Disabled cards are filtered out.
+    assert normalized["cards"] == []
+    # show_only_in_learner_mode is still present in card_selection metadata.
     card_selection = normalized["card_selection"]
-
-    assert card["name"] == "Power Plant:SP"
-    assert card["disabled"] is True
-    # Proactive calls return full details even for disabled cards.
-    assert "cost" in card
     assert card_selection["show_only_in_learner_mode"] is True
     assert "show_owner" not in card_selection  # omitted when False
 
