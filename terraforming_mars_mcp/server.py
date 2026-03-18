@@ -20,7 +20,7 @@ from typing import Literal, cast
 
 from ._app import mcp
 from ._enums import InputType
-from ._payment import _build_payment
+from ._models import PaymentPayloadModel
 from .api_response_models import JsonValue
 from .card_info import _compact_cards
 from .game_state import _build_agent_state
@@ -196,19 +196,7 @@ async def confirm_option() -> dict[str, object]:
 @mcp.tool()
 async def pay_for_project_card(
     card_name: str,
-    mega_credits: int = 0,
-    steel: int = 0,
-    titanium: int = 0,
-    heat: int = 0,
-    plants: int = 0,
-    microbes: int = 0,
-    floaters: int = 0,
-    luna_archives_science: int = 0,
-    spire_science: int = 0,
-    seeds: int = 0,
-    aurorai_data: int = 0,
-    graphene: int = 0,
-    kuiper_asteroids: int = 0,
+    payment: PaymentPayloadModel = PaymentPayloadModel(),
 ) -> dict[str, object]:
     """Respond to `type: projectCard`."""
     if not card_name:
@@ -216,21 +204,7 @@ async def pay_for_project_card(
     project_card_response: dict[str, JsonValue] = {
         "type": "projectCard",
         "card": card_name,
-        "payment": _build_payment(
-            mega_credits=mega_credits,
-            steel=steel,
-            titanium=titanium,
-            heat=heat,
-            plants=plants,
-            microbes=microbes,
-            floaters=floaters,
-            luna_archives_science=luna_archives_science,
-            spire_science=spire_science,
-            seeds=seeds,
-            aurorai_data=aurorai_data,
-            graphene=graphene,
-            kuiper_asteroids=kuiper_asteroids,
-        ),
+        "payment": payment.model_dump(by_alias=True),
     }
 
     player_model = _get_player()

@@ -6,6 +6,7 @@ from types import SimpleNamespace
 from typing import Any
 
 import terraforming_mars_mcp.server as server_mod
+from terraforming_mars_mcp._models import PaymentPayloadModel
 from terraforming_mars_mcp.api_response_models import WaitingForInputModel
 
 
@@ -97,7 +98,7 @@ def test_pay_for_project_card_submits_direct_project_card_payload() -> None:
     )
     server._get_player = lambda player_id=None: SimpleNamespace(waitingFor=waiting_for)
     _set_submit_capture(server, captured)
-    result = _run(server.pay_for_project_card(card_name="Noctis City", mega_credits=18))
+    result = _run(server.pay_for_project_card(card_name="Noctis City", payment=PaymentPayloadModel(megaCredits=18)))
 
     assert result == {"ok": True}
     assert captured["type"] == "projectCard"
@@ -123,7 +124,7 @@ def test_pay_for_project_card_wraps_outer_or_menu() -> None:
     )
     server._get_player = lambda player_id=None: SimpleNamespace(waitingFor=waiting_for)
     _set_submit_capture(server, captured)
-    result = _run(server.pay_for_project_card(card_name="Noctis City", mega_credits=18))
+    result = _run(server.pay_for_project_card(card_name="Noctis City", payment=PaymentPayloadModel(megaCredits=18)))
 
     assert result == {"ok": True}
     assert captured["type"] == "or"
@@ -152,7 +153,7 @@ def test_pay_for_project_card_errors_when_outer_or_has_no_project_card_branch() 
     _set_submit_capture(server, captured={})
 
     try:
-        _run(server.pay_for_project_card(card_name="Noctis City", mega_credits=18))
+        _run(server.pay_for_project_card(card_name="Noctis City", payment=PaymentPayloadModel(megaCredits=18)))
         assert False, "Expected RuntimeError for missing projectCard branch"
     except RuntimeError as exc:
         assert "projectCard" in str(exc)

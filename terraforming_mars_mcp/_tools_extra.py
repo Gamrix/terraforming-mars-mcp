@@ -7,6 +7,7 @@ from typing import Any, cast
 from ._app import mcp
 from ._models import (
     InitialCardsSelectionModel,
+    PaymentPayloadModel,
     RawInputEntityRequest,
     _normalize_raw_input_entity,
 )
@@ -17,7 +18,6 @@ from .game_state import (
     _detect_new_opponent_cards_since,
     _full_board_state,
 )
-from ._payment import _build_payment
 from .turn_flow import (
     CFG,
     _get_player,
@@ -194,40 +194,11 @@ async def select_colony(colony_name: str) -> dict[str, object]:
 
 @mcp.tool()
 async def pay_for_action(
-    mega_credits: int = 0,
-    steel: int = 0,
-    titanium: int = 0,
-    heat: int = 0,
-    plants: int = 0,
-    microbes: int = 0,
-    floaters: int = 0,
-    luna_archives_science: int = 0,
-    spire_science: int = 0,
-    seeds: int = 0,
-    aurorai_data: int = 0,
-    graphene: int = 0,
-    kuiper_asteroids: int = 0,
+    payment: PaymentPayloadModel = PaymentPayloadModel(),
 ) -> dict[str, object]:
     """Respond to `type: payment`."""
     return await _submit_and_return_state(
-        {
-            "type": "payment",
-            "payment": _build_payment(
-                mega_credits=mega_credits,
-                steel=steel,
-                titanium=titanium,
-                heat=heat,
-                plants=plants,
-                microbes=microbes,
-                floaters=floaters,
-                luna_archives_science=luna_archives_science,
-                spire_science=spire_science,
-                seeds=seeds,
-                aurorai_data=aurorai_data,
-                graphene=graphene,
-                kuiper_asteroids=kuiper_asteroids,
-            ),
-        }
+        {"type": "payment", "payment": payment.model_dump(by_alias=True)}
     )
 
 
