@@ -9,14 +9,18 @@ from .api_response_models import (
     PlayerViewModel as ApiPlayerViewModel,
     PublicPlayerModel as ApiPublicPlayerModel,
 )
-from ._enums import DetailLevel, _action_tools_for_input_type
+from ._enums import DetailLevel, InputType, ToolName, _action_tools_for_input_type
 from .card_info import (
     _card_info,
     _compact_cards,
     _extract_played_card_effects_and_actions,
     _normalize_detail_level,
 )
-from .waiting_for import _input_type_name, _normalize_waiting_for
+from .waiting_for import (
+    _find_pass_option_index,
+    _input_type_name,
+    _normalize_waiting_for,
+)
 
 END_OF_GENERATION_PHASES = {"production", "solar", "intergeneration", "end"}
 
@@ -836,7 +840,14 @@ def _build_agent_state(
         and prev_gen != generation
     ):
         result["generation_start"] = _generation_start_context(player_model)
-    result["suggested_tools"] = _action_tools_for_input_type(input_type)
+    suggested_tools = _action_tools_for_input_type(input_type)
+    if (
+        input_type == InputType.OR_OPTIONS.value
+        and waiting_for is not None
+        and _find_pass_option_index(waiting_for) is not None
+    ):
+        suggested_tools.append(ToolName.PASS_TURN.value)
+    result["suggested_tools"] = suggested_tools
     result["opponent_new_cards"] = opponent_new_cards
 
     if include_full_model:

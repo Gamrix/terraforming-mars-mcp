@@ -60,6 +60,25 @@ def _is_undo_option(
     return input_type == InputType.SELECT_OPTION.value and "undo" in title_text
 
 
+_PASS_TITLES = {"pass for this generation", "end turn"}
+
+
+def _find_pass_option_index(
+    waiting_for: ApiWaitingForInputModel,
+) -> int | None:
+    """Return the index of the pass/end-turn option, or ``None`` if absent."""
+    options = waiting_for.options
+    if options is None:
+        return None
+    for idx, option in enumerate(options):
+        if option.warnings and "pass" in option.warnings:
+            return idx
+        title_text = _title_to_text(option.title).lower()
+        if title_text in _PASS_TITLES:
+            return idx
+    return None
+
+
 def _find_or_option_index(
     waiting_for: ApiWaitingForInputModel, expected_type: str
 ) -> int:

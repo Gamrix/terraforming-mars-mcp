@@ -53,6 +53,7 @@ class ToolName(StrEnum):
     SELECT_RESOURCE = "select_resource"
     SELECT_RESOURCES = "select_resources"
     SELECT_CLAIMED_UNDERGROUND_TOKEN = "select_claimed_underground_tokens"
+    PASS_TURN = "pass_turn"
 
 
 def _action_tools_for_input_type(input_type: str | None) -> list[str]:

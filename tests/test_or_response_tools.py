@@ -89,6 +89,83 @@ def test_confirm_option_submits_option_for_option_prompt() -> None:
     assert captured == {"type": "option"}
 
 
+def test_pass_turn_finds_pass_option_by_warning() -> None:
+    server = _reload_server()
+    captured: dict[str, Any] = {}
+
+    waiting_for = WaitingForInputModel.model_validate(
+        {
+            "type": "or",
+            "title": "Take your first action",
+            "buttonLabel": "OK",
+            "options": [
+                {"type": "projectCard", "title": "Play card", "buttonLabel": "OK"},
+                {"type": "card", "title": "Standard projects", "buttonLabel": "OK"},
+                {
+                    "type": "option",
+                    "title": "Pass for this generation",
+                    "buttonLabel": "Pass",
+                    "warnings": ["pass"],
+                },
+                {"type": "card", "title": "Sell patents", "buttonLabel": "OK"},
+            ],
+        }
+    )
+    server._get_player = lambda player_id=None: SimpleNamespace(waitingFor=waiting_for)
+    _set_submit_capture(server, captured)
+    result = _run(server.pass_turn())
+
+    assert result == {"ok": True}
+    assert captured == {"type": "or", "index": 2, "response": {"type": "option"}}
+
+
+def test_pass_turn_finds_end_turn_option() -> None:
+    server = _reload_server()
+    captured: dict[str, Any] = {}
+
+    waiting_for = WaitingForInputModel.model_validate(
+        {
+            "type": "or",
+            "title": "Take your next action",
+            "buttonLabel": "OK",
+            "options": [
+                {"type": "projectCard", "title": "Play card", "buttonLabel": "OK"},
+                {"type": "option", "title": "End Turn", "buttonLabel": "End"},
+            ],
+        }
+    )
+    server._get_player = lambda player_id=None: SimpleNamespace(waitingFor=waiting_for)
+    _set_submit_capture(server, captured)
+    result = _run(server.pass_turn())
+
+    assert result == {"ok": True}
+    assert captured == {"type": "or", "index": 1, "response": {"type": "option"}}
+
+
+def test_pass_turn_errors_when_no_pass_option() -> None:
+    server = _reload_server()
+
+    waiting_for = WaitingForInputModel.model_validate(
+        {
+            "type": "or",
+            "title": "Choose",
+            "buttonLabel": "OK",
+            "options": [
+                {"type": "projectCard", "title": "Play card", "buttonLabel": "OK"},
+                {"type": "card", "title": "Select card", "buttonLabel": "OK"},
+            ],
+        }
+    )
+    server._get_player = lambda player_id=None: SimpleNamespace(waitingFor=waiting_for)
+    _set_submit_capture(server, captured={})
+
+    try:
+        _run(server.pass_turn())
+        assert False, "Expected RuntimeError for missing pass option"
+    except RuntimeError as exc:
+        assert "pass" in str(exc).lower() or "end-turn" in str(exc).lower()
+
+
 def test_pay_for_project_card_submits_direct_project_card_payload() -> None:
     server = _reload_server()
     captured: dict[str, Any] = {}
@@ -98,7 +175,11 @@ def test_pay_for_project_card_submits_direct_project_card_payload() -> None:
     )
     server._get_player = lambda player_id=None: SimpleNamespace(waitingFor=waiting_for)
     _set_submit_capture(server, captured)
-    result = _run(server.pay_for_project_card(card_name="Noctis City", payment=PaymentPayloadModel(megaCredits=18)))
+    result = _run(
+        server.pay_for_project_card(
+            card_name="Noctis City", payment=PaymentPayloadModel(megaCredits=18)
+        )
+    )
 
     assert result == {"ok": True}
     assert captured["type"] == "projectCard"
@@ -124,7 +205,11 @@ def test_pay_for_project_card_wraps_outer_or_menu() -> None:
     )
     server._get_player = lambda player_id=None: SimpleNamespace(waitingFor=waiting_for)
     _set_submit_capture(server, captured)
-    result = _run(server.pay_for_project_card(card_name="Noctis City", payment=PaymentPayloadModel(megaCredits=18)))
+    result = _run(
+        server.pay_for_project_card(
+            card_name="Noctis City", payment=PaymentPayloadModel(megaCredits=18)
+        )
+    )
 
     assert result == {"ok": True}
     assert captured["type"] == "or"
@@ -153,7 +238,11 @@ def test_pay_for_project_card_errors_when_outer_or_has_no_project_card_branch() 
     _set_submit_capture(server, captured={})
 
     try:
-        _run(server.pay_for_project_card(card_name="Noctis City", payment=PaymentPayloadModel(megaCredits=18)))
+        _run(
+            server.pay_for_project_card(
+                card_name="Noctis City", payment=PaymentPayloadModel(megaCredits=18)
+            )
+        )
         assert False, "Expected RuntimeError for missing projectCard branch"
     except RuntimeError as exc:
         assert "projectCard" in str(exc)

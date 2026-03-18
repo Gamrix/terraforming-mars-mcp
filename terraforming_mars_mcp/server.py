@@ -27,6 +27,7 @@ from .game_state import _build_agent_state
 from .turn_flow import CFG, _get_player, _submit_and_return_state
 from .waiting_for import (
     _find_or_option_index,
+    _find_pass_option_index,
     _normalize_or_sub_response,
     _normalize_waiting_for,  # noqa: F401 – re-exported for test monkey-patching
 )
@@ -191,6 +192,31 @@ async def confirm_option() -> dict[str, object]:
             {"type": "or", "index": index, "response": {"type": "option"}}
         )
     return await _submit_and_return_state({"type": "option"})
+
+
+@mcp.tool()
+async def pass_turn() -> dict[str, object]:
+    """Pass for the generation or end your turn.
+
+    Shortcut that finds the "Pass for this generation" or "End Turn" option
+    in the current `or` prompt and submits it automatically.
+    """
+    player_model = _get_player()
+    waiting_for = player_model.waitingFor
+    if waiting_for is None:
+        raise RuntimeError("No action is currently waiting for input")
+
+    if waiting_for.type == InputType.OR_OPTIONS.value:
+        pass_index = _find_pass_option_index(waiting_for)
+        if pass_index is not None:
+            return await _submit_and_return_state(
+                {"type": "or", "index": pass_index, "response": {"type": "option"}}
+            )
+        raise RuntimeError("No pass or end-turn option available in the current prompt")
+
+    raise RuntimeError(
+        f"pass_turn requires an 'or' prompt, but current prompt is '{waiting_for.type}'"
+    )
 
 
 @mcp.tool()
