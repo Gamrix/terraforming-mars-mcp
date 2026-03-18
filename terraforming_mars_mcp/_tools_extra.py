@@ -12,7 +12,11 @@ from ._models import (
 )
 from .api_response_models import JsonValue
 from .card_info import _extract_played_cards
-from .game_state import _build_agent_state, _full_board_state
+from .game_state import (
+    _build_agent_state,
+    _detect_new_opponent_cards_since,
+    _full_board_state,
+)
 from .turn_flow import (
     CFG,
     _get_player,
@@ -87,12 +91,14 @@ async def wait_for_turn() -> dict[str, object]:
             ),
         }
     refreshed, opponent_actions = await _wait_for_turn_from_player_model(player_model)
+    opponent_new_cards = _detect_new_opponent_cards_since(player_model, refreshed)
     result: dict[str, object] = {
         "status": "GO",
         "state": _build_agent_state(
             refreshed, base_url=CFG.base_url, player_id_fallback=CFG.player_id
         ),
     }
+    result["state"]["opponent_new_cards"] = opponent_new_cards
     if opponent_actions:
         result["opponent_actions_between_turns"] = opponent_actions
     return result

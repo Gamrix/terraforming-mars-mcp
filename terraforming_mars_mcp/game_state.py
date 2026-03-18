@@ -456,30 +456,29 @@ def _full_board_state(
     }
 
 
-def _detect_new_opponent_cards(
+def _opponent_tableau_counts(
     player_model: ApiPlayerViewModel,
-) -> list[dict[str, object]]:
-    game_id = player_model.game.id
-    pid = player_model.id or ""
-    if not isinstance(game_id, str) or not isinstance(pid, str):
-        return []
-    key = f"{game_id}:{pid}"
-
+) -> dict[str, Counter[str]]:
     this_color = player_model.thisPlayer.color
-    players = player_model.players
-
     current: dict[str, Counter[str]] = {}
-    for player in players:
+    for player in player_model.players:
         color = player.color
         if color == this_color:
             continue
         tableau = player.tableau or []
         names = [card.name for card in tableau]
         current[color] = Counter(names)
+    return current
 
-    previous = _LAST_OPPONENT_TABLEAU.get(key, {})
+
+def _new_opponent_cards_from_counts(
+    player_model: ApiPlayerViewModel,
+    previous: dict[str, Counter[str]],
+) -> tuple[list[dict[str, object]], dict[str, Counter[str]]]:
+    this_color = player_model.thisPlayer.color
+    current = _opponent_tableau_counts(player_model)
     events: list[dict[str, object]] = []
-    for player in players:
+    for player in player_model.players:
         color = player.color
         if color == this_color:
             continue
@@ -505,8 +504,30 @@ def _detect_new_opponent_cards(
                 if vp is not None:
                     event["vp"] = vp
                 events.append(event)
+    return events, current
 
+
+def _detect_new_opponent_cards(
+    player_model: ApiPlayerViewModel,
+) -> list[dict[str, object]]:
+    game_id = player_model.game.id
+    pid = player_model.id or ""
+    if not isinstance(game_id, str) or not isinstance(pid, str):
+        return []
+    key = f"{game_id}:{pid}"
+
+    previous = _LAST_OPPONENT_TABLEAU.get(key, {})
+    events, current = _new_opponent_cards_from_counts(player_model, previous)
     _LAST_OPPONENT_TABLEAU[key] = current
+    return events
+
+
+def _detect_new_opponent_cards_since(
+    previous_player_model: ApiPlayerViewModel,
+    current_player_model: ApiPlayerViewModel,
+) -> list[dict[str, object]]:
+    previous = _opponent_tableau_counts(previous_player_model)
+    events, _ = _new_opponent_cards_from_counts(current_player_model, previous)
     return events
 
 
@@ -767,10 +788,10 @@ def _build_agent_state(
 
     if normalized_detail_level == DETAIL_LEVEL_FULL:
         opponents_state = [summary.to_full_payload() for summary in opponents]
-        opponent_card_events = _detect_new_opponent_cards(player_model)
+        opponent_new_cards = _detect_new_opponent_cards(player_model)
     else:
         opponents_state = [summary.to_minimal_payload() for summary in opponents]
-        opponent_card_events = []
+        opponent_new_cards = []
 
     you_state = (
         you.to_full_payload()
@@ -817,7 +838,7 @@ def _build_agent_state(
     ):
         result["generation_start"] = _generation_start_context(player_model)
     result["suggested_tools"] = _action_tools_for_input_type(input_type)
-    result["opponent_card_events"] = opponent_card_events
+    result["opponent_new_cards"] = opponent_new_cards
 
     if include_full_model:
         result["raw_player_model"] = _thin_raw_player_model(

@@ -175,6 +175,42 @@ def _make_player_model(
     return model
 
 
+def _make_two_player_model(
+    generation: int = 4,
+    game_age: int = 123,
+    my_tableau: list[dict[str, Any]] | None = None,
+    opponent_tableau: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    me: dict[str, Any] = {"name": "Alice", "color": "red", "isActive": True}
+    opponent: dict[str, Any] = {"name": "Bob", "color": "blue", "isActive": False}
+    if my_tableau is not None:
+        me["tableau"] = my_tableau
+    if opponent_tableau is not None:
+        opponent["tableau"] = opponent_tableau
+
+    return {
+        "id": "player-1",
+        "game": {
+            "id": "game-1",
+            "phase": "action",
+            "generation": generation,
+            "temperature": -20,
+            "oxygenLevel": 6,
+            "oceans": 3,
+            "venusScaleLevel": 0,
+            "isTerraformed": False,
+            "gameAge": game_age,
+            "undoCount": 0,
+            "passedPlayers": [],
+            "spaces": [],
+            "milestones": [],
+            "awards": [],
+        },
+        "players": [me, opponent],
+        "thisPlayer": dict(me),
+    }
+
+
 def test_game_constants_sent_on_first_call_and_omitted_on_repeat() -> None:
     """Session and game constants are sent on first call, omitted on repeat."""
     server = _reload_server()
@@ -201,6 +237,31 @@ def test_game_constants_sent_on_first_call_and_omitted_on_repeat() -> None:
     assert "terraforming" not in state2["game"]
     # Generation is always present for context.
     assert state2["game"]["generation"] == 4
+
+
+def test_build_agent_state_reports_opponent_new_cards() -> None:
+    importlib.reload(game_state_mod)
+
+    raw1 = _make_two_player_model(game_age=100, opponent_tableau=[])
+    player_view1 = PlayerViewModel.model_validate(raw1)
+    state1 = game_state_mod._build_agent_state(player_view1, auto_response=True)
+    assert state1["opponent_new_cards"] == []
+
+    raw2 = _make_two_player_model(
+        game_age=101,
+        opponent_tableau=[
+            {"name": "Trans-Neptune Probe"},
+            {"name": "Anti-Gravity Technology"},
+        ],
+    )
+    player_view2 = PlayerViewModel.model_validate(raw2)
+    state2 = game_state_mod._build_agent_state(player_view2, auto_response=True)
+
+    assert [card["card_name"] for card in state2["opponent_new_cards"]] == [
+        "Trans-Neptune Probe",
+        "Anti-Gravity Technology",
+    ]
+    assert all(card["player_name"] == "Bob" for card in state2["opponent_new_cards"])
 
 
 def test_game_constants_resent_on_generation_change() -> None:
