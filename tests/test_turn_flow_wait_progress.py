@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import importlib
-from types import SimpleNamespace
 
 from terraforming_mars_mcp.api_response_models import GameLogEntryModel, PlayerViewModel
 import terraforming_mars_mcp.game_state as game_state_mod
@@ -31,13 +30,26 @@ def test_wait_for_turn_reports_progress_every_30_seconds(
         def model_dump(self, exclude_none: bool = True) -> dict[str, str]:
             return {"result": self.result}
 
-    this_player = SimpleNamespace(color="red", name="Me")
-    opponent = SimpleNamespace(color="blue", name="Opponent")
-    player_model = SimpleNamespace(
-        game=SimpleNamespace(gameAge=1, undoCount=0),
-        thisPlayer=this_player,
-        players=[this_player, opponent],
-        waitingFor=None,
+    player_model = PlayerViewModel.model_validate(
+        {
+            "id": "player-1",
+            "game": {
+                "phase": "action",
+                "generation": 1,
+                "temperature": -30,
+                "oxygenLevel": 0,
+                "oceans": 0,
+                "venusScaleLevel": 0,
+                "isTerraformed": False,
+                "gameAge": 1,
+                "undoCount": 0,
+            },
+            "players": [
+                {"name": "Me", "color": "red", "isActive": True},
+                {"name": "Opponent", "color": "blue", "isActive": False},
+            ],
+            "thisPlayer": {"name": "Me", "color": "red", "isActive": True},
+        }
     )
 
     monkeypatch.setattr(turn_flow.mcp, "get_context", lambda: FakeContext())

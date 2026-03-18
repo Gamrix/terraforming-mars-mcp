@@ -215,10 +215,10 @@ def _normalize_waiting_for(
                         for warning in maybe_warnings
                         if isinstance(warning, str)
                     ]
+                raw_input_type = option_payload.get("input_type")
+                input_type = raw_input_type if isinstance(raw_input_type, str) else None
                 if _is_undo_option(
-                    input_type=option_payload.get("input_type")
-                    if isinstance(option_payload.get("input_type"), str)
-                    else None,
+                    input_type=input_type,
                     title=option_payload.get("title", ""),
                     warnings=option_warnings,
                 ):

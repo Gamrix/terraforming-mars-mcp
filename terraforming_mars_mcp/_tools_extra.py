@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import cast
+from typing import Any, cast
 
 from ._app import mcp
 from ._models import (
@@ -81,7 +81,7 @@ def get_mars_board_state(include_empty_spaces: bool = False) -> dict[str, object
 
 
 @mcp.tool()
-async def wait_for_turn() -> dict[str, object]:
+async def wait_for_turn() -> dict[str, Any]:
     """Poll /api/waitingfor until it's your turn using fixed server defaults."""
     player_model = _get_player()
     if player_model.waitingFor is not None:
@@ -93,13 +93,11 @@ async def wait_for_turn() -> dict[str, object]:
         }
     refreshed, opponent_actions = await _wait_for_turn_from_player_model(player_model)
     opponent_new_cards = _detect_new_opponent_cards_since(player_model, refreshed)
-    result: dict[str, object] = {
-        "status": "GO",
-        "state": _build_agent_state(
-            refreshed, base_url=CFG.base_url, player_id_fallback=CFG.player_id
-        ),
-    }
-    result["state"]["opponent_new_cards"] = opponent_new_cards
+    state = _build_agent_state(
+        refreshed, base_url=CFG.base_url, player_id_fallback=CFG.player_id
+    )
+    state["opponent_new_cards"] = opponent_new_cards
+    result: dict[str, Any] = {"status": "GO", "state": state}
     if opponent_actions:
         result["opponent_actions_between_turns"] = opponent_actions
     return result

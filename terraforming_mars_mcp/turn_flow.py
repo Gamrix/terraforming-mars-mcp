@@ -6,7 +6,7 @@ import os
 import re
 import time
 from dataclasses import dataclass
-from typing import Mapping, Sequence, cast
+from typing import Any, Mapping, Sequence, cast
 from urllib import error, parse, request
 
 from .api_response_models import (
@@ -278,7 +278,7 @@ async def _wait_for_turn_from_player_model(
         await asyncio.sleep(TURN_WAIT_POLL_INTERVAL_SECONDS)
 
 
-async def _submit_and_return_state(response: Mapping[str, object]) -> dict[str, object]:
+async def _submit_and_return_state(response: Mapping[str, object]) -> dict[str, Any]:
     player_model = _post_input(cast(dict[str, JsonValue], dict(response)))
     if player_model.waitingFor is None:
         initial_logs = _get_game_logs()

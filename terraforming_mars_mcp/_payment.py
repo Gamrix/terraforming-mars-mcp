@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from .api_response_models import JsonValue
+
 
 def _build_payment(
     mega_credits: int = 0,
@@ -17,7 +19,7 @@ def _build_payment(
     aurorai_data: int = 0,
     graphene: int = 0,
     kuiper_asteroids: int = 0,
-) -> dict[str, int]:
+) -> dict[str, JsonValue]:
     """Build a full payment dict from sparse keyword args, defaulting missing to 0."""
     return {
         "megaCredits": mega_credits,

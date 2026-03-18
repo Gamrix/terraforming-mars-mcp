@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass
-from typing import Literal, NotRequired, TypedDict
+from typing import Any, Literal, NotRequired, TypedDict
 
 from .api_response_models import (
     GameModel as ApiGameModel,
@@ -22,9 +22,9 @@ END_OF_GENERATION_PHASES = {"production", "solar", "intergeneration", "end"}
 
 _LAST_OPPONENT_TABLEAU: dict[str, dict[str, Counter[str]]] = {}
 # Tracks (generation, constants_dict) so we send full constants once per gen.
-_LAST_GAME_CONSTANTS: dict[str, tuple[int, dict[str, object]]] = {}
-_LAST_YOU_SUMMARY: dict[str, dict[str, object]] = {}
-_LAST_OPPONENT_SUMMARIES: dict[str, dict[str, dict[str, object]]] = {}
+_LAST_GAME_CONSTANTS: dict[str, tuple[int, dict[str, Any]]] = {}
+_LAST_YOU_SUMMARY: dict[str, dict[str, Any]] = {}
+_LAST_OPPONENT_SUMMARIES: dict[str, dict[str, dict[str, Any]]] = {}
 
 
 @dataclass(frozen=True)
@@ -71,8 +71,8 @@ class _PlayerSummary:
     cards_in_hand_count: int
     actions_this_generation: list[str]
 
-    def to_full_payload(self) -> dict[str, object]:
-        payload: dict[str, object] = {
+    def to_full_payload(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {
             "name": self.name,
             "color": self.color,
             "tr": self.tr,
@@ -90,8 +90,8 @@ class _PlayerSummary:
             payload["active"] = True
         return payload
 
-    def to_minimal_payload(self) -> dict[str, object]:
-        payload: dict[str, object] = {
+    def to_minimal_payload(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {
             "name": self.name,
             "color": self.color,
             "tr": self.tr,
@@ -252,7 +252,7 @@ def _summarize_players(
     return (you or _player_summary(this_player)), others
 
 
-def _generation_start_context(player_model: ApiPlayerViewModel) -> dict[str, object]:
+def _generation_start_context(player_model: ApiPlayerViewModel) -> dict[str, Any]:
     cards_in_hand = _compact_cards(
         player_model.cardsInHand,
         detail_level=DetailLevel.FULL,
@@ -268,7 +268,7 @@ def _generation_start_context(player_model: ApiPlayerViewModel) -> dict[str, obj
     }
 
 
-def _summarize_board(game: ApiGameModel) -> dict[str, object]:
+def _summarize_board(game: ApiGameModel) -> dict[str, Any]:
     spaces = game.spaces
     occupied = 0
     by_tile: dict[str, int] = {}
@@ -398,12 +398,12 @@ def _should_include_milestones_awards(
 
 def _full_board_state(
     game: ApiGameModel, include_empty_spaces: bool = False
-) -> dict[str, object]:
-    mars_spaces: list[dict[str, object]] = []
+) -> dict[str, Any]:
+    mars_spaces: list[dict[str, Any]] = []
     for space in game.spaces:
         if not include_empty_spaces and space.tileType is None:
             continue
-        space_data: dict[str, object] = {
+        space_data: dict[str, Any] = {
             "id": space.id,
             "x": space.x,
             "y": space.y,
@@ -473,10 +473,10 @@ def _opponent_tableau_counts(
 def _new_opponent_cards_from_counts(
     player_model: ApiPlayerViewModel,
     previous: dict[str, Counter[str]],
-) -> tuple[list[dict[str, object]], dict[str, Counter[str]]]:
+) -> tuple[list[dict[str, Any]], dict[str, Counter[str]]]:
     this_color = player_model.thisPlayer.color
     current = _opponent_tableau_counts(player_model)
-    events: list[dict[str, object]] = []
+    events: list[dict[str, Any]] = []
     for player in player_model.players:
         color = player.color
         if color == this_color:
@@ -487,7 +487,7 @@ def _new_opponent_cards_from_counts(
         for card_name, count in delta.items():
             for _ in range(count):
                 info = _card_info(card_name, include_play_details=True)
-                event: dict[str, object] = {
+                event: dict[str, Any] = {
                     "player_name": player.name,
                     "player_color": color,
                     "card_name": card_name,
@@ -508,7 +508,7 @@ def _new_opponent_cards_from_counts(
 
 def _detect_new_opponent_cards(
     player_model: ApiPlayerViewModel,
-) -> list[dict[str, object]]:
+) -> list[dict[str, Any]]:
     game_id = player_model.game.id
     pid = player_model.id or ""
     if not isinstance(game_id, str) or not isinstance(pid, str):
@@ -524,7 +524,7 @@ def _detect_new_opponent_cards(
 def _detect_new_opponent_cards_since(
     previous_player_model: ApiPlayerViewModel,
     current_player_model: ApiPlayerViewModel,
-) -> list[dict[str, object]]:
+) -> list[dict[str, Any]]:
     previous = _opponent_tableau_counts(previous_player_model)
     events, _ = _new_opponent_cards_from_counts(current_player_model, previous)
     return events
@@ -565,7 +565,7 @@ _EXPANSION_FIELD_GROUPS: dict[str, dict[str, list[str]]] = {
 
 
 def _strip_expansion_fields(
-    player_data: dict[str, object],
+    player_data: dict[str, Any],
     disabled_expansions: set[str],
 ) -> None:
     """Remove fields from a player dict that belong to disabled expansions."""
@@ -588,7 +588,7 @@ def _strip_expansion_fields(
 
 
 def _strip_zero_resources_from_tableau(
-    tableau: list[dict[str, object]],
+    tableau: list[dict[str, Any]],
 ) -> None:
     """Remove ``resources: 0`` entries from tableau card dicts."""
     for card in tableau:
@@ -597,9 +597,9 @@ def _strip_zero_resources_from_tableau(
 
 
 def _thin_raw_player_model(
-    raw: dict[str, object],
+    raw: dict[str, Any],
     this_color: str,
-) -> dict[str, object]:
+) -> dict[str, Any]:
     """Apply all thinning passes to a raw ``model_dump`` of the player model."""
 
     # 1. Drop `thisPlayer` — it duplicates one entry in `players`.
@@ -700,7 +700,7 @@ def _build_agent_state(
     base_url: str | None = None,
     player_id_fallback: str | None = None,
     auto_response: bool = False,
-) -> dict[str, object]:
+) -> dict[str, Any]:
     game = player_model.game
     normalized_detail_level = _normalize_detail_level(detail_level)
     waiting_for = player_model.waitingFor
@@ -719,14 +719,14 @@ def _build_agent_state(
     constants_key = f"{game_id}:{player_id}"
 
     # Build session and game constants, then check if they changed.
-    session: dict[str, object] = {
+    session: dict[str, Any] = {
         "player_id": player_id,
     }
     if normalized_detail_level == DetailLevel.FULL and base_url is not None:
         session["base_url"] = base_url
 
     # Core game constants that rarely change mid-turn.
-    terraforming: dict[str, object] = {
+    terraforming: dict[str, Any] = {
         "temperature": game.temperature,
         "oxygen": game.oxygenLevel,
         "oceans": game.oceans,
@@ -739,7 +739,7 @@ def _build_agent_state(
         expansions = game_options_raw.get("expansions")
         if isinstance(expansions, dict) and expansions.get("venus"):
             terraforming["venus"] = game.venusScaleLevel
-    game_constants: dict[str, object] = {
+    game_constants: dict[str, Any] = {
         "phase": game.phase,
         "generation": generation,
         "terraforming": terraforming,
@@ -751,7 +751,7 @@ def _build_agent_state(
     constants_changed = prev_gen != generation or prev_constants != game_constants
     _LAST_GAME_CONSTANTS[constants_key] = (generation, game_constants)
 
-    game_state: dict[str, object] = {
+    game_state: dict[str, Any] = {
         "game_age": game.gameAge,
     }
     if game_id:
@@ -804,8 +804,8 @@ def _build_agent_state(
     _LAST_YOU_SUMMARY[player_deltas_key] = you_state
 
     previous_opponents = _LAST_OPPONENT_SUMMARIES.get(player_deltas_key, {})
-    current_opponents: dict[str, dict[str, object]] = {}
-    changed_opponents: list[dict[str, object]] = []
+    current_opponents: dict[str, dict[str, Any]] = {}
+    changed_opponents: list[dict[str, Any]] = []
     for payload in opponents_state:
         color_value = payload.get("color")
         if not isinstance(color_value, str):
@@ -815,7 +815,7 @@ def _build_agent_state(
             changed_opponents.append(payload)
     _LAST_OPPONENT_SUMMARIES[player_deltas_key] = current_opponents
 
-    result: dict[str, object] = {}
+    result: dict[str, Any] = {}
     # Omit session when constants haven't changed (agent already knows it).
     if constants_changed:
         result["session"] = session
