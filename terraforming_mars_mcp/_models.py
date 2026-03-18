@@ -48,6 +48,15 @@ class PaymentPayloadModel(BaseModel):
     kuiper_asteroids: int = Field(default=0, alias="kuiperAsteroids")
 
 
+class UnitsPayloadModel(BaseModel):
+    megacredits: int = 0
+    steel: int = 0
+    titanium: int = 0
+    plants: int = 0
+    energy: int = 0
+    heat: int = 0
+
+
 class InitialCardsSelectionModel(BaseModel):
     corporation_card: str | None = None
     project_cards: CardListField

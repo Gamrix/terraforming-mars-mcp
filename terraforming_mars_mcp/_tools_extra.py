@@ -9,6 +9,7 @@ from ._models import (
     InitialCardsSelectionModel,
     PaymentPayloadModel,
     RawInputEntityRequest,
+    UnitsPayloadModel,
     _normalize_raw_input_entity,
 )
 from .api_response_models import JsonValue
@@ -236,26 +237,11 @@ async def select_initial_cards(
 
 @mcp.tool()
 async def select_production_to_lose(
-    megacredits: int = 0,
-    steel: int = 0,
-    titanium: int = 0,
-    plants: int = 0,
-    energy: int = 0,
-    heat: int = 0,
+    units: UnitsPayloadModel = UnitsPayloadModel(),
 ) -> dict[str, object]:
     """Respond to `type: productionToLose`."""
     return await _submit_and_return_state(
-        {
-            "type": "productionToLose",
-            "units": {
-                "megacredits": megacredits,
-                "steel": steel,
-                "titanium": titanium,
-                "plants": plants,
-                "energy": energy,
-                "heat": heat,
-            },
-        }
+        {"type": "productionToLose", "units": units.model_dump()}
     )
 
 
@@ -308,26 +294,11 @@ async def select_resource(resource: str) -> dict[str, object]:
 
 @mcp.tool()
 async def select_resources(
-    megacredits: int = 0,
-    steel: int = 0,
-    titanium: int = 0,
-    plants: int = 0,
-    energy: int = 0,
-    heat: int = 0,
+    units: UnitsPayloadModel = UnitsPayloadModel(),
 ) -> dict[str, object]:
     """Respond to `type: resources`."""
     return await _submit_and_return_state(
-        {
-            "type": "resources",
-            "units": {
-                "megacredits": megacredits,
-                "steel": steel,
-                "titanium": titanium,
-                "plants": plants,
-                "energy": energy,
-                "heat": heat,
-            },
-        }
+        {"type": "resources", "units": units.model_dump()}
     )
 
 
