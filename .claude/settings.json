@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(agent-prompts/codex_from_gameplay/**)",
+      "Edit(agent-prompts/codex_from_gameplay/**)",
+      "Read(agent-prompts/gemini/**)",
+      "Edit(agent-prompts/gemini/**)"
+    ]
+  }
+}

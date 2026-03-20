@@ -7,7 +7,20 @@ Update this file after each game.
 
 ## The Most Important Things I've Learned
 
-### 1. Milestones are worth more than any engine
+### 1. VP-per-resource cards are essential for competitive card VP
+
+In Game 3, John scored 57 card VP vs my 15. The gap came almost entirely from VP-per-resource cards: Ecological Zone (6VP), Birds (5VP), Fish (5VP), Pets (4VP), Io Mining Industries (7VP), Ganymede Colony (7VP), Security Fleet (3VP). These cards accumulate resources over many generations and scale to 3–7+ VP each. My static 1–2 VP cards cannot compete.
+
+**Draft at least 2–3 VP-per-resource cards by mid-game:**
+
+- **Animal cards**: Ecological Zone, Birds, Fish, Pets, Predators, Small Animals, Livestock
+- **Fighter cards**: Security Fleet
+- **Microbe VP cards**: Decomposers (1 VP per 3 microbes)
+- **Jovian-scaling cards**: Io Mining Industries, Ganymede Colony (VP per Jovian tag)
+
+If you see these in the draft, take them even over engine cards. A single Ecological Zone with 12 animals is worth more VP than 3 static VP cards combined.
+
+### 2. Milestones are worth more than any engine
 
 In Game 2, John swept all 3 milestones (15 VP) while I got 0. That 15 VP swing was worth more than my entire microbe combo engine generated. Milestones cost 8 MC each for 5 VP = 1.6 MC/VP. **No card, engine, or strategy comes close to this efficiency.** Claiming even 1 milestone must be the #1 priority from Gen 1. Plan your opening around which milestone you can reach first.
 
@@ -65,6 +78,23 @@ The southern half of the board (y≥5) tends to be open early. The equatorial ro
 4. **Don't fund an award if**: an opponent is clearly going to win it regardless — you're just subsidizing their VP
 5. **Contest an award if**: an opponent funds an award you could plausibly win — pivot your strategy to challenge them
 6. **Deny by funding a different award**: force opponent to spend 14 MC (2nd) or 20 MC (3rd) on their preferred award
+
+### Award funding danger: production can swing massively in late game (Game 3 lesson)
+
+In Game 3, I funded both Banker (8 MC) and Landlord (14 MC) = 22 MC spent, 0 VP gained. John won both awards by surging production in the final 3–4 gens. This was a –22 MC and –15 VP disaster (John got 15 VP from awards I funded).
+
+**Why awards are more dangerous than they appear:**
+
+- **Banker**: MC production can swing 10+ in 2–3 gens from single cards. Capital (+5), Gene Repair (+2), Cartel (+4), Space Hotels (+4), Kelp Farming (+2). A 5 MC prod lead is NOT safe.
+- **Landlord**: Especially dangerous when opponent has high plant production. 18 plant prod = 2+ greeneries per gen = 2+ tiles per gen. An opponent can go from 5 tiles to 21 tiles in 4 gens. NEVER fund Landlord when opponent has 8+ plant production.
+- **Miner**: Safer — steel/titanium stockpiles don't swing as fast. But still verify the lead is 10+.
+
+**Updated funding rules:**
+
+1. Only fund at 8 MC if lead is 10+ AND structurally locked (no obvious catch-up cards for opponent)
+2. At 14 MC (2nd funding), need near-certainty of winning — the cost is too high for uncertainty
+3. Never fund Landlord against a plant-heavy opponent
+4. Funding an award you lose is a –10 VP swing (MC spent + opponent gets 5 VP). This is worse than playing almost any card in the game.
 
 ### Thermalist counter
 
@@ -217,20 +247,48 @@ If opponent has Protected Habitats and you don't:
 
 ---
 
+## Card Draw Engine Importance
+
+### Why card throughput wins games (Game 3 lesson)
+
+In Game 3, John played 60 cards to my 37 — a 62% throughput advantage. His draw engine: Mars University (draw on science tags), Development Center (draw with energy), Inventors' Guild (buy cards with actions), Business Network (look at top card each gen), Anti-Gravity Tech (–2 MC on all cards).
+
+More cards seen = more VP cards found and played. John's 57 card VP vs my 15 is directly attributable to seeing and playing more high-VP cards.
+
+### Card draw cards to prioritize
+
+- **Mars University** (8 MC): draw a card when playing a science tag. Science tags are common — this fires 5–10 times per game.
+- **Development Center** (11 MC): spend 1 energy to draw a card. Reliable, repeatable draw every generation.
+- **Inventors' Guild** (9 MC): action to look at top card and buy it. Consistent card access.
+- **Business Network** (4 MC): look at top card each generation. Cheap and always-on.
+- **Olympus Conference** (10 MC): draw or place science resource on science tag play. Similar to Mars University.
+- **Research** (11 MC): draw 2 cards, keep both. One-shot but efficient.
+
+### When to invest in card draw
+
+- **Early game (Gen 1–4)**: Card draw engines pay for themselves over 8+ remaining gens. A Mars University played Gen 2 that fires 8 times = 8 cards drawn = 24+ MC value in card selection.
+- **Mid game (Gen 5–8)**: Still worth it if you have 4+ gens remaining. Development Center with energy production is reliable.
+- **Late game (Gen 9+)**: Too late for draw engines. Focus on playing VP cards already in hand.
+
+---
+
 ## Tactical Reminders
 
 1. **Race for milestones from Gen 1** — they are the single highest-VP-per-MC source in the game. Plan your opening around them.
 2. **Build 3 cities ON MARS by Gen 5–6** — claim Mayor and set up adjacency VP. Off-board cities are for VP, not milestone racing.
 3. **Use `get_mars_board_state` before placing any tile** to optimize adjacency
 4. **Never play –VP cards** in close games unless the benefit is overwhelming
-5. **Fund awards only with structural leads** — tag-based leads (Scientist, Builder) are volatile. Production/resource leads (Banker, Miner) are safe.
-6. **Draft Protected Habitats in 2-player** — it blocks plant/animal/microbe removal and is game-warping
-7. **Convert all plants and heat** before passing — leave nothing on the table
-8. **Standard project greenery near own cities** is efficient VP in final gens
-9. **Track opponent city locations** — don't gift them greenery adjacency VP
-10. **Caretaker Contract + microbe combos** are powerful late-game TR engines — keep microbes cycling
-11. **Titanium** is 3 MC/unit for space tags — prioritize space cards to spend it
-12. **When opponent has Ants**, spread microbes across multiple cards to minimize per-card theft impact
+5. **Fund awards only with insurmountable leads** — tag-based leads are volatile, AND production-based leads (Banker, Landlord) can swing 10+ in 2–3 gens. Only fund if lead is 10+ and structurally locked. Never fund Landlord vs high plant prod.
+6. **Draft Protected Habitats in 2-player** — it blocks plant/animal/microbe removal and is game-warping. NOTE: it does NOT block production theft (Birds, Fish).
+7. **Draft 2–3 VP-per-resource cards by mid-game** — animal/fighter/Jovian-scaling cards generate 3–7+ VP each. Static 1–2 VP cards cannot compete.
+8. **Build a card draw engine early** — Mars University, Dev Center, Inventors' Guild. More cards = more VP cards found. 60 cards played vs 37 is a decisive advantage.
+9. **Convert all plants and heat** before passing — leave nothing on the table
+10. **Standard project greenery near own cities** is efficient VP in final gens
+11. **Track opponent city locations** — don't gift them greenery adjacency VP
+12. **Caretaker Contract + microbe combos** are powerful late-game TR engines — keep microbes cycling
+13. **Titanium** is 3 MC/unit for space tags — prioritize space cards to spend it
+14. **When opponent has Ants**, spread microbes across multiple cards to minimize per-card theft impact
+15. **Track opponent Jovian tags** — Terraforming Ganymede with 7+ Jovian tags is a game-winning TR swing
 
 ---
 
@@ -240,3 +298,4 @@ If opponent has Protected Habitats and you don't:
 | --------------------------------------- | ------------ | -------------------- | -------------------------------- |
 | Game 1 vs Codex (2p, Tharsis, Prelude)  | Lost 99–101  | City VP: 0 vs 16     | Card VP 25, TR 49, 2 milestones  |
 | Game 2 vs John (2p, Tharsis, Prelude)   | Lost 79–115  | Milestones: 0 vs 15  | MC prod 24, TR 44, Banker award  |
+| Game 3 vs John (2p, Tharsis, Prelude)   | Lost 93–163  | Awards: 0 vs 15, Card VP: 15 vs 57 | 2 milestones, TR 50, strong early economy |
