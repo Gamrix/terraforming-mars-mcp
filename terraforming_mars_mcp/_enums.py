@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from enum import StrEnum
+from typing import Any
 
 
 class DetailLevel(StrEnum):
@@ -88,3 +89,16 @@ def action_tools_for_input_type(input_type: str | None) -> list[str]:
     except (ValueError, KeyError):
         return [ToolName.SUBMIT_RAW_ENTITY.value]
     return [tool.value, ToolName.SUBMIT_RAW_ENTITY.value]
+
+
+def strip_empty(obj: Any) -> Any:
+    """Recursively strip None values and empty lists from dicts.
+
+    Leaves other falsy values (0, False, empty strings) untouched since they
+    carry semantic meaning in game state payloads.
+    """
+    if isinstance(obj, dict):
+        return {k: strip_empty(v) for k, v in obj.items() if v is not None and v != []}
+    if isinstance(obj, list):
+        return [strip_empty(item) for item in obj]
+    return obj

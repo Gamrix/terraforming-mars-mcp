@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from ._enums import DetailLevel
+from ._enums import DetailLevel, strip_empty
 from .api_response_models import (
     CardModel as ApiCardModel,
     PublicPlayerModel as ApiPublicPlayerModel,
@@ -301,25 +301,23 @@ def _compact_card(
             return {"name": card_name}
 
     # Build the payload with cost and dynamic fields.
-    payload: dict[str, object] = {
-        "name": card_name,
-    }
-    if disabled:
-        payload["disabled"] = True
     cost = base_cost if base_cost is not None else discounted_cost
-    if cost is not None:
-        payload["cost"] = cost
-    if discounted_cost is not None and discounted_cost != cost:
-        payload["discounted_cost"] = discounted_cost
-    if has_warning:
-        payload["warning"] = warning
-    if has_warnings:
-        payload["warnings"] = warnings
-    if resources is not None and resources != 0:
-        payload["resources"] = resources
-    vp = info.get("vp")
-    if vp is not None:
-        payload["vp"] = vp
+    payload: dict[str, object] = strip_empty(
+        {
+            "name": card_name,
+            "disabled": True if disabled else None,
+            "cost": cost,
+            "discounted_cost": discounted_cost
+            if discounted_cost is not None and discounted_cost != cost
+            else None,
+            "warning": warning if has_warning else None,
+            "warnings": warnings if has_warnings else None,
+            "resources": resources
+            if resources is not None and resources != 0
+            else None,
+            "vp": info.get("vp"),
+        }
+    )
 
     # Minimal detail (e.g. blue card actions): name + dynamic fields only.
     if normalized_detail_level == DetailLevel.MINIMAL:

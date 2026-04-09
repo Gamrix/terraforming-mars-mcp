@@ -4,7 +4,13 @@ from collections import Counter
 from dataclasses import asdict, dataclass
 from typing import Any, Literal, NotRequired, TypedDict
 
-from ._enums import DetailLevel, InputType, ToolName, action_tools_for_input_type
+from ._enums import (
+    DetailLevel,
+    InputType,
+    ToolName,
+    action_tools_for_input_type,
+    strip_empty,
+)
 from .api_response_models import (
     GameModel as ApiGameModel,
 )
@@ -27,19 +33,6 @@ from .waiting_for import (
 )
 
 END_OF_GENERATION_PHASES = {"production", "solar", "intergeneration", "end"}
-
-
-def _strip_empty(obj: Any) -> Any:
-    """Recursively strip None values and empty lists from dicts.
-
-    Leaves other falsy values (0, False, empty strings) untouched since they
-    carry semantic meaning in game state payloads.
-    """
-    if isinstance(obj, dict):
-        return {k: _strip_empty(v) for k, v in obj.items() if v is not None and v != []}
-    if isinstance(obj, list):
-        return [_strip_empty(item) for item in obj]
-    return obj
 
 
 _LAST_OPPONENT_TABLEAU: dict[str, dict[str, Counter[str]]] = {}
@@ -389,34 +382,29 @@ def full_board_state(
     for space in game.spaces:
         if not include_empty_spaces and space.tileType is None:
             continue
-        space_data: dict[str, Any] = {
-            "id": space.id,
-            "x": space.x,
-            "y": space.y,
-            "space_type": space.spaceType,
-        }
-        if space.bonus:
-            space_data["bonus"] = [_space_bonus_label(bonus) for bonus in space.bonus]
-        if space.tileType is not None:
-            space_data["tile_type"] = _tile_type_label(space.tileType)
-        if space.color is not None:
-            space_data["owner_color"] = space.color
-        if space.coOwner is not None:
-            space_data["co_owner_color"] = space.coOwner
-        if space.highlight is not None:
-            space_data["highlight"] = space.highlight
-        if space.gagarin is not None:
-            space_data["gagarin"] = space.gagarin
-        if space.rotated is not None:
-            space_data["rotated"] = space.rotated
-        if space.cathedral is not None:
-            space_data["cathedral"] = space.cathedral
-        if space.nomads is not None:
-            space_data["nomads"] = space.nomads
-        if space.undergroundResource is not None:
-            space_data["underground_resource"] = space.undergroundResource
-        if space.excavator is not None:
-            space_data["excavator"] = space.excavator
+        space_data: dict[str, Any] = strip_empty(
+            {
+                "id": space.id,
+                "x": space.x,
+                "y": space.y,
+                "space_type": space.spaceType,
+                "bonus": [_space_bonus_label(b) for b in space.bonus]
+                if space.bonus
+                else None,
+                "tile_type": _tile_type_label(space.tileType)
+                if space.tileType is not None
+                else None,
+                "owner_color": space.color,
+                "co_owner_color": space.coOwner,
+                "highlight": space.highlight,
+                "gagarin": space.gagarin,
+                "rotated": space.rotated,
+                "cathedral": space.cathedral,
+                "nomads": space.nomads,
+                "underground_resource": space.undergroundResource,
+                "excavator": space.excavator,
+            }
+        )
         mars_spaces.append(space_data)
 
     return {
@@ -470,10 +458,8 @@ def _new_opponent_cards_from_counts(
                     "on_play_effect_text": info.get("on_play_effect_text"),
                     "cost": info.get("base_cost"),
                     "discounted_cost": info.get("base_cost"),
+                    "vp": info.get("vp"),
                 }
-                vp = info.get("vp")
-                if vp is not None:
-                    event["vp"] = vp
                 events.append(event)
     return events, current
 
@@ -814,4 +800,4 @@ def build_agent_state(
             player_model.model_dump(exclude_none=True),
             this_color=player_model.thisPlayer.color,
         )
-    return _strip_empty(result)
+    return strip_empty(result)

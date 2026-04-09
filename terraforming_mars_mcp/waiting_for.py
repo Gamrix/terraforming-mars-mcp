@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 
 from .api_response_models import WaitingForInputModel as ApiWaitingForInputModel
-from ._enums import DetailLevel, InputType
+from ._enums import DetailLevel, InputType, strip_empty
 from .card_info import compact_cards
 
 
@@ -109,27 +109,22 @@ def normalize_waiting_for(
 
     wf = waiting_for
 
-    normalized: dict[str, object] = {
-        "input_type": input_type_name(wf),
-        "title": wf.title,
-    }
-
-    if wf.warning is not None:
-        normalized["warning"] = wf.warning
-    if wf.warnings:
-        normalized["warnings"] = wf.warnings
-
-    if wf.initialIdx:
-        normalized["initial_index"] = wf.initialIdx
-
-    if wf.amount is not None:
-        normalized["amount"] = wf.amount
-
-    if wf.count is not None:
-        normalized["count"] = wf.count
-
-    if wf.include:
-        normalized["include"] = wf.include
+    normalized: dict[str, object] = strip_empty(
+        {
+            "input_type": input_type_name(wf),
+            "title": wf.title,
+            "warning": wf.warning,
+            "warnings": wf.warnings,
+            "initial_index": wf.initialIdx or None,
+            "amount": wf.amount,
+            "count": wf.count,
+            "include": wf.include,
+            "players": wf.players,
+            "spaces": wf.spaces,
+            "parties": wf.parties,
+            "globalEventNames": wf.globalEventNames,
+        }
+    )
 
     if wf.cards is not None:
         is_blue_action = wf.selectBlueCardAction is True
@@ -142,41 +137,30 @@ def normalize_waiting_for(
         # Filter out disabled cards; only include ones the player can use.
         cards_list = [c for c in cards_list if not c.get("disabled")]
         normalized["cards"] = cards_list
-        card_selection: dict[str, object] = {}
-        if wf.min is not None:
-            card_selection["min"] = wf.min
-        if wf.max is not None:
-            card_selection["max"] = wf.max
-        if wf.maxByDefault is not None:
-            card_selection["max_by_default"] = wf.maxByDefault
-        if is_blue_action:
-            card_selection["select_blue_card_action"] = True
-        if wf.showOnlyInLearnerMode is True:
-            card_selection["show_only_in_learner_mode"] = True
-        if wf.showOwner is True:
-            card_selection["show_owner"] = True
+        card_selection: dict[str, object] = strip_empty(
+            {
+                "min": wf.min,
+                "max": wf.max,
+                "max_by_default": wf.maxByDefault,
+                "select_blue_card_action": True if is_blue_action else None,
+                "show_only_in_learner_mode": True
+                if wf.showOnlyInLearnerMode is True
+                else None,
+                "show_owner": True if wf.showOwner is True else None,
+            }
+        )
         if card_selection:
             normalized["card_selection"] = card_selection
         if "sell patents" in _title_to_text(wf.title).lower():
             normalized.pop("cards", None)
     elif wf.min is not None or wf.max is not None:
-        amount_range: dict[str, object] = {}
-        if wf.min is not None:
-            amount_range["min"] = wf.min
-        if wf.max is not None:
-            amount_range["max"] = wf.max
-        if wf.maxByDefault is not None:
-            amount_range["max_by_default"] = wf.maxByDefault
-        normalized["amount_range"] = amount_range
-
-    if wf.players:
-        normalized["players"] = wf.players
-    if wf.spaces:
-        normalized["spaces"] = wf.spaces
-    if wf.parties:
-        normalized["parties"] = wf.parties
-    if wf.globalEventNames:
-        normalized["globalEventNames"] = wf.globalEventNames
+        normalized["amount_range"] = strip_empty(
+            {
+                "min": wf.min,
+                "max": wf.max,
+                "max_by_default": wf.maxByDefault,
+            }
+        )
 
     if wf.tokens:
         normalized["tokens"] = [
