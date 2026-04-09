@@ -142,16 +142,6 @@ def _log_signature(entry: ApiGameLogEntryModel) -> str:
     )
 
 
-def _build_color_name_map(player_model: ApiPlayerViewModel) -> dict[str, str]:
-    mapping: dict[str, str] = {}
-    for player in player_model.players:
-        color = player.color
-        name = player.name
-        if color and name:
-            mapping[color] = name
-    return mapping
-
-
 def _format_log_entry(
     entry: ApiGameLogEntryModel, color_to_name: dict[str, str]
 ) -> str:
@@ -216,7 +206,9 @@ async def wait_for_turn_from_player_model(
     game = player_model.game
 
     this_color = player_model.thisPlayer.color
-    color_to_name = _build_color_name_map(player_model)
+    color_to_name = {
+        p.color: p.name for p in player_model.players if p.color and p.name
+    }
     opponent_colors = {color for color in color_to_name if color != this_color}
     start_logs = list(initial_logs) if initial_logs is not None else _get_game_logs()
 

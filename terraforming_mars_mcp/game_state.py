@@ -259,22 +259,6 @@ def _summarize_players(
     return (you or _player_summary(this_player)), others
 
 
-def _generation_start_context(player_model: ApiPlayerViewModel) -> dict[str, Any]:
-    cards_in_hand = compact_cards(
-        player_model.cardsInHand,
-        detail_level=DetailLevel.FULL,
-        generation=player_model.game.generation,
-        auto_response=False,
-    )
-    return {
-        "cards_in_hand_count": len(cards_in_hand),
-        "cards_in_hand": cards_in_hand,
-        "played_card_effects_and_actions": extract_played_card_effects_and_actions(
-            player_model.thisPlayer
-        ),
-    }
-
-
 def summarize_board(game: ApiGameModel) -> dict[str, Any]:
     spaces = game.spaces
     occupied = 0
@@ -452,9 +436,10 @@ def full_board_state(
     }
 
 
-def _opponent_tableau_counts(
+def _new_opponent_cards_from_counts(
     player_model: ApiPlayerViewModel,
-) -> dict[str, Counter[str]]:
+    previous: dict[str, Counter[str]],
+) -> tuple[list[dict[str, Any]], dict[str, Counter[str]]]:
     this_color = player_model.thisPlayer.color
     current: dict[str, Counter[str]] = {}
     for player in player_model.players:
@@ -462,17 +447,7 @@ def _opponent_tableau_counts(
         if color == this_color:
             continue
         tableau = player.tableau or []
-        names = [card.name for card in tableau]
-        current[color] = Counter(names)
-    return current
-
-
-def _new_opponent_cards_from_counts(
-    player_model: ApiPlayerViewModel,
-    previous: dict[str, Counter[str]],
-) -> tuple[list[dict[str, Any]], dict[str, Counter[str]]]:
-    this_color = player_model.thisPlayer.color
-    current = _opponent_tableau_counts(player_model)
+        current[color] = Counter(card.name for card in tableau)
     events: list[dict[str, Any]] = []
     for player in player_model.players:
         color = player.color
@@ -575,15 +550,6 @@ def _strip_expansion_fields(
                 vpb.pop(key, None)
 
 
-def _strip_zero_resources_from_tableau(
-    tableau: list[dict[str, Any]],
-) -> None:
-    """Remove ``resources: 0`` entries from tableau card dicts."""
-    for card in tableau:
-        if card.get("resources") == 0:
-            card.pop("resources", None)
-
-
 def thin_raw_player_model(
     raw: dict[str, Any],
     this_color: str,
@@ -629,7 +595,9 @@ def thin_raw_player_model(
             # 2. Filter resources: 0 from tableau cards.
             tableau = player_data.get("tableau")
             if isinstance(tableau, list):
-                _strip_zero_resources_from_tableau(tableau)
+                for card in tableau:
+                    if card.get("resources") == 0:
+                        card.pop("resources", None)
 
             # 3. Strip disabled-expansion fields from player data.
             _strip_expansion_fields(player_data, disabled_expansions)
@@ -816,7 +784,19 @@ def build_agent_state(
         and normalized_detail_level == DetailLevel.FULL
         and prev_gen != generation
     ):
-        result["generation_start"] = _generation_start_context(player_model)
+        gen_start_cards = compact_cards(
+            player_model.cardsInHand,
+            detail_level=DetailLevel.FULL,
+            generation=generation,
+            auto_response=False,
+        )
+        result["generation_start"] = {
+            "cards_in_hand_count": len(gen_start_cards),
+            "cards_in_hand": gen_start_cards,
+            "played_card_effects_and_actions": extract_played_card_effects_and_actions(
+                player_model.thisPlayer
+            ),
+        }
     suggested_tools = action_tools_for_input_type(input_type)
     if (
         input_type == InputType.OR_OPTIONS.value

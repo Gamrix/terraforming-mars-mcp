@@ -97,32 +97,6 @@ def _load_card_info_index() -> dict[str, dict[str, object]]:
     return _CARD_INFO_INDEX
 
 
-def _extract_strings(node: Any) -> list[str]:
-    strings: list[str] = []
-    if isinstance(node, str):
-        strings.append(node)
-    elif isinstance(node, list):
-        for value in node:
-            strings.extend(_extract_strings(value))
-    elif isinstance(node, dict):
-        for value in node.values():
-            strings.extend(_extract_strings(value))
-    return strings
-
-
-def _description_text(metadata: dict[str, object] | None) -> str | None:
-    if not isinstance(metadata, dict):
-        return None
-    description = metadata.get("description")
-    if isinstance(description, str):
-        return description
-    if isinstance(description, dict):
-        text = description.get("text")
-        if isinstance(text, str):
-            return text
-    return None
-
-
 def _split_requirement_and_effect(
     description: str | None,
 ) -> tuple[str | None, str | None]:
@@ -137,18 +111,6 @@ def _split_requirement_and_effect(
     requirement_text = match.group(1).strip()
     effect_text = match.group(2).strip() or None
     return requirement_text, effect_text
-
-
-def _extract_actions_and_effects(render_data: Any) -> tuple[list[str], list[str]]:
-    actions: list[str] = []
-    effects: list[str] = []
-    for text in _extract_strings(render_data):
-        normalized = text.strip()
-        if normalized.startswith("Action:"):
-            actions.append(normalized)
-        elif normalized.startswith("Effect:"):
-            effects.append(normalized)
-    return actions, effects
 
 
 def _vp_per_text(per: int, singular: str, plural: str, suffix: str = "") -> str:
@@ -203,8 +165,31 @@ def card_info(card_name: Any, include_play_details: bool = False) -> dict[str, o
     raw_metadata = card.get("metadata")
     metadata = raw_metadata if isinstance(raw_metadata, dict) else None
     render_data = metadata.get("renderData") if isinstance(metadata, dict) else None
-    description = _description_text(metadata)
-    actions, effects = _extract_actions_and_effects(render_data)
+    raw_description = (
+        metadata.get("description") if isinstance(metadata, dict) else None
+    )
+    if isinstance(raw_description, str):
+        description: str | None = raw_description
+    elif isinstance(raw_description, dict):
+        text = raw_description.get("text")
+        description = text if isinstance(text, str) else None
+    else:
+        description = None
+    actions: list[str] = []
+    effects: list[str] = []
+    if render_data is not None:
+        queue: list[Any] = [render_data]
+        while queue:
+            node = queue.pop(0)
+            if isinstance(node, str):
+                if node.startswith("Action:"):
+                    actions.append(node)
+                elif node.startswith("Effect:"):
+                    effects.append(node)
+            elif isinstance(node, list):
+                queue.extend(node)
+            elif isinstance(node, dict):
+                queue.extend(node.values())
     vp = format_vp(card.get("victoryPoints"))
 
     info: dict[str, object] = {
@@ -402,18 +387,14 @@ def compact_cards(
     ]
 
 
-def _ensure_player_model(
-    player: ApiPublicPlayerModel | dict[str, object],
-) -> ApiPublicPlayerModel:
-    if isinstance(player, ApiPublicPlayerModel):
-        return player
-    return ApiPublicPlayerModel.model_validate(player)
-
-
 def extract_played_cards(
     player: ApiPublicPlayerModel | dict[str, object],
 ) -> list[dict[str, object]]:
-    parsed_player = _ensure_player_model(player)
+    parsed_player = (
+        player
+        if isinstance(player, ApiPublicPlayerModel)
+        else ApiPublicPlayerModel.model_validate(player)
+    )
     return [
         _compact_card(card, detail_level=DetailLevel.FULL, auto_response=False)
         for card in parsed_player.tableau
@@ -423,7 +404,11 @@ def extract_played_cards(
 def extract_played_card_effects_and_actions(
     player: ApiPublicPlayerModel | dict[str, object],
 ) -> list[dict[str, object]]:
-    parsed_player = _ensure_player_model(player)
+    parsed_player = (
+        player
+        if isinstance(player, ApiPublicPlayerModel)
+        else ApiPublicPlayerModel.model_validate(player)
+    )
     summaries: list[dict[str, object]] = []
 
     def _normalized_texts(values: object) -> list[str]:

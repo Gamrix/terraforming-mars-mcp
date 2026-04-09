@@ -44,10 +44,6 @@ def _title_to_text(title: str | object) -> str:
     return ""
 
 
-def _is_sell_patents_prompt(title: str | object) -> bool:
-    return "sell patents" in _title_to_text(title).lower()
-
-
 def _is_undo_option(
     *,
     input_type: str | None,
@@ -161,7 +157,7 @@ def normalize_waiting_for(
             card_selection["show_owner"] = True
         if card_selection:
             normalized["card_selection"] = card_selection
-        if _is_sell_patents_prompt(wf.title):
+        if "sell patents" in _title_to_text(wf.title).lower():
             normalized.pop("cards", None)
     elif wf.min is not None or wf.max is not None:
         amount_range: dict[str, object] = {}
@@ -255,7 +251,10 @@ def normalize_waiting_for(
                 if isinstance(option_cards, list) and len(option_cards) == 0:
                     continue
 
-                if _is_sell_patents_prompt(option_payload.get("title", "")):
+                if (
+                    "sell patents"
+                    in _title_to_text(option_payload.get("title", "")).lower()
+                ):
                     option_payload.pop("cards", None)
 
                 normalized_options.append(option_payload)
