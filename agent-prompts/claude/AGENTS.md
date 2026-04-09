@@ -128,12 +128,12 @@ Use these exact shapes when you are unsure about setup or nested prompts.
 ```
 
 - `choose_or_option` with nested `space` response:
-- `sub_response_json` must be a JSON string, not an object.
+- `sub_response` is a dict (not a JSON string).
 - Example:
 ```json
 {
-  "option_index": "1",
-  "sub_response_json": "{\"type\":\"space\",\"spaceId\":\"04\"}"
+  "option_index": 1,
+  "sub_response": {"type": "space", "spaceId": "04"}
 }
 ```
 
@@ -143,8 +143,8 @@ Use these exact shapes when you are unsure about setup or nested prompts.
 - Example:
 ```json
 {
-  "option_index": "0",
-  "sub_response_json": "{\"type\":\"projectCard\",\"card\":\"Noctis City\",\"payment\":{\"megaCredits\":18,\"steel\":0,\"titanium\":0,\"plants\":0,\"heat\":0,\"microbes\":0,\"floaters\":0,\"lunaArchivesScience\":0,\"spireScience\":0,\"seeds\":0,\"auroraiData\":0,\"graphene\":0,\"kuiperAsteroids\":0}}"
+  "option_index": 0,
+  "sub_response": {"type": "projectCard", "card": "Noctis City", "payment": {"megaCredits": 18, "steel": 0, "titanium": 0, "plants": 0, "heat": 0, "microbes": 0, "floaters": 0, "lunaArchivesScience": 0, "spireScience": 0, "seeds": 0, "auroraiData": 0, "graphene": 0, "kuiperAsteroids": 0}}
 }
 ```
 
@@ -153,8 +153,8 @@ Use these exact shapes when you are unsure about setup or nested prompts.
 - Use nested `or` response:
 ```json
 {
-  "option_index": "0",
-  "sub_response_json": "{\"type\":\"or\",\"index\":0,\"response\":{\"type\":\"option\"}}"
+  "option_index": 0,
+  "sub_response": {"type": "or", "index": 0, "response": {"type": "option"}}
 }
 ```
 
