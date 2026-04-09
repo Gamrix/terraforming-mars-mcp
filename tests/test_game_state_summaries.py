@@ -655,3 +655,26 @@ def test_auto_response_all_disabled_cards_produce_empty_list() -> None:
     player_view = PlayerViewModel.model_validate(raw)
     state = game_state_mod._build_agent_state(player_view, auto_response=True)
     assert "cards" not in state["waiting_for"]
+
+
+def test_opponent_new_cards_have_no_none_or_empty_list_fields() -> None:
+    """opponent_new_cards dicts should not contain None values or empty lists."""
+    importlib.reload(game_state_mod)
+
+    raw1 = _make_two_player_model(game_age=100, opponent_tableau=[])
+    player_view1 = PlayerViewModel.model_validate(raw1)
+    game_state_mod._build_agent_state(player_view1, auto_response=True)
+
+    # Sponsors has no ongoing_effects, no activated_actions, no play_requirements_text.
+    raw2 = _make_two_player_model(
+        game_age=101, opponent_tableau=[{"name": "Sponsors"}]
+    )
+    player_view2 = PlayerViewModel.model_validate(raw2)
+    state = game_state_mod._build_agent_state(player_view2, auto_response=True)
+
+    cards = state["opponent_new_cards"]
+    assert len(cards) == 1
+    card = cards[0]
+    for key, value in card.items():
+        assert value is not None, f"{key} should not be None"
+        assert value != [], f"{key} should not be empty list"
