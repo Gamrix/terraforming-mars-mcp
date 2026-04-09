@@ -12,14 +12,13 @@
 from __future__ import annotations
 
 import argparse
-import json
 import logging
 import os
 from pathlib import Path
 
 from ._app import mcp
 from ._enums import DetailLevel, InputType
-from ._models import OrOptionRequestPayload, PaymentPayloadModel
+from ._models import PaymentPayloadModel
 from .api_response_models import JsonValue
 from .card_info import compact_cards
 from .game_state import build_agent_state
@@ -106,33 +105,15 @@ def get_my_hand_cards() -> dict[str, object]:
 
 @mcp.tool()
 async def choose_or_option(
-    option_index: int | None = None,
-    sub_response_json: str | dict[str, object] | None = None,
-    request: str | dict[str, object] | None = None,
+    option_index: int,
+    sub_response: dict[str, object] | None = None,
 ) -> dict[str, object]:
-    """Respond to `type: or` with selected index and nested response object.
-
-    Accepts either direct params (`option_index`, `sub_response_json`) or a
-    legacy JSON `request` payload.
-    """
-    if request is not None:
-        raw = json.loads(request) if isinstance(request, str) else request
-        if not isinstance(raw, dict):
-            raise ValueError("request must decode to an object")
-        payload = OrOptionRequestPayload.model_validate(raw)
-        if option_index is None:
-            option_index = payload.option_index
-        if sub_response_json is None:
-            sub_response_json = payload.sub_response_json
-
-    if option_index is None:
-        raise ValueError("option_index is required")
-
+    """Respond to `type: or` with selected index and nested response object."""
     return await submit_and_return_state(
         {
             "type": "or",
-            "index": int(option_index),
-            "response": normalize_or_sub_response(sub_response_json),
+            "index": option_index,
+            "response": normalize_or_sub_response(sub_response),
         }
     )
 

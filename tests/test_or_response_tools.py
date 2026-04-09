@@ -40,14 +40,22 @@ def test_choose_or_option_defaults_nested_option_response() -> None:
     assert captured == {"type": "or", "index": 2, "response": {"type": "option"}}
 
 
-def test_choose_or_option_accepts_legacy_request_payload() -> None:
+def test_choose_or_option_with_sub_response() -> None:
     server = _reload_server()
     captured: dict[str, Any] = {}
     _set_submit_capture(server, captured)
-    result = _run(server.choose_or_option(request='{"option_index":4}'))
+    result = _run(
+        server.choose_or_option(
+            option_index=4, sub_response={"type": "space", "spaceId": "E5"}
+        )
+    )
 
     assert result == {"ok": True}
-    assert captured == {"type": "or", "index": 4, "response": {"type": "option"}}
+    assert captured == {
+        "type": "or",
+        "index": 4,
+        "response": {"type": "space", "spaceId": "E5"},
+    }
 
 
 def test_confirm_option_submits_or_response_when_waiting_for_or() -> None:

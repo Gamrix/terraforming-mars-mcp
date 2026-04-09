@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import json
-
 from .api_response_models import (
     MessageModel,
     WaitingForInputModel as ApiWaitingForInputModel,
@@ -21,20 +19,13 @@ def input_type_name(waiting_for: ApiWaitingForInputModel | None) -> str | None:
 
 
 def normalize_or_sub_response(
-    value: str | dict[str, object] | None,
+    value: dict[str, object] | None,
 ) -> dict[str, object]:
-    if value is None or value == "":
+    if value is None:
         return {"type": "option"}
-    if isinstance(value, str):
-        decoded = json.loads(value)
-        if not isinstance(decoded, dict):
-            raise ValueError("sub_response_json must decode to an object")
-        value = decoded
-    if isinstance(value, dict):
-        if "type" not in value:
-            return {"type": "option", **value}
-        return value
-    raise ValueError("sub_response_json must be a JSON string or object")
+    if "type" not in value:
+        return {"type": "option", **value}
+    return value
 
 
 def title_to_text(title: str | MessageModel) -> str:
