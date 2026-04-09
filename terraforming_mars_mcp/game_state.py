@@ -41,8 +41,9 @@ def _strip_empty(obj: Any) -> Any:
 _LAST_OPPONENT_TABLEAU: dict[str, dict[str, Counter[str]]] = {}
 # Tracks (generation, constants_dict) so we send full constants once per gen.
 _LAST_GAME_CONSTANTS: dict[str, tuple[int, dict[str, Any]]] = {}
-_LAST_YOU_SUMMARY: dict[str, dict[str, Any]] = {}
-_LAST_OPPONENT_SUMMARIES: dict[str, dict[str, dict[str, Any]]] = {}
+# Counts responses since the last time full player/game state was included.
+_RESPONSES_SINCE_FULL_STATE: dict[str, int] = {}
+_FULL_STATE_INTERVAL = 10
 
 
 @dataclass(frozen=True)
@@ -816,32 +817,25 @@ def _build_agent_state(
         else you.to_minimal_payload()
     )
 
-    player_deltas_key = f"{constants_key}:{normalized_detail_level}"
-    previous_you_state = _LAST_YOU_SUMMARY.get(player_deltas_key)
-    include_you = previous_you_state != you_state
-    _LAST_YOU_SUMMARY[player_deltas_key] = you_state
-
-    previous_opponents = _LAST_OPPONENT_SUMMARIES.get(player_deltas_key, {})
-    current_opponents: dict[str, dict[str, Any]] = {}
-    changed_opponents: list[dict[str, Any]] = []
-    for payload in opponents_state:
-        color_value = payload.get("color")
-        if not isinstance(color_value, str):
-            continue
-        current_opponents[color_value] = payload
-        if previous_opponents.get(color_value) != payload:
-            changed_opponents.append(payload)
-    _LAST_OPPONENT_SUMMARIES[player_deltas_key] = current_opponents
+    # Include you/opponents at generation start or every N responses.
+    is_gen_start = prev_gen != generation
+    state_counter_key = f"{constants_key}:{normalized_detail_level}"
+    responses_since = _RESPONSES_SINCE_FULL_STATE.get(
+        state_counter_key, _FULL_STATE_INTERVAL
+    )
+    include_player_state = is_gen_start or responses_since >= _FULL_STATE_INTERVAL
+    if include_player_state:
+        _RESPONSES_SINCE_FULL_STATE[state_counter_key] = 0
+    else:
+        _RESPONSES_SINCE_FULL_STATE[state_counter_key] = responses_since + 1
 
     result: dict[str, Any] = {}
-    # Omit session when constants haven't changed (agent already knows it).
     if constants_changed:
         result["session"] = session
     result["game"] = game_state
-    if include_you:
+    if include_player_state:
         result["you"] = you_state
-    if changed_opponents:
-        result["opponents"] = changed_opponents
+        result["opponents"] = opponents_state
     result["waiting_for"] = _normalize_waiting_for(
         waiting_for,
         detail_level=normalized_detail_level,

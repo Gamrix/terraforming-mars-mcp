@@ -310,7 +310,8 @@ def test_game_constants_resent_on_value_change_within_generation() -> None:
     assert state["game"]["terraforming"]["temperature"] == -18
 
 
-def test_you_summary_omitted_when_unchanged() -> None:
+def test_you_and_opponents_omitted_between_intervals() -> None:
+    """you/opponents are included at gen start and every N responses, omitted otherwise."""
     server = _reload_server()
     importlib.reload(game_state_mod)
 
@@ -318,62 +319,22 @@ def test_you_summary_omitted_when_unchanged() -> None:
     player_view = PlayerViewModel.model_validate(raw)
     server._get_player = lambda player_id=None: player_view
     first = server.get_game_state()
+    # First call in a new generation → included
     assert "you" in first
 
     raw2 = _make_player_model(generation=4, game_age=101)
     player_view2 = PlayerViewModel.model_validate(raw2)
     server._get_player = lambda player_id=None: player_view2
     second = server.get_game_state()
+    # Same generation, not yet at interval → omitted
     assert "you" not in second
 
-
-def test_opponents_summary_only_includes_changed_players() -> None:
-    server = _reload_server()
-    importlib.reload(game_state_mod)
-
-    raw: dict[str, Any] = {
-        "id": "player-1",
-        "game": {
-            "id": "game-1",
-            "phase": "action",
-            "generation": 4,
-            "temperature": -20,
-            "oxygenLevel": 6,
-            "oceans": 3,
-            "venusScaleLevel": 0,
-            "isTerraformed": False,
-            "gameAge": 100,
-            "undoCount": 0,
-            "passedPlayers": [],
-            "spaces": [],
-            "milestones": [],
-            "awards": [],
-        },
-        "players": [
-            {"name": "Alice", "color": "red", "isActive": True},
-            {"name": "Bob", "color": "blue", "isActive": False, "megaCredits": 10},
-            {"name": "Carol", "color": "green", "isActive": False, "megaCredits": 20},
-        ],
-        "thisPlayer": {"name": "Alice", "color": "red", "isActive": True},
-    }
-    player_view = PlayerViewModel.model_validate(raw)
-    server._get_player = lambda player_id=None: player_view
-    first = server.get_game_state()
-    assert len(first["opponents"]) == 2
-
-    raw2 = dict(raw)
-    raw2["game"] = dict(raw["game"], gameAge=101)
-    raw2["players"] = [
-        {"name": "Alice", "color": "red", "isActive": True},
-        {"name": "Bob", "color": "blue", "isActive": False, "megaCredits": 11},
-        {"name": "Carol", "color": "green", "isActive": False, "megaCredits": 20},
-    ]
-    player_view2 = PlayerViewModel.model_validate(raw2)
-    server._get_player = lambda player_id=None: player_view2
-    second = server.get_game_state()
-    assert "opponents" in second
-    assert len(second["opponents"]) == 1
-    assert second["opponents"][0]["color"] == "blue"
+    # Advance to next generation → included again
+    raw3 = _make_player_model(generation=5, game_age=120)
+    player_view3 = PlayerViewModel.model_validate(raw3)
+    server._get_player = lambda player_id=None: player_view3
+    third = server.get_game_state()
+    assert "you" in third
 
 
 def test_proactive_calls_always_return_full_card_details() -> None:
