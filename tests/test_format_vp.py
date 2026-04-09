@@ -43,4 +43,4 @@ import terraforming_mars_mcp.card_info as card_info
 ])
 # fmt: on
 def test_format_vp(vp: Any, expected: Any) -> None:
-    assert card_info._format_vp(vp) == expected
+    assert card_info.format_vp(vp) == expected

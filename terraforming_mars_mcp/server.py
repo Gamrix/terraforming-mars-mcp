@@ -22,14 +22,14 @@ from ._app import mcp
 from ._enums import InputType
 from ._models import PaymentPayloadModel
 from .api_response_models import JsonValue
-from .card_info import _compact_cards
-from .game_state import _build_agent_state
-from .turn_flow import CFG, _get_player, _submit_and_return_state
+from .card_info import compact_cards
+from .game_state import build_agent_state
+from .turn_flow import CFG, get_player, submit_and_return_state
 from .waiting_for import (
-    _find_or_option_index,
-    _find_pass_option_index,
-    _normalize_or_sub_response,
-    _normalize_waiting_for,  # noqa: F401 – re-exported for test monkey-patching
+    find_or_option_index,
+    find_pass_option_index,
+    normalize_or_sub_response,
+    normalize_waiting_for,  # noqa: F401 – re-exported for test monkey-patching
 )
 
 DEFAULT_LOG_LEVEL = os.environ.get("TM_MCP_LOG_LEVEL", "DEBUG").upper()
@@ -77,8 +77,8 @@ def get_game_state(
     detail_level: Literal["full", "minimal"] = "full",
 ) -> dict[str, object]:
     """Fetch current player state plus compact, agent-friendly action/game summary."""
-    player_model = _get_player()
-    return _build_agent_state(
+    player_model = get_player()
+    return build_agent_state(
         player_model,
         include_full_model=include_full_model,
         include_board_state=include_board_state,
@@ -91,10 +91,10 @@ def get_game_state(
 @mcp.tool()
 def get_my_hand_cards() -> dict[str, object]:
     """Return all cards currently in your hand."""
-    player_model = _get_player()
+    player_model = get_player()
     this_player = player_model.thisPlayer
     game = player_model.game
-    cards = _compact_cards(player_model.cardsInHand, generation=game.generation)
+    cards = compact_cards(player_model.cardsInHand, generation=game.generation)
     return {
         "generation": game.generation,
         "phase": game.phase,
@@ -162,11 +162,11 @@ async def choose_or_option(
     if option_index is None:
         raise ValueError("option_index is required")
 
-    return await _submit_and_return_state(
+    return await submit_and_return_state(
         {
             "type": "or",
             "index": int(option_index),
-            "response": _normalize_or_sub_response(sub_response_json),
+            "response": normalize_or_sub_response(sub_response_json),
         }
     )
 
@@ -174,7 +174,7 @@ async def choose_or_option(
 @mcp.tool()
 async def confirm_option() -> dict[str, object]:
     """Respond to `type: option`."""
-    player_model = _get_player()
+    player_model = get_player()
     waiting_for = player_model.waitingFor
     if waiting_for is not None and waiting_for.type == InputType.OR_OPTIONS.value:
         index = 0
@@ -188,10 +188,10 @@ async def confirm_option() -> dict[str, object]:
                     if option.type == InputType.SELECT_OPTION.value:
                         index = idx
                         break
-        return await _submit_and_return_state(
+        return await submit_and_return_state(
             {"type": "or", "index": index, "response": {"type": "option"}}
         )
-    return await _submit_and_return_state({"type": "option"})
+    return await submit_and_return_state({"type": "option"})
 
 
 @mcp.tool()
@@ -201,15 +201,15 @@ async def pass_turn() -> dict[str, object]:
     Shortcut that finds the "Pass for this generation" or "End Turn" option
     in the current `or` prompt and submits it automatically.
     """
-    player_model = _get_player()
+    player_model = get_player()
     waiting_for = player_model.waitingFor
     if waiting_for is None:
         raise RuntimeError("No action is currently waiting for input")
 
     if waiting_for.type == InputType.OR_OPTIONS.value:
-        pass_index = _find_pass_option_index(waiting_for)
+        pass_index = find_pass_option_index(waiting_for)
         if pass_index is not None:
-            return await _submit_and_return_state(
+            return await submit_and_return_state(
                 {"type": "or", "index": pass_index, "response": {"type": "option"}}
             )
         raise RuntimeError("No pass or end-turn option available in the current prompt")
@@ -233,13 +233,13 @@ async def pay_for_project_card(
         "payment": payment.model_dump(by_alias=True),
     }
 
-    player_model = _get_player()
+    player_model = get_player()
     waiting_for = player_model.waitingFor
     if waiting_for is not None and waiting_for.type == InputType.OR_OPTIONS.value:
-        option_index = _find_or_option_index(
+        option_index = find_or_option_index(
             waiting_for, InputType.SELECT_PROJECT_CARD_TO_PLAY.value
         )
-        return await _submit_and_return_state(
+        return await submit_and_return_state(
             {
                 "type": "or",
                 "index": option_index,
@@ -247,7 +247,7 @@ async def pay_for_project_card(
             }
         )
 
-    return await _submit_and_return_state(project_card_response)
+    return await submit_and_return_state(project_card_response)
 
 
 # Import _tools_extra to register its @mcp.tool() handlers on the shared mcp instance

@@ -80,7 +80,7 @@ _INPUT_TYPE_TO_TOOL: dict[InputType, ToolName] = {
 }
 
 
-def _action_tools_for_input_type(input_type: str | None) -> list[str]:
+def action_tools_for_input_type(input_type: str | None) -> list[str]:
     if input_type is None:
         return []
     try:

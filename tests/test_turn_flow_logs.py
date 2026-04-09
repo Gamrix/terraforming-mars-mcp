@@ -27,7 +27,7 @@ def test_extract_opponent_actions_accepts_numeric_player_data_type() -> None:
             }
         ),
     ]
-    opponent_actions = turn_flow._extract_opponent_actions(
+    opponent_actions = turn_flow.extract_opponent_actions(
         initial_logs=[],
         final_logs=final_logs,
         opponent_colors={"blue"},
@@ -50,7 +50,7 @@ def test_extract_opponent_actions_accepts_string_player_data_type() -> None:
             }
         )
     ]
-    opponent_actions = turn_flow._extract_opponent_actions(
+    opponent_actions = turn_flow.extract_opponent_actions(
         initial_logs=[],
         final_logs=final_logs,
         opponent_colors={"blue"},

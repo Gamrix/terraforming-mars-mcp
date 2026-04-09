@@ -16,7 +16,7 @@ from .api_response_models import (
     WaitingForStatusModel as ApiWaitingForStatusModel,
 )
 from ._app import mcp
-from .game_state import _build_agent_state
+from .game_state import build_agent_state
 from .observed_cards import observe_player_model
 
 TURN_WAIT_TIMEOUT_SECONDS = 2 * 60 * 60
@@ -79,7 +79,7 @@ def _http_json(
         raise RuntimeError(f"Cannot reach server at {CFG.base_url}: {exc}") from exc
 
 
-def _get_player(player_id: str | None = None) -> ApiPlayerViewModel:
+def get_player(player_id: str | None = None) -> ApiPlayerViewModel:
     pid = _ensure_player_id(player_id)
     result = _http_json("GET", "/api/player", {"id": pid})
     if not isinstance(result, dict):
@@ -174,7 +174,7 @@ def _format_log_entry(
     return re.sub(r"\$\{(\d{1,2})\}", replace, template)
 
 
-def _extract_opponent_actions(
+def extract_opponent_actions(
     initial_logs: Sequence[ApiGameLogEntryModel],
     final_logs: Sequence[ApiGameLogEntryModel],
     opponent_colors: set[str],
@@ -209,7 +209,7 @@ def _is_player_log_data_type(data_type: int | str | None) -> bool:
     return False
 
 
-async def _wait_for_turn_from_player_model(
+async def wait_for_turn_from_player_model(
     player_model: ApiPlayerViewModel,
     initial_logs: Sequence[ApiGameLogEntryModel] | None = None,
 ) -> tuple[ApiPlayerViewModel, list[str]]:
@@ -233,9 +233,9 @@ async def _wait_for_turn_from_player_model(
         last_waitingfor = waiting.model_dump(exclude_none=True)
         status = waiting.result
         if status == "GO":
-            refreshed = _get_player()
+            refreshed = get_player()
             final_logs = _get_game_logs()
-            opponent_actions = _extract_opponent_actions(
+            opponent_actions = extract_opponent_actions(
                 start_logs,
                 final_logs,
                 opponent_colors,
@@ -243,13 +243,13 @@ async def _wait_for_turn_from_player_model(
             )
             return refreshed, opponent_actions
         if status == "REFRESH":
-            refreshed = _get_player()
+            refreshed = get_player()
             refreshed_game = refreshed.game
             game_age = int(refreshed_game.gameAge)
             undo_count = int(refreshed_game.undoCount)
             if refreshed.waitingFor is not None:
                 final_logs = _get_game_logs()
-                opponent_actions = _extract_opponent_actions(
+                opponent_actions = extract_opponent_actions(
                     start_logs,
                     final_logs,
                     opponent_colors,
@@ -278,21 +278,21 @@ async def _wait_for_turn_from_player_model(
         await asyncio.sleep(TURN_WAIT_POLL_INTERVAL_SECONDS)
 
 
-async def _submit_and_return_state(response: Mapping[str, object]) -> dict[str, Any]:
+async def submit_and_return_state(response: Mapping[str, object]) -> dict[str, Any]:
     player_model = _post_input(cast(dict[str, JsonValue], dict(response)))
     if player_model.waitingFor is None:
         initial_logs = _get_game_logs()
-        refreshed, opponent_actions = await _wait_for_turn_from_player_model(
+        refreshed, opponent_actions = await wait_for_turn_from_player_model(
             player_model, initial_logs=initial_logs
         )
-        return _build_agent_state(
+        return build_agent_state(
             refreshed,
             base_url=CFG.base_url,
             player_id_fallback=CFG.player_id,
             auto_response=True,
             between_turns_actions=opponent_actions,
         )
-    return _build_agent_state(
+    return build_agent_state(
         player_model,
         base_url=CFG.base_url,
         player_id_fallback=CFG.player_id,

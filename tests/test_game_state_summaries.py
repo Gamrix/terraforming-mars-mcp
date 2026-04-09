@@ -83,7 +83,7 @@ def test_get_game_state_surfaces_milestones_and_awards() -> None:
     }
 
     player_view = PlayerViewModel.model_validate(player_model)
-    server._get_player = lambda player_id=None: player_view
+    server.get_player = lambda player_id=None: player_view
     state = server.get_game_state()
 
     assert state["game"]["milestones"][0]["name"] == "Builder"
@@ -123,7 +123,7 @@ def test_get_my_hand_cards_returns_cards_in_hand() -> None:
     }
 
     player_view = PlayerViewModel.model_validate(player_model)
-    server._get_player = lambda player_id=None: player_view
+    server.get_player = lambda player_id=None: player_view
     hand = server.get_my_hand_cards()
 
     assert hand["cards_in_hand_count"] == 2
@@ -218,7 +218,7 @@ def test_game_constants_sent_on_first_call_and_omitted_on_repeat() -> None:
 
     raw = _make_player_model(generation=4, game_age=100)
     player_view = PlayerViewModel.model_validate(raw)
-    server._get_player = lambda player_id=None: player_view
+    server.get_player = lambda player_id=None: player_view
 
     # First call: constants are included.
     state1 = server.get_game_state()
@@ -229,7 +229,7 @@ def test_game_constants_sent_on_first_call_and_omitted_on_repeat() -> None:
     # Second call, same generation, same constants: omitted.
     raw2 = _make_player_model(generation=4, game_age=101)
     player_view2 = PlayerViewModel.model_validate(raw2)
-    server._get_player = lambda player_id=None: player_view2
+    server.get_player = lambda player_id=None: player_view2
 
     state2 = server.get_game_state()
     assert "session" not in state2
@@ -244,7 +244,7 @@ def test_build_agent_state_reports_opponent_new_cards() -> None:
 
     raw1 = _make_two_player_model(game_age=100, opponent_tableau=[])
     player_view1 = PlayerViewModel.model_validate(raw1)
-    state1 = game_state_mod._build_agent_state(player_view1, auto_response=True)
+    state1 = game_state_mod.build_agent_state(player_view1, auto_response=True)
     assert state1.get("opponent_new_cards", []) == []
 
     raw2 = _make_two_player_model(
@@ -255,7 +255,7 @@ def test_build_agent_state_reports_opponent_new_cards() -> None:
         ],
     )
     player_view2 = PlayerViewModel.model_validate(raw2)
-    state2 = game_state_mod._build_agent_state(player_view2, auto_response=True)
+    state2 = game_state_mod.build_agent_state(player_view2, auto_response=True)
 
     assert [card["card_name"] for card in state2["opponent_new_cards"]] == [
         "Trans-Neptune Probe",
@@ -271,7 +271,7 @@ def test_game_constants_resent_on_generation_change() -> None:
 
     raw_gen4 = _make_player_model(generation=4, game_age=100)
     player_view4 = PlayerViewModel.model_validate(raw_gen4)
-    server._get_player = lambda player_id=None: player_view4
+    server.get_player = lambda player_id=None: player_view4
 
     # Prime the tracker.
     server.get_game_state()
@@ -279,7 +279,7 @@ def test_game_constants_resent_on_generation_change() -> None:
     # New generation: constants should reappear.
     raw_gen5 = _make_player_model(generation=5, game_age=200)
     player_view5 = PlayerViewModel.model_validate(raw_gen5)
-    server._get_player = lambda player_id=None: player_view5
+    server.get_player = lambda player_id=None: player_view5
 
     state = server.get_game_state()
     assert "session" in state
@@ -295,14 +295,14 @@ def test_game_constants_resent_on_value_change_within_generation() -> None:
 
     raw = _make_player_model(generation=4, temperature=-20, game_age=100)
     player_view = PlayerViewModel.model_validate(raw)
-    server._get_player = lambda player_id=None: player_view
+    server.get_player = lambda player_id=None: player_view
 
     server.get_game_state()
 
     # Temperature changed within same generation.
     raw2 = _make_player_model(generation=4, temperature=-18, game_age=101)
     player_view2 = PlayerViewModel.model_validate(raw2)
-    server._get_player = lambda player_id=None: player_view2
+    server.get_player = lambda player_id=None: player_view2
 
     state = server.get_game_state()
     assert "session" in state
@@ -317,14 +317,14 @@ def test_you_and_opponents_omitted_between_intervals() -> None:
 
     raw = _make_player_model(generation=4, game_age=100)
     player_view = PlayerViewModel.model_validate(raw)
-    server._get_player = lambda player_id=None: player_view
+    server.get_player = lambda player_id=None: player_view
     first = server.get_game_state()
     # First call in a new generation → included
     assert "you" in first
 
     raw2 = _make_player_model(generation=4, game_age=101)
     player_view2 = PlayerViewModel.model_validate(raw2)
-    server._get_player = lambda player_id=None: player_view2
+    server.get_player = lambda player_id=None: player_view2
     second = server.get_game_state()
     # Same generation, not yet at interval → omitted
     assert "you" not in second
@@ -332,7 +332,7 @@ def test_you_and_opponents_omitted_between_intervals() -> None:
     # Advance to next generation → included again
     raw3 = _make_player_model(generation=5, game_age=120)
     player_view3 = PlayerViewModel.model_validate(raw3)
-    server._get_player = lambda player_id=None: player_view3
+    server.get_player = lambda player_id=None: player_view3
     third = server.get_game_state()
     assert "you" in third
 
@@ -354,7 +354,7 @@ def test_proactive_calls_always_return_full_card_details() -> None:
     }
     raw = _make_player_model(generation=4, game_age=100, waiting_for=waiting_for)
     player_view = PlayerViewModel.model_validate(raw)
-    server._get_player = lambda player_id=None: player_view
+    server.get_player = lambda player_id=None: player_view
 
     # First proactive call: full details.
     state1 = server.get_game_state()
@@ -366,7 +366,7 @@ def test_proactive_calls_always_return_full_card_details() -> None:
     # Second proactive call same gen: still full details (proactive = no caching).
     raw2 = _make_player_model(generation=4, game_age=101, waiting_for=waiting_for)
     player_view2 = PlayerViewModel.model_validate(raw2)
-    server._get_player = lambda player_id=None: player_view2
+    server.get_player = lambda player_id=None: player_view2
 
     state2 = server.get_game_state()
     card2 = state2["waiting_for"]["cards"][0]
@@ -393,7 +393,7 @@ def test_auto_response_returns_name_only_on_repeat() -> None:
     # First auto-response: full details.
     raw = _make_player_model(generation=4, game_age=100, waiting_for=waiting_for)
     player_view = PlayerViewModel.model_validate(raw)
-    state1 = game_state_mod._build_agent_state(player_view, auto_response=True)
+    state1 = game_state_mod.build_agent_state(player_view, auto_response=True)
     card1 = state1["waiting_for"]["cards"][0]
     assert card1["name"] == "Comet"
     assert "tags" in card1
@@ -402,7 +402,7 @@ def test_auto_response_returns_name_only_on_repeat() -> None:
     # Second auto-response same gen: name only.
     raw2 = _make_player_model(generation=4, game_age=101, waiting_for=waiting_for)
     player_view2 = PlayerViewModel.model_validate(raw2)
-    state2 = game_state_mod._build_agent_state(player_view2, auto_response=True)
+    state2 = game_state_mod.build_agent_state(player_view2, auto_response=True)
     card2 = state2["waiting_for"]["cards"][0]
     assert card2 == {"name": "Comet"}
 
@@ -423,7 +423,7 @@ def test_auto_response_resends_on_warning_change() -> None:
     }
     raw = _make_player_model(generation=4, game_age=100, waiting_for=wf1)
     player_view = PlayerViewModel.model_validate(raw)
-    game_state_mod._build_agent_state(player_view, auto_response=True)
+    game_state_mod.build_agent_state(player_view, auto_response=True)
 
     # Same card now has a warning — should re-send details.
     wf2 = {
@@ -438,7 +438,7 @@ def test_auto_response_resends_on_warning_change() -> None:
     }
     raw2 = _make_player_model(generation=4, game_age=101, waiting_for=wf2)
     player_view2 = PlayerViewModel.model_validate(raw2)
-    state2 = game_state_mod._build_agent_state(player_view2, auto_response=True)
+    state2 = game_state_mod.build_agent_state(player_view2, auto_response=True)
     card2 = state2["waiting_for"]["cards"][0]
     assert card2["name"] == "Comet"
     assert "tags" in card2
@@ -463,12 +463,12 @@ def test_auto_response_resets_on_new_generation() -> None:
     # Gen 4: prime the tracker with auto-response.
     raw4 = _make_player_model(generation=4, game_age=100, waiting_for=waiting_for)
     player_view4 = PlayerViewModel.model_validate(raw4)
-    game_state_mod._build_agent_state(player_view4, auto_response=True)
+    game_state_mod.build_agent_state(player_view4, auto_response=True)
 
     # Gen 5: same card, full details should reappear.
     raw5 = _make_player_model(generation=5, game_age=200, waiting_for=waiting_for)
     player_view5 = PlayerViewModel.model_validate(raw5)
-    state = game_state_mod._build_agent_state(player_view5, auto_response=True)
+    state = game_state_mod.build_agent_state(player_view5, auto_response=True)
     card = state["waiting_for"]["cards"][0]
     assert card["name"] == "Comet"
     assert "tags" in card
@@ -543,11 +543,11 @@ def test_auto_response_includes_generation_start_context_on_new_generation(
             "base_cost": 0,
         }
 
-    monkeypatch.setattr("terraforming_mars_mcp.card_info._card_info", fake_card_info)
+    monkeypatch.setattr("terraforming_mars_mcp.card_info.card_info", fake_card_info)
 
     raw4 = _make_player_model(generation=4, game_age=100)
     player_view4 = PlayerViewModel.model_validate(raw4)
-    game_state_mod._build_agent_state(player_view4, auto_response=True)
+    game_state_mod.build_agent_state(player_view4, auto_response=True)
 
     raw5 = _make_player_model(
         generation=5,
@@ -562,7 +562,7 @@ def test_auto_response_includes_generation_start_context_on_new_generation(
         ],
     )
     player_view5 = PlayerViewModel.model_validate(raw5)
-    state = game_state_mod._build_agent_state(player_view5, auto_response=True)
+    state = game_state_mod.build_agent_state(player_view5, auto_response=True)
 
     generation_start = state["generation_start"]
     assert generation_start["cards_in_hand_count"] == 2
@@ -596,7 +596,7 @@ def test_auto_response_includes_generation_start_context_on_new_generation(
         ],
     )
     player_view5_repeat = PlayerViewModel.model_validate(raw5_repeat)
-    repeat_state = game_state_mod._build_agent_state(
+    repeat_state = game_state_mod.build_agent_state(
         player_view5_repeat, auto_response=True
     )
     assert "generation_start" not in repeat_state
@@ -622,7 +622,7 @@ def test_disabled_cards_are_filtered_out() -> None:
     }
     raw = _make_player_model(generation=4, game_age=100, waiting_for=waiting_for)
     player_view = PlayerViewModel.model_validate(raw)
-    server._get_player = lambda player_id=None: player_view
+    server.get_player = lambda player_id=None: player_view
 
     state = server.get_game_state()
     cards = state["waiting_for"]["cards"]
@@ -653,7 +653,7 @@ def test_auto_response_all_disabled_cards_produce_empty_list() -> None:
     }
     raw = _make_player_model(generation=4, game_age=100, waiting_for=waiting_for)
     player_view = PlayerViewModel.model_validate(raw)
-    state = game_state_mod._build_agent_state(player_view, auto_response=True)
+    state = game_state_mod.build_agent_state(player_view, auto_response=True)
     assert "cards" not in state["waiting_for"]
 
 
@@ -663,12 +663,12 @@ def test_opponent_new_cards_have_no_none_or_empty_list_fields() -> None:
 
     raw1 = _make_two_player_model(game_age=100, opponent_tableau=[])
     player_view1 = PlayerViewModel.model_validate(raw1)
-    game_state_mod._build_agent_state(player_view1, auto_response=True)
+    game_state_mod.build_agent_state(player_view1, auto_response=True)
 
     # Sponsors has no ongoing_effects, no activated_actions, no play_requirements_text.
     raw2 = _make_two_player_model(game_age=101, opponent_tableau=[{"name": "Sponsors"}])
     player_view2 = PlayerViewModel.model_validate(raw2)
-    state = game_state_mod._build_agent_state(player_view2, auto_response=True)
+    state = game_state_mod.build_agent_state(player_view2, auto_response=True)
 
     cards = state["opponent_new_cards"]
     assert len(cards) == 1

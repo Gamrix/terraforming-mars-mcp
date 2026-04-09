@@ -27,7 +27,7 @@ def _set_submit_capture(
         captured.update(payload)
         return response
 
-    server._submit_and_return_state = _submit
+    server.submit_and_return_state = _submit
 
 
 def test_choose_or_option_defaults_nested_option_response() -> None:
@@ -66,7 +66,7 @@ def test_confirm_option_submits_or_response_when_waiting_for_or() -> None:
             ],
         }
     )
-    server._get_player = lambda player_id=None: SimpleNamespace(waitingFor=waiting_for)
+    server.get_player = lambda player_id=None: SimpleNamespace(waitingFor=waiting_for)
     _set_submit_capture(server, captured)
     result = _run(server.confirm_option())
 
@@ -81,7 +81,7 @@ def test_confirm_option_submits_option_for_option_prompt() -> None:
     waiting_for = WaitingForInputModel.model_validate(
         {"type": "option", "title": "Confirm", "buttonLabel": "OK"}
     )
-    server._get_player = lambda player_id=None: SimpleNamespace(waitingFor=waiting_for)
+    server.get_player = lambda player_id=None: SimpleNamespace(waitingFor=waiting_for)
     _set_submit_capture(server, captured)
     result = _run(server.confirm_option())
 
@@ -111,7 +111,7 @@ def test_pass_turn_finds_pass_option_by_warning() -> None:
             ],
         }
     )
-    server._get_player = lambda player_id=None: SimpleNamespace(waitingFor=waiting_for)
+    server.get_player = lambda player_id=None: SimpleNamespace(waitingFor=waiting_for)
     _set_submit_capture(server, captured)
     result = _run(server.pass_turn())
 
@@ -134,7 +134,7 @@ def test_pass_turn_finds_end_turn_option() -> None:
             ],
         }
     )
-    server._get_player = lambda player_id=None: SimpleNamespace(waitingFor=waiting_for)
+    server.get_player = lambda player_id=None: SimpleNamespace(waitingFor=waiting_for)
     _set_submit_capture(server, captured)
     result = _run(server.pass_turn())
 
@@ -156,7 +156,7 @@ def test_pass_turn_errors_when_no_pass_option() -> None:
             ],
         }
     )
-    server._get_player = lambda player_id=None: SimpleNamespace(waitingFor=waiting_for)
+    server.get_player = lambda player_id=None: SimpleNamespace(waitingFor=waiting_for)
     _set_submit_capture(server, captured={})
 
     try:
@@ -173,7 +173,7 @@ def test_pay_for_project_card_submits_direct_project_card_payload() -> None:
     waiting_for = WaitingForInputModel.model_validate(
         {"type": "projectCard", "title": "Play", "buttonLabel": "OK"}
     )
-    server._get_player = lambda player_id=None: SimpleNamespace(waitingFor=waiting_for)
+    server.get_player = lambda player_id=None: SimpleNamespace(waitingFor=waiting_for)
     _set_submit_capture(server, captured)
     result = _run(
         server.pay_for_project_card(
@@ -203,7 +203,7 @@ def test_pay_for_project_card_wraps_outer_or_menu() -> None:
             ],
         }
     )
-    server._get_player = lambda player_id=None: SimpleNamespace(waitingFor=waiting_for)
+    server.get_player = lambda player_id=None: SimpleNamespace(waitingFor=waiting_for)
     _set_submit_capture(server, captured)
     result = _run(
         server.pay_for_project_card(
@@ -233,7 +233,7 @@ def test_pay_for_project_card_errors_when_outer_or_has_no_project_card_branch() 
             ],
         }
     )
-    server._get_player = lambda player_id=None: SimpleNamespace(waitingFor=waiting_for)
+    server.get_player = lambda player_id=None: SimpleNamespace(waitingFor=waiting_for)
 
     _set_submit_capture(server, captured={})
 

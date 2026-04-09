@@ -4,7 +4,7 @@ from collections import Counter
 from dataclasses import asdict, dataclass
 from typing import Any, Literal, NotRequired, TypedDict
 
-from ._enums import DetailLevel, InputType, ToolName, _action_tools_for_input_type
+from ._enums import DetailLevel, InputType, ToolName, action_tools_for_input_type
 from .api_response_models import (
     GameModel as ApiGameModel,
 )
@@ -15,15 +15,15 @@ from .api_response_models import (
     PublicPlayerModel as ApiPublicPlayerModel,
 )
 from .card_info import (
-    _card_info,
-    _compact_cards,
-    _extract_played_card_effects_and_actions,
-    _normalize_detail_level,
+    card_info,
+    compact_cards,
+    extract_played_card_effects_and_actions,
+    normalize_detail_level,
 )
 from .waiting_for import (
-    _find_pass_option_index,
-    _input_type_name,
-    _normalize_waiting_for,
+    find_pass_option_index,
+    input_type_name,
+    normalize_waiting_for,
 )
 
 END_OF_GENERATION_PHASES = {"production", "solar", "intergeneration", "end"}
@@ -66,9 +66,6 @@ class _ProductionSummary:
     plants: int
     energy: int
     heat: int
-
-    def to_payload(self) -> dict[str, int]:
-        return asdict(self)
 
 
 @dataclass(frozen=True)
@@ -263,7 +260,7 @@ def _summarize_players(
 
 
 def _generation_start_context(player_model: ApiPlayerViewModel) -> dict[str, Any]:
-    cards_in_hand = _compact_cards(
+    cards_in_hand = compact_cards(
         player_model.cardsInHand,
         detail_level=DetailLevel.FULL,
         generation=player_model.game.generation,
@@ -272,13 +269,13 @@ def _generation_start_context(player_model: ApiPlayerViewModel) -> dict[str, Any
     return {
         "cards_in_hand_count": len(cards_in_hand),
         "cards_in_hand": cards_in_hand,
-        "played_card_effects_and_actions": _extract_played_card_effects_and_actions(
+        "played_card_effects_and_actions": extract_played_card_effects_and_actions(
             player_model.thisPlayer
         ),
     }
 
 
-def _summarize_board(game: ApiGameModel) -> dict[str, Any]:
+def summarize_board(game: ApiGameModel) -> dict[str, Any]:
     spaces = game.spaces
     occupied = 0
     by_tile: dict[str, int] = {}
@@ -401,7 +398,7 @@ def _should_include_milestones_awards(
     return include
 
 
-def _full_board_state(
+def full_board_state(
     game: ApiGameModel, include_empty_spaces: bool = False
 ) -> dict[str, Any]:
     mars_spaces: list[dict[str, Any]] = []
@@ -450,7 +447,7 @@ def _full_board_state(
             "venus": game.venusScaleLevel,
             "terraformed": game.isTerraformed,
         },
-        "summary": _summarize_board(game),
+        "summary": summarize_board(game),
         "spaces": mars_spaces,
     }
 
@@ -486,7 +483,7 @@ def _new_opponent_cards_from_counts(
         delta = new_counts - old_counts
         for card_name, count in delta.items():
             for _ in range(count):
-                info = _card_info(card_name, include_play_details=True)
+                info = card_info(card_name, include_play_details=True)
                 event: dict[str, Any] = {
                     "player_name": player.name,
                     "player_color": color,
@@ -587,7 +584,7 @@ def _strip_zero_resources_from_tableau(
             card.pop("resources", None)
 
 
-def _thin_raw_player_model(
+def thin_raw_player_model(
     raw: dict[str, Any],
     this_color: str,
 ) -> dict[str, Any]:
@@ -682,7 +679,7 @@ def _thin_raw_player_model(
     return raw
 
 
-def _build_agent_state(
+def build_agent_state(
     player_model: ApiPlayerViewModel,
     include_full_model: bool = False,
     include_board_state: bool = False,
@@ -693,9 +690,9 @@ def _build_agent_state(
     between_turns_actions: list[str] | None = None,
 ) -> dict[str, Any]:
     game = player_model.game
-    normalized_detail_level = _normalize_detail_level(detail_level)
+    normalized_detail_level = normalize_detail_level(detail_level)
     waiting_for = player_model.waitingFor
-    input_type = _input_type_name(waiting_for)
+    input_type = input_type_name(waiting_for)
     you, opponents = _summarize_players(player_model)
 
     phase = game.phase
@@ -773,7 +770,7 @@ def _build_agent_state(
         else:
             game_state["milestones_changed"] = False
     if show_board:
-        game_state["board"] = _summarize_board(game)
+        game_state["board"] = summarize_board(game)
         game_state["board_visible"] = True
 
     if normalized_detail_level == DetailLevel.FULL:
@@ -808,7 +805,7 @@ def _build_agent_state(
     if include_player_state:
         result["you"] = you_state
         result["opponents"] = opponents_state
-    result["waiting_for"] = _normalize_waiting_for(
+    result["waiting_for"] = normalize_waiting_for(
         waiting_for,
         detail_level=normalized_detail_level,
         generation=generation,
@@ -820,11 +817,11 @@ def _build_agent_state(
         and prev_gen != generation
     ):
         result["generation_start"] = _generation_start_context(player_model)
-    suggested_tools = _action_tools_for_input_type(input_type)
+    suggested_tools = action_tools_for_input_type(input_type)
     if (
         input_type == InputType.OR_OPTIONS.value
         and waiting_for is not None
-        and _find_pass_option_index(waiting_for) is not None
+        and find_pass_option_index(waiting_for) is not None
     ):
         suggested_tools.append(ToolName.PASS_TURN.value)
     result["suggested_tools"] = suggested_tools
@@ -833,7 +830,7 @@ def _build_agent_state(
         result["opponent_actions_between_turns"] = between_turns_actions
 
     if include_full_model:
-        result["raw_player_model"] = _thin_raw_player_model(
+        result["raw_player_model"] = thin_raw_player_model(
             player_model.model_dump(exclude_none=True),
             this_color=player_model.thisPlayer.color,
         )

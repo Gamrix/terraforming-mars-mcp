@@ -68,7 +68,7 @@ class RawInputEntityRequest(BaseModel):
     entity_json: str
 
 
-def _normalize_raw_input_entity(
+def normalize_raw_input_entity(
     entity: dict[str, object],
 ) -> dict[str, object]:
     normalized = dict(entity)

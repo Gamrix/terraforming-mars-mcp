@@ -4,10 +4,10 @@ import json
 
 from .api_response_models import WaitingForInputModel as ApiWaitingForInputModel
 from ._enums import DetailLevel, InputType
-from .card_info import _compact_cards
+from .card_info import compact_cards
 
 
-def _input_type_name(waiting_for: ApiWaitingForInputModel | None) -> str | None:
+def input_type_name(waiting_for: ApiWaitingForInputModel | None) -> str | None:
     if waiting_for is None:
         return None
     value = waiting_for.type
@@ -17,7 +17,7 @@ def _input_type_name(waiting_for: ApiWaitingForInputModel | None) -> str | None:
         return value
 
 
-def _normalize_or_sub_response(
+def normalize_or_sub_response(
     value: str | dict[str, object] | None,
 ) -> dict[str, object]:
     if value is None or value == "":
@@ -63,7 +63,7 @@ def _is_undo_option(
 _PASS_TITLES = {"pass for this generation", "end turn"}
 
 
-def _find_pass_option_index(
+def find_pass_option_index(
     waiting_for: ApiWaitingForInputModel,
 ) -> int | None:
     """Return the index of the pass/end-turn option, or ``None`` if absent."""
@@ -79,7 +79,7 @@ def _find_pass_option_index(
     return None
 
 
-def _find_or_option_index(
+def find_or_option_index(
     waiting_for: ApiWaitingForInputModel, expected_type: str
 ) -> int:
     options = waiting_for.options
@@ -101,7 +101,7 @@ def _find_or_option_index(
     )
 
 
-def _normalize_waiting_for(
+def normalize_waiting_for(
     waiting_for: ApiWaitingForInputModel | None,
     depth: int = 0,
     detail_level: str | DetailLevel = DetailLevel.FULL,
@@ -114,7 +114,7 @@ def _normalize_waiting_for(
     wf = waiting_for
 
     normalized: dict[str, object] = {
-        "input_type": _input_type_name(wf),
+        "input_type": input_type_name(wf),
         "title": wf.title,
     }
 
@@ -137,7 +137,7 @@ def _normalize_waiting_for(
 
     if wf.cards is not None:
         is_blue_action = wf.selectBlueCardAction is True
-        cards_list = _compact_cards(
+        cards_list = compact_cards(
             wf.cards,
             detail_level=DetailLevel.MINIMAL if is_blue_action else detail_level,
             generation=generation,
@@ -208,7 +208,7 @@ def _normalize_waiting_for(
         else:
             normalized_options: list[dict[str, object]] = []
             for idx, option in enumerate(wf.options):
-                option_detail = _normalize_waiting_for(
+                option_detail = normalize_waiting_for(
                     option,
                     depth + 1,
                     detail_level=detail_level,
@@ -218,7 +218,7 @@ def _normalize_waiting_for(
                 option_payload: dict[str, object] = {
                     "index": idx,
                     "title": option.title,
-                    "input_type": _input_type_name(option),
+                    "input_type": input_type_name(option),
                 }
                 if option_detail is not None:
                     for key, value in option_detail.items():

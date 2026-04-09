@@ -37,7 +37,7 @@ def test_full_board_state_translates_tile_type_labels() -> None:
             ],
         }
     )
-    board_state = game_state._full_board_state(game_model)
+    board_state = game_state.full_board_state(game_model)
 
     assert (
         board_state["reminder"]
@@ -70,7 +70,7 @@ def test_full_board_state_translates_bonus_labels() -> None:
         }
     )
 
-    board_state = game_state._full_board_state(game_model, include_empty_spaces=True)
+    board_state = game_state.full_board_state(game_model, include_empty_spaces=True)
 
     assert board_state["spaces"][0]["bonus"] == [
         "steel",
@@ -120,7 +120,7 @@ def test_board_summary_uses_tile_type_labels() -> None:
             ],
         }
     )
-    summary = game_state._summarize_board(game_model)
+    summary = game_state.summarize_board(game_model)
 
     assert summary["tile_counts"] == {
         "greenery": 1,

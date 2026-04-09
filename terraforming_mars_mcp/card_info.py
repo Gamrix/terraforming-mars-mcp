@@ -55,7 +55,7 @@ class _CardDetailTracker:
 _CARD_TRACKER = _CardDetailTracker()
 
 
-def _normalize_detail_level(detail_level: str | DetailLevel) -> DetailLevel:
+def normalize_detail_level(detail_level: str | DetailLevel) -> DetailLevel:
     """Accept string or enum, return validated DetailLevel."""
     if isinstance(detail_level, DetailLevel):
         return detail_level
@@ -157,7 +157,7 @@ def _vp_per_text(per: int, singular: str, plural: str, suffix: str = "") -> str:
     return f"1 per {singular}{suffix}"
 
 
-def _format_vp(vp: Any) -> int | str | None:
+def format_vp(vp: Any) -> int | str | None:
     """Return a human-readable VP value, or None if VP is zero/absent."""
     if vp is None:
         return None
@@ -191,7 +191,7 @@ def _format_vp(vp: Any) -> int | str | None:
     return None
 
 
-def _card_info(card_name: Any, include_play_details: bool = False) -> dict[str, object]:
+def card_info(card_name: Any, include_play_details: bool = False) -> dict[str, object]:
     if not isinstance(card_name, str):
         return {}
     card = _load_card_info_index().get(card_name)
@@ -205,7 +205,7 @@ def _card_info(card_name: Any, include_play_details: bool = False) -> dict[str, 
     render_data = metadata.get("renderData") if isinstance(metadata, dict) else None
     description = _description_text(metadata)
     actions, effects = _extract_actions_and_effects(render_data)
-    vp = _format_vp(card.get("victoryPoints"))
+    vp = format_vp(card.get("victoryPoints"))
 
     info: dict[str, object] = {
         "name": card_name,
@@ -268,7 +268,7 @@ def _compact_card(
     generation: int | None = None,
     auto_response: bool = False,
 ) -> dict[str, object]:
-    normalized_detail_level = _normalize_detail_level(detail_level)
+    normalized_detail_level = normalize_detail_level(detail_level)
 
     card_model: ApiCardModel | None = None
     if isinstance(card, str):
@@ -286,7 +286,7 @@ def _compact_card(
     if disabled and auto_response:
         return {"name": card_name, "disabled": True}
 
-    info = _card_info(card_name, include_play_details=True)
+    info = card_info(card_name, include_play_details=True)
     base_cost = info.get("base_cost")
     discounted_cost = (
         card_model.calculatedCost
@@ -371,7 +371,7 @@ def _compact_card(
     return payload
 
 
-def _compact_cards(
+def compact_cards(
     cards: list[Any],
     detail_level: str | DetailLevel = DetailLevel.FULL,
     generation: int | None = None,
@@ -410,7 +410,7 @@ def _ensure_player_model(
     return ApiPublicPlayerModel.model_validate(player)
 
 
-def _extract_played_cards(
+def extract_played_cards(
     player: ApiPublicPlayerModel | dict[str, object],
 ) -> list[dict[str, object]]:
     parsed_player = _ensure_player_model(player)
@@ -420,7 +420,7 @@ def _extract_played_cards(
     ]
 
 
-def _extract_played_card_effects_and_actions(
+def extract_played_card_effects_and_actions(
     player: ApiPublicPlayerModel | dict[str, object],
 ) -> list[dict[str, object]]:
     parsed_player = _ensure_player_model(player)
@@ -439,7 +439,7 @@ def _extract_played_card_effects_and_actions(
         return texts
 
     for card in parsed_player.tableau:
-        info = _card_info(card.name, include_play_details=True)
+        info = card_info(card.name, include_play_details=True)
         effect_texts = _normalized_texts(info.get("ongoing_effects"))
         action_texts = _normalized_texts(info.get("activated_actions"))
         if not effect_texts and not action_texts:

@@ -66,11 +66,11 @@ def test_wait_for_turn_reports_progress_every_30_seconds(
         return FakeWaitingFor("WAIT")
 
     monkeypatch.setattr(turn_flow, "_get_waiting_for_state", fake_waiting_for_state)
-    monkeypatch.setattr(turn_flow, "_get_player", lambda: player_model)
+    monkeypatch.setattr(turn_flow, "get_player", lambda: player_model)
     monkeypatch.setattr(turn_flow, "_get_game_logs", lambda: [])
 
     refreshed, opponent_actions = asyncio.run(
-        turn_flow._wait_for_turn_from_player_model(player_model, initial_logs=[])
+        turn_flow.wait_for_turn_from_player_model(player_model, initial_logs=[])
     )
 
     assert refreshed is player_model
@@ -183,11 +183,11 @@ def test_submit_and_return_state_surfaces_between_turn_opponent_new_cards(
 
     monkeypatch.setattr(
         turn_flow,
-        "_wait_for_turn_from_player_model",
+        "wait_for_turn_from_player_model",
         fake_wait_for_turn_from_player_model,
     )
 
-    result = asyncio.run(turn_flow._submit_and_return_state({"type": "option"}))
+    result = asyncio.run(turn_flow.submit_and_return_state({"type": "option"}))
 
     assert result["opponent_actions_between_turns"] == [
         "John played Trans-Neptune Probe",

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from terraforming_mars_mcp.api_response_models import PublicPlayerModel
-from terraforming_mars_mcp.card_info import _extract_played_cards
+from terraforming_mars_mcp.card_info import extract_played_cards
 
 
 def test_extract_played_cards_omits_default_values(monkeypatch) -> None:
@@ -20,7 +20,7 @@ def test_extract_played_cards_omits_default_values(monkeypatch) -> None:
             "base_cost": 12,
         }
 
-    monkeypatch.setattr("terraforming_mars_mcp.card_info._card_info", fake_card_info)
+    monkeypatch.setattr("terraforming_mars_mcp.card_info.card_info", fake_card_info)
 
     player = PublicPlayerModel.model_validate(
         {
@@ -39,7 +39,7 @@ def test_extract_played_cards_omits_default_values(monkeypatch) -> None:
         }
     )
 
-    cards = _extract_played_cards(player)
+    cards = extract_played_cards(player)
 
     assert cards == [{"name": "Protected Habitats", "cost": 12}]
 
@@ -61,7 +61,7 @@ def test_extract_played_cards_keeps_non_default_values(monkeypatch) -> None:
             "vp": 1,
         }
 
-    monkeypatch.setattr("terraforming_mars_mcp.card_info._card_info", fake_card_info)
+    monkeypatch.setattr("terraforming_mars_mcp.card_info.card_info", fake_card_info)
 
     player = PublicPlayerModel.model_validate(
         {
@@ -80,7 +80,7 @@ def test_extract_played_cards_keeps_non_default_values(monkeypatch) -> None:
         }
     )
 
-    cards = _extract_played_cards(player)
+    cards = extract_played_cards(player)
 
     assert cards == [
         {
@@ -102,7 +102,7 @@ def test_extract_played_cards_keeps_non_default_values(monkeypatch) -> None:
 
 
 def test_extract_played_card_effects_and_actions(monkeypatch) -> None:
-    from terraforming_mars_mcp.card_info import _extract_played_card_effects_and_actions
+    from terraforming_mars_mcp.card_info import extract_played_card_effects_and_actions
 
     def fake_card_info(
         card_name: str, include_play_details: bool = False
@@ -128,7 +128,7 @@ def test_extract_played_card_effects_and_actions(monkeypatch) -> None:
             "activated_actions": [],
         }
 
-    monkeypatch.setattr("terraforming_mars_mcp.card_info._card_info", fake_card_info)
+    monkeypatch.setattr("terraforming_mars_mcp.card_info.card_info", fake_card_info)
 
     player = PublicPlayerModel.model_validate(
         {
@@ -143,7 +143,7 @@ def test_extract_played_card_effects_and_actions(monkeypatch) -> None:
         }
     )
 
-    summaries = _extract_played_card_effects_and_actions(player)
+    summaries = extract_played_card_effects_and_actions(player)
 
     assert summaries == [
         {
@@ -162,7 +162,7 @@ def test_extract_played_card_effects_and_actions(monkeypatch) -> None:
 def test_extract_played_card_effects_and_actions_omits_real_cards_without_text() -> (
     None
 ):
-    from terraforming_mars_mcp.card_info import _extract_played_card_effects_and_actions
+    from terraforming_mars_mcp.card_info import extract_played_card_effects_and_actions
 
     player = PublicPlayerModel.model_validate(
         {
@@ -179,7 +179,7 @@ def test_extract_played_card_effects_and_actions_omits_real_cards_without_text()
         }
     )
 
-    summaries = _extract_played_card_effects_and_actions(player)
+    summaries = extract_played_card_effects_and_actions(player)
 
     assert summaries == [
         {

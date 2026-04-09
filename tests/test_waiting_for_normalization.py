@@ -20,7 +20,7 @@ def _normalize_waiting_for(
     server: Any, waiting_for: Mapping[str, Any]
 ) -> dict[str, Any]:
     wf_model = WaitingForInputModel.model_validate(dict(waiting_for))
-    normalized = server._normalize_waiting_for(wf_model)
+    normalized = server.normalize_waiting_for(wf_model)
     assert isinstance(normalized, dict)
     return cast(dict[str, Any], normalized)
 
@@ -165,8 +165,8 @@ def test_disabled_cards_filtered_and_learner_mode_still_tagged() -> None:
 def test_waiting_for_card_surfaces_base_and_discounted_cost() -> None:
     server = _reload_server()
     card_info = _reload_card_info()
-    original_card_info_fn = card_info._card_info
-    card_info._card_info = lambda card_name, include_play_details=False: {
+    original_card_info_fn = card_info.card_info
+    card_info.card_info = lambda card_name, include_play_details=False: {
         "name": card_name,
         "base_cost": 10,
         "tags": [],
@@ -192,7 +192,7 @@ def test_waiting_for_card_surfaces_base_and_discounted_cost() -> None:
         assert card["cost"] == 10
         assert card["discounted_cost"] == 7
     finally:
-        card_info._card_info = original_card_info_fn
+        card_info.card_info = original_card_info_fn
 
 
 def test_waiting_for_surfaces_warnings_and_branch_metadata() -> None:
