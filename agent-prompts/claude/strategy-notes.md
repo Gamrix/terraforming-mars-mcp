@@ -26,9 +26,9 @@ In Game 2, John swept all 3 milestones (15 VP) while I got 0. That 15 VP swing w
 
 ### 2. City-greenery adjacency VP is as large as TR itself
 
-A player with 4 well-placed cities can score 12–20 VP purely from adjacency. In Game 1 I had 0 city VP; in Game 2 I improved to 6 VP with 2 clustered cities. John scored 11 (Game 2) and 16 (Game 1) from cities.
+A player with 4–5 well-placed cities can score 12–20 VP purely from adjacency. In Game 4, John scored 20 city adjacency VP from 5 cities vs my 10 VP from 3 cities. Each additional city is potentially 3–6 more adjacency VP.
 
-**This means: build 2–3 cities early ON MARS, cluster them, then flood adjacent hexes with greenery.**
+**This means: build 4–5 cities ON MARS, cluster them near your own greeneries, and prevent opponents from placing cities adjacent to your greenery clusters.**
 
 ---
 
@@ -45,7 +45,9 @@ A player with 4 well-placed cities can score 12–20 VP purely from adjacency. I
 
 1. **Place first city by Gen 4–5** adjacent to an ocean (free 2 MC placement bonus) and with open adjacent land hexes for future greenery
 2. **Place second city nearby** — sharing adjacency with city #1 so one greenery benefits both
-3. **Flood with greenery** in the late game — every plant converted or standard project greenery placed near your cities is 2 VP (1 tile + 1 city adjacency) instead of 1 VP
+3. **Place 3rd–4th cities mid-game** via city cards or SP City (25 MC). Each additional city is 3–6 more adjacency VP. In Game 4, having only 3 cities vs John's 5 cost ~10 VP.
+4. **Flood with greenery** in the late game — every plant converted or standard project greenery placed near your cities is 2 VP (1 tile + 1 city adjacency) instead of 1 VP
+5. **Defend greenery clusters** — don't create open greenery clusters without your own city nearby. In Game 4, John placed a city at space 11 adjacent to 3 of my greeneries for free 3 adjacency VP.
 
 ### Board zones for city clusters (Tharsis)
 
@@ -72,12 +74,14 @@ The southern half of the board (y≥5) tends to be open early. The equatorial ro
 
 ### Decision framework
 
-1. **Fund an award if**: you're currently winning it AND the lead is **structural** (high production, massive stockpile), AND the 8 MC cost is worth 5 VP (it nearly always is at first funding)
-2. **Don't fund volatile awards**: Tag-based awards (Scientist, Builder) can flip over 8+ generations. A 4-1 lead in Gen 3 means nothing when the opponent has 8 gens to play cheap tag cards. In Game 2, I funded Scientist at 4-1 lead; John finished 8-6 and won MY award.
-3. **Structural leads are safe to fund**: Banker (high MC prod is hard to catch), Miner (massive resource stockpiles), Landlord (significant tile lead). These are much harder to overturn.
-4. **Don't fund an award if**: an opponent is clearly going to win it regardless — you're just subsidizing their VP
-5. **Contest an award if**: an opponent funds an award you could plausibly win — pivot your strategy to challenge them
-6. **Deny by funding a different award**: force opponent to spend 14 MC (2nd) or 20 MC (3rd) on their preferred award
+1. **You MUST fund at least 1 award per game.** In Games 3–4, scoring 0 awards vs opponent's 15 was a –15 VP hole each time. Even winning just 1 award at 8 MC (5 VP = 1.6 MC/VP) transforms the awards category from catastrophic to manageable.
+2. **Fund an award if**: you're currently winning it AND the lead is **structural** (high production, massive stockpile), AND the 8 MC cost is worth 5 VP (it nearly always is at first funding)
+3. **Don't fund volatile awards**: Tag-based awards (Scientist, Builder) can flip over 8+ generations. A 4-1 lead in Gen 3 means nothing when the opponent has 8 gens to play cheap tag cards. In Game 2, I funded Scientist at 4-1 lead; John finished 8-6 and won MY award.
+4. **Structural leads are safe to fund**: Banker (high MC prod is hard to catch), Miner (massive resource stockpiles), Landlord (significant tile lead). These are much harder to overturn.
+5. **Don't fund an award if**: an opponent is clearly going to win it regardless — you're just subsidizing their VP
+6. **Contest an award if**: an opponent funds an award you could plausibly win — pivot your strategy to challenge them
+7. **Deny by funding a different award**: force opponent to spend 14 MC (2nd) or 20 MC (3rd) on their preferred award
+8. **Scan awards every gen from Gen 5 onward**: check which awards you lead or could lead. The first funding at 8 MC is by far the cheapest.
 
 ### Award funding danger: production can swing massively in late game (Game 3 lesson)
 
@@ -95,6 +99,16 @@ In Game 3, I funded both Banker (8 MC) and Landlord (14 MC) = 22 MC spent, 0 VP 
 2. At 14 MC (2nd funding), need near-certainty of winning — the cost is too high for uncertainty
 3. Never fund Landlord against a plant-heavy opponent
 4. Funding an award you lose is a –10 VP swing (MC spent + opponent gets 5 VP). This is worse than playing almost any card in the game.
+
+### Miner award trap (Game 5 lesson)
+
+Funded Miner at 16-2 lead in Gen 4. By endgame, John led 23-17. The problem: Miner counts RESOURCE CUBES on hand, not production. Spending Ti on space cards (Security Fleet, Ice Asteroid, Imported Hydrogen) depleted my stockpile while John accumulated from Strip Mine + Titanium Mine + Vesta Shipyard + Mineral Deposit.
+
+**Rule: If you fund Miner, stop spending steel/Ti freely.** Every Ti spent on a space card costs a Miner point. Either stockpile for endgame or don't fund Miner at all. Consider that Security Fleet converts Ti to fighter VP (1:1) but costs a Miner point — the net may still be positive, but track it.
+
+### Alternative: Fund awards in the last 2-3 gens
+
+After 3 consecutive 0-award games, consider delaying award funding to Gen 10+ when stockpiles and production are near-final. The cost is higher (14-20 MC for 2nd/3rd funding) but the certainty is much higher. A late 14 MC award you win (5 VP) is better than an early 8 MC award you lose (-10 VP swing).
 
 ### Thermalist counter
 
@@ -278,17 +292,22 @@ More cards seen = more VP cards found and played. John's 57 card VP vs my 15 is 
 2. **Build 3 cities ON MARS by Gen 5–6** — claim Mayor and set up adjacency VP. Off-board cities are for VP, not milestone racing.
 3. **Use `get_mars_board_state` before placing any tile** to optimize adjacency
 4. **Never play –VP cards** in close games unless the benefit is overwhelming
-5. **Fund awards only with insurmountable leads** — tag-based leads are volatile, AND production-based leads (Banker, Landlord) can swing 10+ in 2–3 gens. Only fund if lead is 10+ and structurally locked. Never fund Landlord vs high plant prod.
+5. **Fund at least 1 award per game** — 0 awards vs opponent's 15 is an unrecoverable –15 VP hole. Scan awards from Gen 5. Fund early at 8 MC when you have any structural lead. Tag/production leads are volatile, but having 0 funded awards is worse than funding one you might lose.
 6. **Draft Protected Habitats in 2-player** — it blocks plant/animal/microbe removal and is game-warping. NOTE: it does NOT block production theft (Birds, Fish).
 7. **Draft 2–3 VP-per-resource cards by mid-game** — animal/fighter/Jovian-scaling cards generate 3–7+ VP each. Static 1–2 VP cards cannot compete.
 8. **Build a card draw engine early** — Mars University, Dev Center, Inventors' Guild. More cards = more VP cards found. 60 cards played vs 37 is a decisive advantage.
 9. **Convert all plants and heat** before passing — leave nothing on the table
 10. **Standard project greenery near own cities** is efficient VP in final gens
-11. **Track opponent city locations** — don't gift them greenery adjacency VP
+11. **Track opponent city locations** — don't gift them greenery adjacency VP. Don't create undefended greenery clusters that an opponent city can exploit.
 12. **Caretaker Contract + microbe combos** are powerful late-game TR engines — keep microbes cycling
+12b. **Build 4–5 cities, not 2–3** — 3 cities vs 5 cities costs ~10 adjacency VP. Use SP City (25 MC) when greenery clusters form. Each city is 3–6 potential VP.
 13. **Titanium** is 3 MC/unit for space tags — prioritize space cards to spend it
 14. **When opponent has Ants**, spread microbes across multiple cards to minimize per-card theft impact
 15. **Track opponent Jovian tags** — Terraforming Ganymede with 7+ Jovian tags is a game-winning TR swing
+16. **Extreme-Cold Fungus + Ants is top-tier combo** — ECF adds 2 microbes to Ants per gen = 1 VP per gen for free. Over 4 gens = 4 VP. Draft ECF whenever temperature allows.
+17. **Don't spend Miner resources after funding Miner** — every Ti/steel spent reduces your Miner score. Either stockpile or don't fund it.
+18. **Economy target: 30+ MC prod by Gen 8** — 20 MC prod vs 61 is unrecoverable. A 3:1 economy gap means opponent plays 3-4x more cards. Prioritize MC production cards alongside VP engine.
+19. **Protect against plant production theft in 2-player** — Birds, Fish, Predators can reduce plant prod from 4 to 1. Draft Protected Habitats or diversify VP into sources that can't be stolen (microbes, fighters, Jovian tags).
 
 ---
 
@@ -299,3 +318,5 @@ More cards seen = more VP cards found and played. John's 57 card VP vs my 15 is 
 | Game 1 vs Codex (2p, Tharsis, Prelude)  | Lost 99–101  | City VP: 0 vs 16     | Card VP 25, TR 49, 2 milestones  |
 | Game 2 vs John (2p, Tharsis, Prelude)   | Lost 79–115  | Milestones: 0 vs 15  | MC prod 24, TR 44, Banker award  |
 | Game 3 vs John (2p, Tharsis, Prelude)   | Lost 93–163  | Awards: 0 vs 15, Card VP: 15 vs 57 | 2 milestones, TR 50, strong early economy |
+| Game 4 vs John (2p, Tharsis, Prelude)   | Lost 109–129 | Awards: 0 vs 15, City adj: 10 vs 20 | Card VP 35 (won!), 2 milestones, VP-per-resource strategy worked |
+| Game 5 vs John (2p, Tharsis, Prelude)   | Lost 120–155 | Awards: 0 vs 15, City adj: 9 vs 25, Economy: 20 vs 61 MC prod | Card VP 37, 2 milestones (first 2-claim), TR 52 (best ever), ECF+Ants combo 8 VP |
