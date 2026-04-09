@@ -409,37 +409,28 @@ def _compact_cards(
     return compact_cards
 
 
+def _ensure_player_model(
+    player: ApiPublicPlayerModel | dict[str, object],
+) -> ApiPublicPlayerModel:
+    if isinstance(player, ApiPublicPlayerModel):
+        return player
+    return ApiPublicPlayerModel.model_validate(player)
+
+
 def _extract_played_cards(
     player: ApiPublicPlayerModel | dict[str, object], include_play_details: bool = False
 ) -> list[dict[str, object]]:
-    parsed_player = (
-        player
-        if isinstance(player, ApiPublicPlayerModel)
-        else ApiPublicPlayerModel.model_validate(player)
-    )
-    tableau = parsed_player.tableau
-    cards: list[dict[str, object]] = []
-    if isinstance(tableau, list):
-        for card in tableau:
-            cards.append(
-                _compact_card(
-                    card,
-                    detail_level=DetailLevel.FULL,
-                    auto_response=False,
-                )
-            )
-    return cards
+    parsed_player = _ensure_player_model(player)
+    return [
+        _compact_card(card, detail_level=DetailLevel.FULL, auto_response=False)
+        for card in parsed_player.tableau
+    ]
 
 
 def _extract_played_card_effects_and_actions(
     player: ApiPublicPlayerModel | dict[str, object],
 ) -> list[dict[str, object]]:
-    parsed_player = (
-        player
-        if isinstance(player, ApiPublicPlayerModel)
-        else ApiPublicPlayerModel.model_validate(player)
-    )
-    tableau = parsed_player.tableau
+    parsed_player = _ensure_player_model(player)
     summaries: list[dict[str, object]] = []
 
     def _normalized_texts(values: object) -> list[str]:
@@ -454,19 +445,18 @@ def _extract_played_card_effects_and_actions(
                 texts.append(normalized)
         return texts
 
-    if isinstance(tableau, list):
-        for card in tableau:
-            info = _card_info(card.name, include_play_details=True)
-            effect_texts = _normalized_texts(info.get("ongoing_effects"))
-            action_texts = _normalized_texts(info.get("activated_actions"))
-            if not effect_texts and not action_texts:
-                continue
+    for card in parsed_player.tableau:
+        info = _card_info(card.name, include_play_details=True)
+        effect_texts = _normalized_texts(info.get("ongoing_effects"))
+        action_texts = _normalized_texts(info.get("activated_actions"))
+        if not effect_texts and not action_texts:
+            continue
 
-            summary: dict[str, object] = {"name": card.name}
-            if effect_texts:
-                summary["effect_texts"] = effect_texts
-            if action_texts:
-                summary["action_texts"] = action_texts
-            summaries.append(summary)
+        summary: dict[str, object] = {"name": card.name}
+        if effect_texts:
+            summary["effect_texts"] = effect_texts
+        if action_texts:
+            summary["action_texts"] = action_texts
+        summaries.append(summary)
 
     return summaries

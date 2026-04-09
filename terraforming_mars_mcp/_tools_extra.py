@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any, cast
 
 from ._app import mcp
@@ -101,9 +102,7 @@ async def wait_for_turn() -> dict[str, Any]:
 @mcp.tool()
 async def submit_raw_entity(request: RawInputEntityRequest) -> dict[str, object]:
     """Submit any raw /player/input payload as a JSON object with `type`."""
-    import json as _json
-
-    entity = _json.loads(request.entity_json)
+    entity = json.loads(request.entity_json)
     if not isinstance(entity, dict):
         raise ValueError("entity_json must decode to an object")
     if "type" not in entity:
@@ -116,9 +115,7 @@ async def submit_raw_entity(request: RawInputEntityRequest) -> dict[str, object]
 @mcp.tool()
 async def submit_and_options(responses_json: str) -> dict[str, object]:
     """Respond to `type: and` with JSON list of InputResponse objects."""
-    import json as _json
-
-    responses = _json.loads(responses_json)
+    responses = json.loads(responses_json)
     if not isinstance(responses, list):
         raise ValueError("responses_json must decode to a list of objects")
     normalized_responses: list[dict[str, JsonValue]] = []

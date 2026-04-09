@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import Counter
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from typing import Any, Literal, NotRequired, TypedDict
 
 from .api_response_models import (
@@ -64,14 +64,7 @@ class _ProductionSummary:
     heat: int
 
     def to_payload(self) -> dict[str, int]:
-        return {
-            "mc": self.mc,
-            "steel": self.steel,
-            "titanium": self.titanium,
-            "plants": self.plants,
-            "energy": self.energy,
-            "heat": self.heat,
-        }
+        return asdict(self)
 
 
 @dataclass(frozen=True)
@@ -222,6 +215,12 @@ _SPACE_BONUS_LABELS = (
 )
 
 
+def _tile_type_label(tile_type: int) -> str:
+    if 0 <= tile_type < len(_TILE_TYPE_LABELS):
+        return _TILE_TYPE_LABELS[tile_type]
+    return str(tile_type)
+
+
 def _space_bonus_label(bonus: int) -> str:
     if 0 <= bonus < len(_SPACE_BONUS_LABELS):
         return _SPACE_BONUS_LABELS[bonus]
@@ -295,11 +294,7 @@ def _summarize_board(game: ApiGameModel) -> dict[str, Any]:
         tile_type = space.tileType
         if tile_type is not None:
             occupied += 1
-            key = (
-                _TILE_TYPE_LABELS[tile_type]
-                if 0 <= tile_type < len(_TILE_TYPE_LABELS)
-                else str(tile_type)
-            )
+            key = _tile_type_label(tile_type)
             by_tile[key] = by_tile.get(key, 0) + 1
     return {
         "total_spaces": len(spaces),
@@ -326,9 +321,8 @@ def _summarize_milestones(game: ApiGameModel) -> list[_MilestonePayload]:
             }
             if score.claimable is True:
                 compact["claimable"] = True
-            scores.append(compact)
-            if score.claimable is True:
                 claimable_by.append(score.color)
+            scores.append(compact)
 
         entry: _MilestonePayload = {"name": milestone.name, "status": status}
         if owner_color is not None:
@@ -352,9 +346,9 @@ def _summarize_awards(game: ApiGameModel) -> list[_AwardPayload]:
             "funded" if funder_color or funder_name else "unfunded"
         )
 
-        scores: list[_AwardScorePayload] = []
-        for score in award.scores or []:
-            scores.append({"color": score.color, "score": score.score})
+        scores: list[_AwardScorePayload] = [
+            {"color": s.color, "score": s.score} for s in (award.scores or [])
+        ]
 
         award_entry: _AwardPayload = {"name": award.name, "status": status}
         if funder_color is not None:
@@ -431,12 +425,7 @@ def _full_board_state(
         if space.bonus:
             space_data["bonus"] = [_space_bonus_label(bonus) for bonus in space.bonus]
         if space.tileType is not None:
-            tile_type = space.tileType
-            space_data["tile_type"] = (
-                _TILE_TYPE_LABELS[tile_type]
-                if 0 <= tile_type < len(_TILE_TYPE_LABELS)
-                else str(tile_type)
-            )
+            space_data["tile_type"] = _tile_type_label(space.tileType)
         if space.color is not None:
             space_data["owner_color"] = space.color
         if space.coOwner is not None:
@@ -538,7 +527,6 @@ def _detect_new_opponent_cards(
     events, current = _new_opponent_cards_from_counts(player_model, previous)
     _LAST_OPPONENT_TABLEAU[key] = current
     return events
-
 
 
 # Expansion keys that map to groups of fields to strip when disabled.
@@ -697,7 +685,6 @@ def _thin_raw_player_model(
         raw.pop("dealtCorporationCards", None)
         raw.pop("dealtPreludeCards", None)
         raw.pop("dealtProjectCards", None)
-        raw.pop("dealtCeoCards", None)
         raw.pop("dealtCeoCards", None)
 
     return raw
