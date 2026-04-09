@@ -24,7 +24,6 @@ from .card_info import (
     card_info,
     compact_cards,
     extract_played_card_effects_and_actions,
-    normalize_detail_level,
 )
 from .waiting_for import (
     find_pass_option_index,
@@ -637,22 +636,20 @@ def build_agent_state(
     player_model: ApiPlayerViewModel,
     include_full_model: bool = False,
     include_board_state: bool = False,
-    detail_level: str | DetailLevel = DetailLevel.FULL,
+    detail_level: DetailLevel = DetailLevel.FULL,
     base_url: str | None = None,
     player_id_fallback: str | None = None,
     auto_response: bool = False,
     between_turns_actions: list[str] | None = None,
 ) -> dict[str, Any]:
     game = player_model.game
-    normalized_detail_level = normalize_detail_level(detail_level)
     waiting_for = player_model.waitingFor
     input_type = input_type_name(waiting_for)
     you, opponents = _summarize_players(player_model)
 
     phase = game.phase
     show_board = include_board_state or (
-        normalized_detail_level == DetailLevel.FULL
-        and phase in END_OF_GENERATION_PHASES
+        detail_level == DetailLevel.FULL and phase in END_OF_GENERATION_PHASES
     )
 
     generation = game.generation
@@ -664,7 +661,7 @@ def build_agent_state(
     session: dict[str, Any] = {
         "player_id": player_id,
     }
-    if normalized_detail_level == DetailLevel.FULL and base_url is not None:
+    if detail_level == DetailLevel.FULL and base_url is not None:
         session["base_url"] = base_url
 
     # Core game constants that rarely change mid-turn.
@@ -709,7 +706,7 @@ def build_agent_state(
         # Only include generation (always useful context) when constants unchanged.
         game_state["generation"] = generation
 
-    if normalized_detail_level == DetailLevel.FULL:
+    if detail_level == DetailLevel.FULL:
         milestones = _summarize_milestones(game)
         awards = _summarize_awards(game)
         include_ma = _should_include_milestones_awards(
@@ -727,7 +724,7 @@ def build_agent_state(
         game_state["board"] = summarize_board(game)
         game_state["board_visible"] = True
 
-    if normalized_detail_level == DetailLevel.FULL:
+    if detail_level == DetailLevel.FULL:
         opponents_state = [summary.to_full_payload() for summary in opponents]
         opponent_new_cards = _detect_new_opponent_cards(player_model)
     else:
@@ -736,13 +733,13 @@ def build_agent_state(
 
     you_state = (
         you.to_full_payload()
-        if normalized_detail_level == DetailLevel.FULL
+        if detail_level == DetailLevel.FULL
         else you.to_minimal_payload()
     )
 
     # Include you/opponents at generation start or every N responses.
     is_gen_start = prev_gen != generation
-    state_counter_key = f"{constants_key}:{normalized_detail_level}"
+    state_counter_key = f"{constants_key}:{detail_level}"
     responses_since = _RESPONSES_SINCE_FULL_STATE.get(
         state_counter_key, _FULL_STATE_INTERVAL
     )
@@ -761,15 +758,11 @@ def build_agent_state(
         result["opponents"] = opponents_state
     result["waiting_for"] = normalize_waiting_for(
         waiting_for,
-        detail_level=normalized_detail_level,
+        detail_level=detail_level,
         generation=generation,
         auto_response=auto_response,
     )
-    if (
-        auto_response
-        and normalized_detail_level == DetailLevel.FULL
-        and prev_gen != generation
-    ):
+    if auto_response and detail_level == DetailLevel.FULL and prev_gen != generation:
         gen_start_cards = compact_cards(
             player_model.cardsInHand,
             detail_level=DetailLevel.FULL,

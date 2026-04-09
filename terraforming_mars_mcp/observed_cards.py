@@ -17,16 +17,10 @@ _DRAFT_TITLE_PATTERNS = (
 )
 
 
-def _card_name(card: CardModel | str | object) -> str | None:
+def _card_name(card: CardModel | str) -> str | None:
     if isinstance(card, str):
         return card.strip() or None
-    if isinstance(card, CardModel):
-        return card.name.strip() or None
-    name = getattr(card, "name", None)
-    if isinstance(name, str):
-        stripped = name.strip()
-        return stripped or None
-    return None
+    return card.name.strip() or None
 
 
 def _append_unique(values: list[str], additions: list[str]) -> bool:
@@ -84,8 +78,7 @@ def observe_player_model(player_model: PlayerViewModel) -> None:
         if isinstance(title, str):
             title_text = title
         else:
-            message = getattr(title, "message", None)
-            title_text = message if isinstance(message, str) else ""
+            title_text = title.message
         is_draft = any(pattern.search(title_text) for pattern in _DRAFT_TITLE_PATTERNS)
 
     if is_draft:

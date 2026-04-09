@@ -16,10 +16,10 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import Literal, cast
+from typing import cast
 
 from ._app import mcp
-from ._enums import InputType
+from ._enums import DetailLevel, InputType
 from ._models import PaymentPayloadModel
 from .api_response_models import JsonValue
 from .card_info import compact_cards
@@ -74,7 +74,7 @@ def configure_session(
 def get_game_state(
     include_full_model: bool = False,
     include_board_state: bool = False,
-    detail_level: Literal["full", "minimal"] = "full",
+    detail_level: DetailLevel = DetailLevel.FULL,
 ) -> dict[str, object]:
     """Fetch current player state plus compact, agent-friendly action/game summary."""
     player_model = get_player()

@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
-from typing import Any
+from typing import Any, Sequence
 
 from ._enums import DetailLevel, strip_empty
 from .api_response_models import (
@@ -53,19 +53,6 @@ class _CardDetailTracker:
 
 
 _CARD_TRACKER = _CardDetailTracker()
-
-
-def normalize_detail_level(detail_level: str | DetailLevel) -> DetailLevel:
-    """Accept string or enum, return validated DetailLevel."""
-    if isinstance(detail_level, DetailLevel):
-        return detail_level
-    normalized = str(detail_level).strip().lower()
-    try:
-        return DetailLevel(normalized)
-    except ValueError:
-        raise ValueError(
-            f"detail_level must be one of {sorted(v.value for v in DetailLevel)}"
-        ) from None
 
 
 def _load_card_info_index() -> dict[str, dict[str, object]]:
@@ -248,21 +235,16 @@ def _all_effect_texts(info: dict[str, object]) -> list[str]:
 
 
 def _compact_card(
-    card: dict[str, object] | str | ApiCardModel,
-    detail_level: str | DetailLevel = DetailLevel.FULL,
+    card: str | ApiCardModel,
+    detail_level: DetailLevel = DetailLevel.FULL,
     generation: int | None = None,
     auto_response: bool = False,
 ) -> dict[str, object]:
-    normalized_detail_level = normalize_detail_level(detail_level)
-
     card_model: ApiCardModel | None = None
     if isinstance(card, str):
         card_name = card
-    elif isinstance(card, ApiCardModel):
-        card_model = card
-        card_name = card_model.name
     else:
-        card_model = ApiCardModel.model_validate(card)
+        card_model = card
         card_name = card_model.name
 
     disabled = bool(card_model.isDisabled) if card_model else False
@@ -320,11 +302,11 @@ def _compact_card(
     )
 
     # Minimal detail (e.g. blue card actions): name + dynamic fields only.
-    if normalized_detail_level == DetailLevel.MINIMAL:
+    if detail_level == DetailLevel.MINIMAL:
         return payload
 
     # Full detail: include tags, requirements, and effect text.
-    if normalized_detail_level == DetailLevel.FULL:
+    if detail_level == DetailLevel.FULL:
         tags = info.get("tags")
         if isinstance(tags, list) and tags:
             payload["tags"] = tags
@@ -355,8 +337,8 @@ def _compact_card(
 
 
 def compact_cards(
-    cards: list[Any],
-    detail_level: str | DetailLevel = DetailLevel.FULL,
+    cards: Sequence[ApiCardModel | str],
+    detail_level: DetailLevel = DetailLevel.FULL,
     generation: int | None = None,
     auto_response: bool = False,
 ) -> list[dict[str, object]]:
@@ -386,27 +368,17 @@ def compact_cards(
 
 
 def extract_played_cards(
-    player: ApiPublicPlayerModel | dict[str, object],
+    player: ApiPublicPlayerModel,
 ) -> list[dict[str, object]]:
-    parsed_player = (
-        player
-        if isinstance(player, ApiPublicPlayerModel)
-        else ApiPublicPlayerModel.model_validate(player)
-    )
     return [
         _compact_card(card, detail_level=DetailLevel.FULL, auto_response=False)
-        for card in parsed_player.tableau
+        for card in player.tableau
     ]
 
 
 def extract_played_card_effects_and_actions(
-    player: ApiPublicPlayerModel | dict[str, object],
+    player: ApiPublicPlayerModel,
 ) -> list[dict[str, object]]:
-    parsed_player = (
-        player
-        if isinstance(player, ApiPublicPlayerModel)
-        else ApiPublicPlayerModel.model_validate(player)
-    )
     summaries: list[dict[str, object]] = []
 
     def _normalized_texts(values: object) -> list[str]:
@@ -421,7 +393,7 @@ def extract_played_card_effects_and_actions(
                 texts.append(normalized)
         return texts
 
-    for card in parsed_player.tableau:
+    for card in player.tableau:
         info = card_info(card.name, include_play_details=True)
         effect_texts = _normalized_texts(info.get("ongoing_effects"))
         action_texts = _normalized_texts(info.get("activated_actions"))

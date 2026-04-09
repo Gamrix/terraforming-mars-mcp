@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import json
 
-from .api_response_models import WaitingForInputModel as ApiWaitingForInputModel
+from .api_response_models import (
+    MessageModel,
+    WaitingForInputModel as ApiWaitingForInputModel,
+)
 from ._enums import DetailLevel, InputType, strip_empty
 from .card_info import compact_cards
 
@@ -34,20 +37,16 @@ def normalize_or_sub_response(
     raise ValueError("sub_response_json must be a JSON string or object")
 
 
-def _title_to_text(title: str | object) -> str:
+def _title_to_text(title: str | MessageModel) -> str:
     if isinstance(title, str):
         return title
-    if isinstance(title, dict):
-        message = title.get("message")
-        if isinstance(message, str):
-            return message
-    return ""
+    return title.message
 
 
 def _is_undo_option(
     *,
     input_type: str | None,
-    title: str | object,
+    title: str | MessageModel,
     warnings: list[str] | None,
 ) -> bool:
     if warnings and "undoBestEffort" in warnings:
@@ -100,7 +99,7 @@ def find_or_option_index(
 def normalize_waiting_for(
     waiting_for: ApiWaitingForInputModel | None,
     depth: int = 0,
-    detail_level: str | DetailLevel = DetailLevel.FULL,
+    detail_level: DetailLevel = DetailLevel.FULL,
     generation: int | None = None,
     auto_response: bool = False,
 ) -> dict[str, object] | None:
@@ -218,7 +217,7 @@ def normalize_waiting_for(
                 input_type = raw_input_type if isinstance(raw_input_type, str) else None
                 if _is_undo_option(
                     input_type=input_type,
-                    title=option_payload.get("title", ""),
+                    title=option.title,
                     warnings=option_warnings,
                 ):
                     continue
@@ -235,10 +234,7 @@ def normalize_waiting_for(
                 if isinstance(option_cards, list) and len(option_cards) == 0:
                     continue
 
-                if (
-                    "sell patents"
-                    in _title_to_text(option_payload.get("title", "")).lower()
-                ):
+                if "sell patents" in _title_to_text(option.title).lower():
                     option_payload.pop("cards", None)
 
                 normalized_options.append(option_payload)
