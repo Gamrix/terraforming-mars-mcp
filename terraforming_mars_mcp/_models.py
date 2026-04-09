@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, BeforeValidator, ConfigDict, Field
 
 
 def _parse_card_list(value: list[str] | str | None, field_name: str) -> list[str]:
@@ -84,3 +84,18 @@ def normalize_raw_input_entity(
                     payment
                 ).model_dump(by_alias=True)
     return normalized
+
+
+class OrOptionRequestPayload(BaseModel):
+    """Parse the legacy ``request`` parameter for :func:`choose_or_option`."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    option_index: int | None = Field(
+        None,
+        validation_alias=AliasChoices("option_index", "index"),
+    )
+    sub_response_json: str | dict[str, object] | None = Field(
+        None,
+        validation_alias=AliasChoices("sub_response_json", "response"),
+    )

@@ -37,7 +37,7 @@ def normalize_or_sub_response(
     raise ValueError("sub_response_json must be a JSON string or object")
 
 
-def _title_to_text(title: str | MessageModel) -> str:
+def title_to_text(title: str | MessageModel) -> str:
     if isinstance(title, str):
         return title
     return title.message
@@ -51,7 +51,7 @@ def _is_undo_option(
 ) -> bool:
     if warnings and "undoBestEffort" in warnings:
         return True
-    title_text = _title_to_text(title).lower()
+    title_text = title_to_text(title).lower()
     return input_type == InputType.SELECT_OPTION.value and "undo" in title_text
 
 
@@ -68,7 +68,7 @@ def find_pass_option_index(
     for idx, option in enumerate(options):
         if option.warnings and "pass" in option.warnings:
             return idx
-        title_text = _title_to_text(option.title).lower()
+        title_text = title_to_text(option.title).lower()
         if title_text in _PASS_TITLES:
             return idx
     return None
@@ -111,8 +111,8 @@ def normalize_waiting_for(
     normalized: dict[str, object] = strip_empty(
         {
             "input_type": input_type_name(wf),
-            "title": wf.title,
-            "warning": wf.warning,
+            "title": title_to_text(wf.title),
+            "warning": title_to_text(wf.warning) if wf.warning is not None else None,
             "warnings": wf.warnings,
             "initial_index": wf.initialIdx or None,
             "amount": wf.amount,
@@ -150,7 +150,7 @@ def normalize_waiting_for(
         )
         if card_selection:
             normalized["card_selection"] = card_selection
-        if "sell patents" in _title_to_text(wf.title).lower():
+        if "sell patents" in title_to_text(wf.title).lower():
             normalized.pop("cards", None)
     elif wf.min is not None or wf.max is not None:
         normalized["amount_range"] = strip_empty(
@@ -194,10 +194,11 @@ def normalize_waiting_for(
                     generation=generation,
                     auto_response=auto_response,
                 )
+                input_type = input_type_name(option)
                 option_payload: dict[str, object] = {
                     "index": idx,
-                    "title": option.title,
-                    "input_type": input_type_name(option),
+                    "title": title_to_text(option.title),
+                    "input_type": input_type,
                 }
                 if option_detail is not None:
                     for key, value in option_detail.items():
@@ -206,15 +207,12 @@ def normalize_waiting_for(
                         option_payload[key] = value
 
                 option_warnings: list[str] | None = None
-                maybe_warnings = option_payload.get("warnings")
-                if isinstance(maybe_warnings, list):
-                    option_warnings = [
-                        warning
-                        for warning in maybe_warnings
-                        if isinstance(warning, str)
-                    ]
-                raw_input_type = option_payload.get("input_type")
-                input_type = raw_input_type if isinstance(raw_input_type, str) else None
+                if option_detail is not None:
+                    raw_warnings = option_detail.get("warnings")
+                    if isinstance(raw_warnings, list):
+                        option_warnings = [
+                            w for w in raw_warnings if isinstance(w, str)
+                        ]
                 if _is_undo_option(
                     input_type=input_type,
                     title=option.title,
@@ -223,18 +221,20 @@ def normalize_waiting_for(
                     continue
 
                 # Skip learner-mode-only options (e.g. all-disabled standard projects).
-                card_sel = option_payload.get("card_selection")
-                if isinstance(card_sel, dict) and card_sel.get(
-                    "show_only_in_learner_mode"
-                ):
-                    continue
+                if option_detail is not None:
+                    card_sel = option_detail.get("card_selection")
+                    if isinstance(card_sel, dict) and card_sel.get(
+                        "show_only_in_learner_mode"
+                    ):
+                        continue
 
                 # Skip options whose cards are all empty after disabled filtering.
-                option_cards = option_payload.get("cards")
-                if isinstance(option_cards, list) and len(option_cards) == 0:
-                    continue
+                if option_detail is not None:
+                    option_cards = option_detail.get("cards")
+                    if isinstance(option_cards, list) and len(option_cards) == 0:
+                        continue
 
-                if "sell patents" in _title_to_text(option.title).lower():
+                if "sell patents" in title_to_text(option.title).lower():
                     option_payload.pop("cards", None)
 
                 normalized_options.append(option_payload)

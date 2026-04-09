@@ -16,11 +16,10 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import cast
 
 from ._app import mcp
 from ._enums import DetailLevel, InputType
-from ._models import PaymentPayloadModel
+from ._models import OrOptionRequestPayload, PaymentPayloadModel
 from .api_response_models import JsonValue
 from .card_info import compact_cards
 from .game_state import build_agent_state
@@ -117,47 +116,14 @@ async def choose_or_option(
     legacy JSON `request` payload.
     """
     if request is not None:
-        parsed_request: dict[str, object]
-        if isinstance(request, str):
-            decoded = json.loads(request)
-            if not isinstance(decoded, dict):
-                raise ValueError("request must decode to an object")
-            parsed_request = decoded
-        elif isinstance(request, dict):
-            parsed_request = request
-        else:
-            raise ValueError("request must be a JSON string or object")
-
+        raw = json.loads(request) if isinstance(request, str) else request
+        if not isinstance(raw, dict):
+            raise ValueError("request must decode to an object")
+        payload = OrOptionRequestPayload.model_validate(raw)
         if option_index is None:
-            index_value = parsed_request.get(
-                "option_index", parsed_request.get("index")
-            )
-            if isinstance(index_value, int):
-                option_index = index_value
-            elif isinstance(index_value, str) and index_value.isdigit():
-                option_index = int(index_value)
-            elif index_value is not None:
-                raise ValueError("request.option_index/index must be an integer")
-
+            option_index = payload.option_index
         if sub_response_json is None:
-            if "sub_response_json" in parsed_request:
-                nested_response = parsed_request["sub_response_json"]
-                if isinstance(nested_response, str):
-                    sub_response_json = nested_response
-                elif isinstance(nested_response, dict):
-                    sub_response_json = cast(dict[str, object], nested_response)
-                elif nested_response is not None:
-                    raise ValueError(
-                        "request.sub_response_json must be a JSON string or object"
-                    )
-            elif "response" in parsed_request:
-                nested_response = parsed_request["response"]
-                if isinstance(nested_response, str):
-                    sub_response_json = nested_response
-                elif isinstance(nested_response, dict):
-                    sub_response_json = cast(dict[str, object], nested_response)
-                elif nested_response is not None:
-                    raise ValueError("request.response must be a JSON string or object")
+            sub_response_json = payload.sub_response_json
 
     if option_index is None:
         raise ValueError("option_index is required")

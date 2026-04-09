@@ -106,7 +106,7 @@ def _vp_per_text(per: int, singular: str, plural: str, suffix: str = "") -> str:
     return f"1 per {singular}{suffix}"
 
 
-def format_vp(vp: Any) -> int | str | None:
+def format_vp(vp: object | None) -> int | str | None:
     """Return a human-readable VP value, or None if VP is zero/absent."""
     if vp is None:
         return None
@@ -140,9 +140,7 @@ def format_vp(vp: Any) -> int | str | None:
     return None
 
 
-def card_info(card_name: Any, include_play_details: bool = False) -> dict[str, object]:
-    if not isinstance(card_name, str):
-        return {}
+def card_info(card_name: str, include_play_details: bool = False) -> dict[str, object]:
     card = _load_card_info_index().get(card_name)
     if not isinstance(card, dict):
         return {}

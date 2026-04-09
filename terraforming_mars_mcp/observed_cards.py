@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from .api_response_models import CardModel, PlayerViewModel
+from .waiting_for import title_to_text
 
 _REPO_OUTPUT_ROOT = Path("agent-prompts/agent_game_notes")
 _IN_MEMORY_STATE: dict[str, dict[str, Any]] = {}
@@ -75,10 +76,7 @@ def observe_player_model(player_model: PlayerViewModel) -> None:
     is_draft = False
     if waiting_for is not None:
         title = waiting_for.title
-        if isinstance(title, str):
-            title_text = title
-        else:
-            title_text = title.message
+        title_text = title_to_text(title)
         is_draft = any(pattern.search(title_text) for pattern in _DRAFT_TITLE_PATTERNS)
 
     if is_draft:
