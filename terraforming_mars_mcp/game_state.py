@@ -540,14 +540,6 @@ def _detect_new_opponent_cards(
     return events
 
 
-def _detect_new_opponent_cards_since(
-    previous_player_model: ApiPlayerViewModel,
-    current_player_model: ApiPlayerViewModel,
-) -> list[dict[str, Any]]:
-    previous = _opponent_tableau_counts(previous_player_model)
-    events, _ = _new_opponent_cards_from_counts(current_player_model, previous)
-    return events
-
 
 # Expansion keys that map to groups of fields to strip when disabled.
 _EXPANSION_FIELD_GROUPS: dict[str, dict[str, list[str]]] = {
@@ -719,6 +711,7 @@ def _build_agent_state(
     base_url: str | None = None,
     player_id_fallback: str | None = None,
     auto_response: bool = False,
+    between_turns_actions: list[str] | None = None,
 ) -> dict[str, Any]:
     game = player_model.game
     normalized_detail_level = _normalize_detail_level(detail_level)
@@ -857,6 +850,8 @@ def _build_agent_state(
         suggested_tools.append(ToolName.PASS_TURN.value)
     result["suggested_tools"] = suggested_tools
     result["opponent_new_cards"] = opponent_new_cards
+    if between_turns_actions:
+        result["opponent_actions_between_turns"] = between_turns_actions
 
     if include_full_model:
         result["raw_player_model"] = _thin_raw_player_model(

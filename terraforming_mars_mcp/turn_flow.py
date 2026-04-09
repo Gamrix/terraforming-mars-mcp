@@ -16,7 +16,7 @@ from .api_response_models import (
     WaitingForStatusModel as ApiWaitingForStatusModel,
 )
 from ._app import mcp
-from .game_state import _build_agent_state, _detect_new_opponent_cards_since, _strip_empty
+from .game_state import _build_agent_state
 from .observed_cards import observe_player_model
 
 TURN_WAIT_TIMEOUT_SECONDS = 2 * 60 * 60
@@ -285,17 +285,13 @@ async def _submit_and_return_state(response: Mapping[str, object]) -> dict[str, 
         refreshed, opponent_actions = await _wait_for_turn_from_player_model(
             player_model, initial_logs=initial_logs
         )
-        opponent_new_cards = _detect_new_opponent_cards_since(player_model, refreshed)
-        result = _build_agent_state(
+        return _build_agent_state(
             refreshed,
             base_url=CFG.base_url,
             player_id_fallback=CFG.player_id,
             auto_response=True,
+            between_turns_actions=opponent_actions,
         )
-        result["opponent_new_cards"] = opponent_new_cards
-        if opponent_actions:
-            result["opponent_actions_between_turns"] = opponent_actions
-        return _strip_empty(result)
     return _build_agent_state(
         player_model,
         base_url=CFG.base_url,
