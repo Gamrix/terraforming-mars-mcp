@@ -245,7 +245,7 @@ def test_build_agent_state_reports_opponent_new_cards() -> None:
     raw1 = _make_two_player_model(game_age=100, opponent_tableau=[])
     player_view1 = PlayerViewModel.model_validate(raw1)
     state1 = game_state_mod._build_agent_state(player_view1, auto_response=True)
-    assert state1["opponent_new_cards"] == []
+    assert state1.get("opponent_new_cards", []) == []
 
     raw2 = _make_two_player_model(
         game_age=101,
@@ -693,4 +693,4 @@ def test_auto_response_all_disabled_cards_produce_empty_list() -> None:
     raw = _make_player_model(generation=4, game_age=100, waiting_for=waiting_for)
     player_view = PlayerViewModel.model_validate(raw)
     state = game_state_mod._build_agent_state(player_view, auto_response=True)
-    assert state["waiting_for"]["cards"] == []
+    assert "cards" not in state["waiting_for"]

@@ -24,6 +24,20 @@ from .waiting_for import (
 
 END_OF_GENERATION_PHASES = {"production", "solar", "intergeneration", "end"}
 
+
+def _strip_empty(obj: Any) -> Any:
+    """Recursively strip None values and empty lists from dicts.
+
+    Leaves other falsy values (0, False, empty strings) untouched since they
+    carry semantic meaning in game state payloads.
+    """
+    if isinstance(obj, dict):
+        return {k: _strip_empty(v) for k, v in obj.items() if v is not None and v != []}
+    if isinstance(obj, list):
+        return [_strip_empty(item) for item in obj]
+    return obj
+
+
 _LAST_OPPONENT_TABLEAU: dict[str, dict[str, Counter[str]]] = {}
 # Tracks (generation, constants_dict) so we send full constants once per gen.
 _LAST_GAME_CONSTANTS: dict[str, tuple[int, dict[str, Any]]] = {}
@@ -855,4 +869,4 @@ def _build_agent_state(
             player_model.model_dump(exclude_none=True),
             this_color=player_model.thisPlayer.color,
         )
-    return result
+    return _strip_empty(result)
