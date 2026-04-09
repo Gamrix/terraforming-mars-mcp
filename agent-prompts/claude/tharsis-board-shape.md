@@ -1,1 +1,1 @@
-../gemini/tharsis-board-shape.md
+../no_guide/tharsis-board-shape.md
