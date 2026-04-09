@@ -39,7 +39,7 @@ def test_extract_played_cards_omits_default_values(monkeypatch) -> None:
         }
     )
 
-    cards = _extract_played_cards(player, include_play_details=True)
+    cards = _extract_played_cards(player)
 
     assert cards == [{"name": "Protected Habitats", "cost": 12}]
 
@@ -80,7 +80,7 @@ def test_extract_played_cards_keeps_non_default_values(monkeypatch) -> None:
         }
     )
 
-    cards = _extract_played_cards(player, include_play_details=True)
+    cards = _extract_played_cards(player)
 
     assert cards == [
         {

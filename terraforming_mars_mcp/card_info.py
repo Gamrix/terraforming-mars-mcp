@@ -151,6 +151,12 @@ def _extract_actions_and_effects(render_data: Any) -> tuple[list[str], list[str]
     return actions, effects
 
 
+def _vp_per_text(per: int, singular: str, plural: str, suffix: str = "") -> str:
+    if per != 1:
+        return f"1 per {per} {plural}{suffix}"
+    return f"1 per {singular}{suffix}"
+
+
 def _format_vp(vp: Any) -> int | str | None:
     """Return a human-readable VP value, or None if VP is zero/absent."""
     if vp is None:
@@ -164,24 +170,16 @@ def _format_vp(vp: Any) -> int | str | None:
     if "resourcesHere" in vp:
         if each != 1:
             return f"{each} per resource"
-        if per != 1:
-            return f"1 per {per} resources"
-        return "1 per resource"
+        return _vp_per_text(per, "resource", "resources")
     if "tag" in vp:
         tag = vp["tag"]
-        if per != 1:
-            return f"1 per {per} {tag} tags"
-        return f"1 per {tag} tag"
+        return _vp_per_text(per, f"{tag} tag", f"{tag} tags")
     if "cities" in vp:
         suffix = " (all players)" if vp.get("all") else ""
-        if per != 1:
-            return f"1 per {per} cities{suffix}"
-        return f"1 per city{suffix}"
+        return _vp_per_text(per, "city", "cities", suffix)
     if "colonies" in vp:
         suffix = " (all players)" if vp.get("all") else ""
-        if per != 1:
-            return f"1 per {per} colonies{suffix}"
-        return f"1 per colony{suffix}"
+        return _vp_per_text(per, "colony", "colonies", suffix)
     if "moon" in vp:
         moon_obj = vp.get("moon")
         tile = (
@@ -189,9 +187,7 @@ def _format_vp(vp: Any) -> int | str | None:
             if isinstance(moon_obj, dict) and moon_obj
             else "tile"
         )
-        if per != 1:
-            return f"1 per {per} {tile} tiles on Moon"
-        return f"1 per {tile} tile on Moon"
+        return _vp_per_text(per, f"{tile} tile on Moon", f"{tile} tiles on Moon")
     return None
 
 
@@ -202,7 +198,8 @@ def _card_info(card_name: Any, include_play_details: bool = False) -> dict[str, 
     if not isinstance(card, dict):
         return {}
 
-    tags = card.get("tags") if isinstance(card.get("tags"), list) else []
+    raw_tags = card.get("tags")
+    tags = raw_tags if isinstance(raw_tags, list) else []
     raw_metadata = card.get("metadata")
     metadata = raw_metadata if isinstance(raw_metadata, dict) else None
     render_data = metadata.get("renderData") if isinstance(metadata, dict) else None
@@ -265,11 +262,6 @@ def _all_effect_texts(info: dict[str, object]) -> list[str]:
     return effect_texts
 
 
-def _best_effect_text(info: dict[str, object]) -> str | None:
-    effect_texts = _all_effect_texts(info)
-    return effect_texts[0] if effect_texts else None
-
-
 def _compact_card(
     card: dict[str, object] | str | ApiCardModel,
     detail_level: str | DetailLevel = DetailLevel.FULL,
@@ -305,11 +297,14 @@ def _compact_card(
     warnings = card_model.warnings if card_model else []
     resources = card_model.resources if card_model else None
 
+    has_warning = isinstance(warning, str) and bool(warning.strip())
+    has_warnings = isinstance(warnings, list) and bool(warnings)
+
     # Build dynamic fields dict for change detection in auto-response mode.
     dynamic_fields: dict[str, object] = {}
-    if isinstance(warning, str) and warning.strip():
+    if has_warning:
         dynamic_fields["warning"] = warning
-    if isinstance(warnings, list) and warnings:
+    if has_warnings and isinstance(warnings, list):
         dynamic_fields["warnings"] = tuple(warnings)
     if resources is not None:
         dynamic_fields["resources"] = resources
@@ -331,9 +326,9 @@ def _compact_card(
         payload["cost"] = cost
     if discounted_cost is not None and discounted_cost != cost:
         payload["discounted_cost"] = discounted_cost
-    if isinstance(warning, str) and warning.strip():
+    if has_warning:
         payload["warning"] = warning
-    if isinstance(warnings, list) and warnings:
+    if has_warnings:
         payload["warnings"] = warnings
     if resources is not None and resources != 0:
         payload["resources"] = resources
@@ -396,17 +391,15 @@ def _compact_cards(
     Disabled cards in auto-responses return just {"name": ..., "disabled": True}.
     In proactive requests, disabled cards return full details with disabled flag.
     """
-    compact_cards: list[dict[str, object]] = []
-    for card in cards:
-        compact = _compact_card(
+    return [
+        _compact_card(
             card,
             detail_level=detail_level,
             generation=generation,
             auto_response=auto_response,
         )
-        if compact:
-            compact_cards.append(compact)
-    return compact_cards
+        for card in cards
+    ]
 
 
 def _ensure_player_model(
@@ -418,7 +411,7 @@ def _ensure_player_model(
 
 
 def _extract_played_cards(
-    player: ApiPublicPlayerModel | dict[str, object], include_play_details: bool = False
+    player: ApiPublicPlayerModel | dict[str, object],
 ) -> list[dict[str, object]]:
     parsed_player = _ensure_player_model(player)
     return [

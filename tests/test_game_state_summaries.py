@@ -666,9 +666,7 @@ def test_opponent_new_cards_have_no_none_or_empty_list_fields() -> None:
     game_state_mod._build_agent_state(player_view1, auto_response=True)
 
     # Sponsors has no ongoing_effects, no activated_actions, no play_requirements_text.
-    raw2 = _make_two_player_model(
-        game_age=101, opponent_tableau=[{"name": "Sponsors"}]
-    )
+    raw2 = _make_two_player_model(game_age=101, opponent_tableau=[{"name": "Sponsors"}])
     player_view2 = PlayerViewModel.model_validate(raw2)
     state = game_state_mod._build_agent_state(player_view2, auto_response=True)
 

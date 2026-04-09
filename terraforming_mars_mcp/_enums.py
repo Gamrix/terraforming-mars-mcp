@@ -56,56 +56,35 @@ class ToolName(StrEnum):
     PASS_TURN = "pass_turn"
 
 
+_INPUT_TYPE_TO_TOOL: dict[InputType, ToolName] = {
+    InputType.AND_OPTIONS: ToolName.SUBMIT_AND_OPTIONS,
+    InputType.OR_OPTIONS: ToolName.CHOOSE_OR_OPTION,
+    InputType.SELECT_AMOUNT: ToolName.SELECT_AMOUNT,
+    InputType.SELECT_CARD: ToolName.SELECT_CARDS,
+    InputType.SELECT_DELEGATE: ToolName.SELECT_DELEGATE_TARGET,
+    InputType.SELECT_PAYMENT: ToolName.PAY_FOR_ACTION,
+    InputType.SELECT_PROJECT_CARD_TO_PLAY: ToolName.PAY_FOR_PROJECT_CARD,
+    InputType.SELECT_INITIAL_CARDS: ToolName.SELECT_INITIAL_CARDS,
+    InputType.SELECT_OPTION: ToolName.CONFIRM_OPTION,
+    InputType.SELECT_PARTY: ToolName.SELECT_PARTY,
+    InputType.SELECT_PLAYER: ToolName.SELECT_PLAYER,
+    InputType.SELECT_SPACE: ToolName.SELECT_SPACE,
+    InputType.SELECT_COLONY: ToolName.SELECT_COLONY,
+    InputType.SELECT_PRODUCTION_TO_LOSE: ToolName.SELECT_PRODUCTION_TO_LOSE,
+    InputType.SHIFT_ARES_GLOBAL_PARAMETERS: ToolName.SHIFT_ARES_GLOBAL_PARAMETERS,
+    InputType.SELECT_GLOBAL_EVENT: ToolName.SELECT_GLOBAL_EVENT,
+    InputType.SELECT_POLICY: ToolName.SELECT_POLICY,
+    InputType.SELECT_RESOURCE: ToolName.SELECT_RESOURCE,
+    InputType.SELECT_RESOURCES: ToolName.SELECT_RESOURCES,
+    InputType.SELECT_CLAIMED_UNDERGROUND_TOKEN: ToolName.SELECT_CLAIMED_UNDERGROUND_TOKEN,
+}
+
+
 def _action_tools_for_input_type(input_type: str | None) -> list[str]:
     if input_type is None:
         return []
     try:
-        input_type_enum = InputType(input_type)
-    except ValueError:
+        tool = _INPUT_TYPE_TO_TOOL[InputType(input_type)]
+    except (ValueError, KeyError):
         return [ToolName.SUBMIT_RAW_ENTITY.value]
-
-    match input_type_enum:
-        case InputType.AND_OPTIONS:
-            tools = [ToolName.SUBMIT_AND_OPTIONS.value]
-        case InputType.OR_OPTIONS:
-            tools = [ToolName.CHOOSE_OR_OPTION.value]
-        case InputType.SELECT_AMOUNT:
-            tools = [ToolName.SELECT_AMOUNT.value]
-        case InputType.SELECT_CARD:
-            tools = [ToolName.SELECT_CARDS.value]
-        case InputType.SELECT_DELEGATE:
-            tools = [ToolName.SELECT_DELEGATE_TARGET.value]
-        case InputType.SELECT_PAYMENT:
-            tools = [ToolName.PAY_FOR_ACTION.value]
-        case InputType.SELECT_PROJECT_CARD_TO_PLAY:
-            tools = [ToolName.PAY_FOR_PROJECT_CARD.value]
-        case InputType.SELECT_INITIAL_CARDS:
-            tools = [ToolName.SELECT_INITIAL_CARDS.value]
-        case InputType.SELECT_OPTION:
-            tools = [ToolName.CONFIRM_OPTION.value]
-        case InputType.SELECT_PARTY:
-            tools = [ToolName.SELECT_PARTY.value]
-        case InputType.SELECT_PLAYER:
-            tools = [ToolName.SELECT_PLAYER.value]
-        case InputType.SELECT_SPACE:
-            tools = [ToolName.SELECT_SPACE.value]
-        case InputType.SELECT_COLONY:
-            tools = [ToolName.SELECT_COLONY.value]
-        case InputType.SELECT_PRODUCTION_TO_LOSE:
-            tools = [ToolName.SELECT_PRODUCTION_TO_LOSE.value]
-        case InputType.SHIFT_ARES_GLOBAL_PARAMETERS:
-            tools = [ToolName.SHIFT_ARES_GLOBAL_PARAMETERS.value]
-        case InputType.SELECT_GLOBAL_EVENT:
-            tools = [ToolName.SELECT_GLOBAL_EVENT.value]
-        case InputType.SELECT_POLICY:
-            tools = [ToolName.SELECT_POLICY.value]
-        case InputType.SELECT_RESOURCE:
-            tools = [ToolName.SELECT_RESOURCE.value]
-        case InputType.SELECT_RESOURCES:
-            tools = [ToolName.SELECT_RESOURCES.value]
-        case InputType.SELECT_CLAIMED_UNDERGROUND_TOKEN:
-            tools = [ToolName.SELECT_CLAIMED_UNDERGROUND_TOKEN.value]
-
-    if ToolName.SUBMIT_RAW_ENTITY.value not in tools:
-        tools.append(ToolName.SUBMIT_RAW_ENTITY.value)
-    return tools
+    return [tool.value, ToolName.SUBMIT_RAW_ENTITY.value]

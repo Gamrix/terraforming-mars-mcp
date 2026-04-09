@@ -4,12 +4,16 @@ from collections import Counter
 from dataclasses import asdict, dataclass
 from typing import Any, Literal, NotRequired, TypedDict
 
+from ._enums import DetailLevel, InputType, ToolName, _action_tools_for_input_type
 from .api_response_models import (
     GameModel as ApiGameModel,
+)
+from .api_response_models import (
     PlayerViewModel as ApiPlayerViewModel,
+)
+from .api_response_models import (
     PublicPlayerModel as ApiPublicPlayerModel,
 )
-from ._enums import DetailLevel, InputType, ToolName, _action_tools_for_input_type
 from .card_info import (
     _card_info,
     _compact_cards,
@@ -84,20 +88,8 @@ class _PlayerSummary:
     actions_this_generation: list[str]
 
     def to_full_payload(self) -> dict[str, Any]:
-        payload: dict[str, Any] = {
-            "name": self.name,
-            "color": self.color,
-            "tr": self.tr,
-            "mc": self.mc,
-            "steel": self.steel,
-            "titanium": self.titanium,
-            "plants": self.plants,
-            "energy": self.energy,
-            "heat": self.heat,
-            "prod": self.prod.to_payload(),
-            "cards_in_hand_count": self.cards_in_hand_count,
-            "actions_this_generation": list(self.actions_this_generation),
-        }
+        payload = asdict(self)
+        payload.pop("active", None)
         if self.active:
             payload["active"] = True
         return payload

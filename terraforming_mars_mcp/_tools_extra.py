@@ -34,7 +34,7 @@ def get_opponents_played_cards() -> dict[str, object]:
     for player in player_model.players:
         if player.color == this_color:
             continue
-        played_cards = _extract_played_cards(player, include_play_details=True)
+        played_cards = _extract_played_cards(player)
         opponents.append(
             {
                 "name": player.name,
