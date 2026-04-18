@@ -85,9 +85,8 @@ play a card needing space selection, then pass:
 ## Important Action Details
 
 - `projectCard`:
-- Requires `card` plus full `payment` object.
-- The payment object includes all spendable fields, even when most are zero.
-- Example: `{"type":"projectCard","card":"Imported Nitrogen","payment":{"megaCredits":23,...}}`
+- Requires `card` plus a `payment` object. Only include the resources you are actually spending; omitted fields default to 0.
+- Example: `{"type":"projectCard","card":"Imported Nitrogen","payment":{"megaCredits":23}}`
 
 - `space`:
 - Requires a legal `spaceId` from `waiting_for.spaces`.
@@ -99,7 +98,7 @@ play a card needing space selection, then pass:
 - If `min` is 0, sending an empty list is legal only when the specific prompt allows skipping.
 
 - `or`:
-- Nested response must match the selected branch's expected type (e.g. a `projectCard` branch requires a full `projectCard` payload, not `{"type":"option"}`).
+- Nested response must match the selected branch's expected type (e.g. a `projectCard` branch requires a `projectCard` payload, not `{"type":"option"}`).
 - Raw `OrOptionsResponse` shape is strict: `{"type":"or","index":<number>,"response":<InputResponse>}`. Keys must be exactly `type`, `index`, `response` (extra keys fail validation).
 - If the selected branch is itself another `or` (e.g. milestone/award sub-menu), the nested payload must also be an `or` response, not `option`.
 
@@ -147,11 +146,11 @@ Use these exact shapes when you are unsure about setup or nested prompts.
 }
 ```
 
-- `choose_or_option` with nested `projectCard` response (full payment object required):
+- `choose_or_option` with nested `projectCard` response:
 ```json
 {
   "option_index": 0,
-  "sub_response": {"type": "projectCard", "card": "Noctis City", "payment": {"megaCredits": 18, "steel": 0, "titanium": 0, "plants": 0, "heat": 0, "microbes": 0, "floaters": 0, "lunaArchivesScience": 0, "spireScience": 0, "seeds": 0, "auroraiData": 0, "graphene": 0, "kuiperAsteroids": 0}}
+  "sub_response": {"type": "projectCard", "card": "Noctis City", "payment": {"megaCredits": 18}}
 }
 ```
 
