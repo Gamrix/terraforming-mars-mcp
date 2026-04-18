@@ -55,7 +55,7 @@ class ToolName(StrEnum):
     SELECT_RESOURCES = "select_resources"
     SELECT_CLAIMED_UNDERGROUND_TOKEN = "select_claimed_underground_tokens"
     PASS_TURN = "pass_turn"
-    SUBMIT_TURN_ACTIONS = "submit_turn_actions"
+    SUBMIT_MULTI_ACTIONS = "submit_multi_actions"
 
 
 _INPUT_TYPE_TO_TOOL: dict[InputType, ToolName] = {

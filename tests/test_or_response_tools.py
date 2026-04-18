@@ -258,14 +258,14 @@ def test_pay_for_project_card_errors_when_outer_or_has_no_project_card_branch() 
         assert "projectCard" in str(exc)
 
 
-# --- submit_turn_actions tests ---
+# --- submit_multi_actions tests ---
 
 
 def _reload_extra() -> Any:
     return importlib.reload(extra_mod)
 
 
-def test_submit_turn_actions_chains_all_actions() -> None:
+def test_submit_multi_actions_chains_all_actions() -> None:
     extra = _reload_extra()
     calls: list[dict[str, Any]] = []
 
@@ -281,7 +281,7 @@ def test_submit_turn_actions_chains_all_actions() -> None:
         {"type": "space", "spaceId": "35"},
         {"type": "or", "index": 1, "response": {"type": "option"}},
     ]
-    result = _run(extra.submit_turn_actions(actions_json=json.dumps(actions)))
+    result = _run(extra.submit_multi_actions(actions_json=json.dumps(actions)))
 
     assert len(calls) == 3
     assert calls[0]["type"] == "or"
@@ -290,7 +290,7 @@ def test_submit_turn_actions_chains_all_actions() -> None:
     assert result["actions_executed"] == 3
 
 
-def test_submit_turn_actions_stops_when_turn_ends_early() -> None:
+def test_submit_multi_actions_stops_when_turn_ends_early() -> None:
     extra = _reload_extra()
     calls: list[dict[str, Any]] = []
 
@@ -313,35 +313,35 @@ def test_submit_turn_actions_stops_when_turn_ends_early() -> None:
         {"type": "space", "spaceId": "35"},
         {"type": "or", "index": 1, "response": {"type": "option"}},
     ]
-    result = _run(extra.submit_turn_actions(actions_json=json.dumps(actions)))
+    result = _run(extra.submit_multi_actions(actions_json=json.dumps(actions)))
 
     assert len(calls) == 2
     assert result["actions_executed"] == 2
 
 
-def test_submit_turn_actions_validates_input() -> None:
+def test_submit_multi_actions_validates_input() -> None:
     extra = _reload_extra()
 
     try:
-        _run(extra.submit_turn_actions(actions_json='"not a list"'))
+        _run(extra.submit_multi_actions(actions_json='"not a list"'))
         assert False, "Expected ValueError"
     except ValueError as exc:
         assert "array" in str(exc).lower()
 
     try:
-        _run(extra.submit_turn_actions(actions_json="[]"))
+        _run(extra.submit_multi_actions(actions_json="[]"))
         assert False, "Expected ValueError"
     except ValueError as exc:
         assert "at least one" in str(exc).lower()
 
     try:
-        _run(extra.submit_turn_actions(actions_json='[{"no_type": true}]'))
+        _run(extra.submit_multi_actions(actions_json='[{"no_type": true}]'))
         assert False, "Expected ValueError"
     except ValueError as exc:
         assert "type" in str(exc).lower()
 
 
-def test_submit_turn_actions_normalizes_payment() -> None:
+def test_submit_multi_actions_normalizes_payment() -> None:
     extra = _reload_extra()
     calls: list[dict[str, Any]] = []
 
@@ -355,7 +355,7 @@ def test_submit_turn_actions_normalizes_payment() -> None:
     actions = [
         {"type": "projectCard", "card": "Test Card"},
     ]
-    _run(extra.submit_turn_actions(actions_json=json.dumps(actions)))
+    _run(extra.submit_multi_actions(actions_json=json.dumps(actions)))
 
     assert len(calls) == 1
     assert "payment" in calls[0]

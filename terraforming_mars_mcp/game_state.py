@@ -778,7 +778,7 @@ def build_agent_state(
         }
     suggested_tools = action_tools_for_input_type(input_type)
     if input_type == InputType.OR_OPTIONS.value:
-        suggested_tools.append(ToolName.SUBMIT_TURN_ACTIONS.value)
+        suggested_tools.append(ToolName.SUBMIT_MULTI_ACTIONS.value)
         if waiting_for is not None and find_pass_option_index(waiting_for) is not None:
             suggested_tools.append(ToolName.PASS_TURN.value)
     result["suggested_tools"] = suggested_tools

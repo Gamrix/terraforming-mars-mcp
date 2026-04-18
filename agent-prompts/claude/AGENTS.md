@@ -33,23 +33,21 @@ core strategies for playing well. Read through it before playing a game.
 
 - The server always exposes one current prompt at `get_game_state().waiting_for`.
 - `waiting_for.input_type` tells you which tool to call.
-- After every write/action tool call, the MCP server now auto-waits for your next turn when your action ends your turn.
-- When opponents act between your turns, responses include `opponent_actions_between_turns` (rendered from new game log entries).
+- After every write/action tool call, the MCP server auto-waits for your next turn when your action ends your turn.
+- When opponents act between your turns, responses include `opponent_actions_between_turns` (rendered from new game log entries); post-turn state is rebuilt after waiting.
 - For compound prompts:
 - `or`: choose one branch and provide a nested response for that branch.
 - `and`: provide one response for each branch.
-- You can always bypass helpers and send a raw response with `submit_raw_entity`.
-- Every write tool returns state; post-turn state is rebuilt after waiting when opponent actions were detected between turns.
-- Treat action-tool responses as the primary state source after each move (`choose_or_option`, `select_cards`, `select_space`, `pay_for_project_card`, etc.).
-- Use `get_game_state` for explicit inspection, planning context, or verification, not as the default follow-up after every action.
+- Treat action-tool responses as the primary state source after each move (`choose_or_option`, `select_cards`, `select_space`, `pay_for_project_card`, etc.). Call `get_game_state` only for explicit inspection, planning context, or a fresh full snapshot — not as the default follow-up after every action.
 
-### Batching a Full Turn
+### Batching Multiple Actions
 
-Use `submit_turn_actions` to send all actions for your entire turn in one call. Pass a JSON array of raw `InputResponse` objects in the order the server will prompt for them. The server submits each one sequentially, using the next element to answer whatever `waitingFor` the previous action produced.
+Use `submit_multi_actions` to send multiple actions in one call. Pass a JSON array of raw `InputResponse` objects in the order the server will prompt for them. The server submits each one sequentially, using the next element to answer whatever `waitingFor` the previous action produced.
+Use this when you know the sequence of actions ahead of time, and it can't be influenced by your actions having random results. (e.g., play a card → select space → second action). The response includes `actions_executed` showing how many of the provided actions were actually executed.
 
-Use this for turns where you know the full sequence, and that it can't be influenced by your actions having random results. (e.g., play a card → select space → second action). The response includes `actions_executed` showing how many of the provided actions were actually executed.
+#### Example
 
-Example — play a card needing space selection, then pass:
+play a card needing space selection, then pass:
 
 ```json
 [
@@ -58,6 +56,11 @@ Example — play a card needing space selection, then pass:
   {"type": "or", "index": 5, "response": {"type": "option"}}
 ]
 ```
+
+#### Times to not use `submit_multi_actions`
+
+- An action other than the last one causes some kind of card draw or viewing cards from outside of your hand.
+
 
 ## Action Reference
 
@@ -83,7 +86,7 @@ Example — play a card needing space selection, then pass:
 | `select_resource` | `resource` | Chooses one resource key. | Single resource-type choice |
 | `select_resources` | `resources` | Sends resource-unit allocation map. | Multi-resource distribution |
 | `select_claimed_underground_tokens` | `claimedUndergroundToken` | Chooses underground token indexes. | Underworld token prompt |
-| `submit_turn_actions` | *(sequence)* | Submits a full turn's worth of actions in one call. | Any `or` prompt (start of turn) |
+| `submit_multi_actions` | *(sequence)* | Submits multiple actions in one call. | Any `or` prompt |
 
 ## Important Action Details
 
@@ -102,16 +105,12 @@ Example — play a card needing space selection, then pass:
 - If `min` is 0, sending an empty list is legal only when the specific prompt allows skipping.
 
 - `or`:
-- Nested response must match the selected branch’s expected type.
-- If branch 0 is `projectCard`, sending nested `{"type":"option"}` will fail validation.
-- Raw `OrOptionsResponse` shape is strict:
-- `{"type":"or","index":<number>,"response":<InputResponse>}`
-- Keys must be exactly `type`, `index`, `response` (extra keys fail validation).
+- Nested response must match the selected branch's expected type (e.g. a `projectCard` branch requires a full `projectCard` payload, not `{"type":"option"}`).
+- Raw `OrOptionsResponse` shape is strict: `{"type":"or","index":<number>,"response":<InputResponse>}`. Keys must be exactly `type`, `index`, `response` (extra keys fail validation).
+- If the selected branch is itself another `or` (e.g. milestone/award sub-menu), the nested payload must also be an `or` response, not `option`.
 
 - Milestones and awards:
-- Milestone claim and award funding are selected as branches of an `or` prompt.
-- Find the matching option title in `waiting_for.options`, then call `choose_or_option` with that index and nested `{"type":"option"}`.
-- If the selected branch itself is another `or`, your nested payload must also be an `or` response, not `option`.
+- Milestone claim and award funding are selected as branches of an `or` prompt. Find the matching option title in `waiting_for.options`, then call `choose_or_option` with that index and nested `{"type":"option"}`.
 - If the server then returns `input_type: payment`, finish with `pay_for_action(...)`.
 
 - `initialCards`:
@@ -154,10 +153,7 @@ Use these exact shapes when you are unsure about setup or nested prompts.
 }
 ```
 
-- `choose_or_option` with nested `projectCard` response:
-- Do not send `{"type":"option"}` for a project-card branch.
-- Use full nested `projectCard` + payment payload.
-- Example:
+- `choose_or_option` with nested `projectCard` response (full payment object required):
 ```json
 {
   "option_index": 0,
@@ -165,9 +161,7 @@ Use these exact shapes when you are unsure about setup or nested prompts.
 }
 ```
 
-- `choose_or_option` for nested `or` (example: claim Mayor milestone):
-- Outer action menu branch is `or`, and that branch contains a second `or` with milestone choices.
-- Use nested `or` response:
+- `choose_or_option` for nested `or` (example: claim Mayor milestone — outer `or` branch contains a second `or` with milestone choices):
 ```json
 {
   "option_index": 0,
@@ -175,30 +169,12 @@ Use these exact shapes when you are unsure about setup or nested prompts.
 }
 ```
 
-- Equivalent raw payload (when bypassing helpers) for the same Mayor claim:
-```json
-{
-  "type": "or",
-  "index": 0,
-  "response": {
-    "type": "or",
-    "index": 0,
-    "response": { "type": "option" }
-  }
-}
-```
-
-- `select_cards` with empty list (Inventors' Guild "cannot afford any cards"):
-- If prompt shows `input_type: card` with `amount_range.min=0` and `max=0`, confirm with no card names.
+- `select_cards` with empty list (prompt with `amount_range.min=0` and `max=0`, e.g. Inventors' Guild "cannot afford any cards"):
 ```json
 {
   "card_names": []
 }
 ```
-
-- State sync rule:
-- After a write/action call, continue from that tool's returned state by default.
-- Call `get_game_state` when you need a fresh full snapshot (for example, deep board review or cross-checking legal options).
 
 ## Game State for Agents
 

@@ -131,8 +131,8 @@ async def submit_and_options(responses_json: str) -> dict[str, object]:
 
 
 @mcp.tool()
-async def submit_turn_actions(actions_json: str) -> dict[str, object]:
-    """Submit a sequence of actions for your entire turn in one call.
+async def submit_multi_actions(actions_json: str) -> dict[str, object]:
+    """Submit multiple actions in one call.
 
     Each action is submitted to the server in order. After each submission,
     if the server requests more input (select a space, choose resources, etc.),
