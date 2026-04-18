@@ -219,16 +219,6 @@ async def select_player(player_color: str) -> dict[str, object]:
 
 
 @mcp.tool()
-async def select_delegate_target(player_color_or_neutral: str) -> dict[str, object]:
-    """Respond to `type: delegate` with a player color or `NEUTRAL`."""
-    if not player_color_or_neutral:
-        raise ValueError("player_color_or_neutral is required")
-    return await submit_and_return_state(
-        {"type": "delegate", "player": player_color_or_neutral}
-    )
-
-
-@mcp.tool()
 async def select_space(space_id: str) -> dict[str, object]:
     """Respond to `type: space` using a board space ID from `waiting_for.spaces`."""
     if not space_id:
@@ -305,65 +295,30 @@ async def select_production_to_lose(
 
 
 @mcp.tool()
-async def shift_ares_global_parameters(
-    low_ocean_delta: int = 0,
-    high_ocean_delta: int = 0,
-    temperature_delta: int = 0,
-    oxygen_delta: int = 0,
-) -> dict[str, object]:
-    """Respond to `type: aresGlobalParameters`. Values are expected in {-1,0,1}."""
-    return await submit_and_return_state(
-        {
-            "type": "aresGlobalParameters",
-            "response": {
-                "lowOceanDelta": low_ocean_delta,
-                "highOceanDelta": high_ocean_delta,
-                "temperatureDelta": temperature_delta,
-                "oxygenDelta": oxygen_delta,
-            },
-        }
-    )
-
-
-@mcp.tool()
-async def select_global_event(global_event_name: str) -> dict[str, object]:
-    """Respond to `type: globalEvent`."""
-    if not global_event_name:
-        raise ValueError("global_event_name is required")
-    return await submit_and_return_state(
-        {"type": "globalEvent", "globalEventName": global_event_name}
-    )
-
-
-@mcp.tool()
-async def select_policy(policy_id: str) -> dict[str, object]:
-    """Respond to `type: policy`."""
-    if not policy_id:
-        raise ValueError("policy_id is required")
-    return await submit_and_return_state({"type": "policy", "policyId": policy_id})
-
-
-@mcp.tool()
-async def select_resource(resource: str) -> dict[str, object]:
-    """Respond to `type: resource`."""
-    if not resource:
-        raise ValueError("resource is required")
-    return await submit_and_return_state({"type": "resource", "resource": resource})
-
-
-@mcp.tool()
 async def select_resources(
     units: UnitsPayloadModel = UnitsPayloadModel(),
 ) -> dict[str, object]:
-    """Respond to `type: resources`."""
-    return await submit_and_return_state(
-        {"type": "resources", "units": units.model_dump()}
-    )
+    """Respond to `type: resource` or `type: resources`.
 
+    Always provide a units payload.
 
-@mcp.tool()
-async def select_claimed_underground_tokens(selected: list[int]) -> dict[str, object]:
-    """Respond to `type: claimedUndergroundToken`."""
+    For a `resource` prompt, set exactly one resource field to a positive value;
+    the selected field determines the resource type and the amount is ignored.
+    For a `resources` prompt, the full units payload is submitted.
+    """
+    waiting_for = get_player().waitingFor
+    waiting_for_type = getattr(waiting_for, "type", None)
+    payload = units.model_dump()
+
+    if waiting_for_type == "resource":
+        selected = [name for name, amount in payload.items() if amount > 0]
+        if len(selected) != 1:
+            raise ValueError(
+                "For a resource prompt, set exactly one resource field to a positive value"
+            )
+        return await submit_and_return_state(
+            {"type": "resource", "resource": selected[0]}
+        )
     return await submit_and_return_state(
-        {"type": "claimedUndergroundToken", "selected": cast(JsonValue, selected)}
+        {"type": "resources", "units": payload}
     )

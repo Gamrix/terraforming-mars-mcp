@@ -72,7 +72,6 @@ play a card needing space selection, then pass:
 | `select_amount` | `amount` | Chooses a numeric amount. | Spend/remove/select X |
 | `select_cards` | `card` | Picks one or more card names. | Research cards, standard project choice, blue-card action selection, sell patents |
 | `select_player` | `player` | Chooses a player color. | Target player effects |
-| `select_delegate_target` | `delegate` | Chooses delegate target (`color` or `NEUTRAL`). | Turmoil delegate placement |
 | `select_space` | `space` | Chooses a board hex by `spaceId`. | Tile placement after cards/SPs |
 | `select_party` | `party` | Chooses a Turmoil party by name. | Send delegate to party |
 | `select_colony` | `colony` | Chooses a colony name. | Colony-related effects |
@@ -80,12 +79,7 @@ play a card needing space selection, then pass:
 | `pay_for_project_card` | `projectCard` | Plays a specific project card with payment object. | “Play project card” branch |
 | `select_initial_cards` | `initialCards` | Submits corp/prelude/(optional CEO)/project selections in server option order. | Game setup |
 | `select_production_to_lose` | `productionToLose` | Chooses which production units to reduce. | Production-loss effects |
-| `shift_ares_global_parameters` | `aresGlobalParameters` | Sends Ares hazard threshold deltas. | Ares hazard adjustment prompt |
-| `select_global_event` | `globalEvent` | Chooses one global event. | Turmoil event selection |
-| `select_policy` | `policy` | Chooses a policy id. | Turmoil policy prompt |
-| `select_resource` | `resource` | Chooses one resource key. | Single resource-type choice |
-| `select_resources` | `resources` | Sends resource-unit allocation map. | Multi-resource distribution |
-| `select_claimed_underground_tokens` | `claimedUndergroundToken` | Chooses underground token indexes. | Underworld token prompt |
+| `select_resources` | `resource` / `resources` | Uses one units payload for both single-resource choice and multi-resource allocation prompts. | Resource-type choice / multi-resource distribution |
 | `submit_multi_actions` | *(sequence)* | Submits multiple actions in one call. | Any `or` prompt |
 
 ## Important Action Details

@@ -360,3 +360,72 @@ def test_submit_multi_actions_normalizes_payment() -> None:
     assert len(calls) == 1
     assert "payment" in calls[0]
     assert calls[0]["payment"]["megaCredits"] == 0
+
+
+def test_select_resources_submits_single_resource_payload() -> None:
+    extra = _reload_extra()
+    captured: dict[str, Any] = {}
+
+    async def _submit(payload: dict[str, Any]) -> dict[str, Any]:
+        captured.update(payload)
+        return {"ok": True}
+
+    extra.get_player = lambda player_id=None: SimpleNamespace(
+        waitingFor=SimpleNamespace(type="resource")
+    )
+    extra.submit_and_return_state = _submit
+
+    result = _run(extra.select_resources(units=extra_mod.UnitsPayloadModel(steel=1)))
+
+    assert result == {"ok": True}
+    assert captured == {"type": "resource", "resource": "steel"}
+
+
+def test_select_resources_submits_units_payload() -> None:
+    extra = _reload_extra()
+    captured: dict[str, Any] = {}
+
+    async def _submit(payload: dict[str, Any]) -> dict[str, Any]:
+        captured.update(payload)
+        return {"ok": True}
+
+    extra.get_player = lambda player_id=None: SimpleNamespace(
+        waitingFor=SimpleNamespace(type="resources")
+    )
+    extra.submit_and_return_state = _submit
+
+    result = _run(
+        extra.select_resources(
+            units=extra_mod.UnitsPayloadModel(megacredits=2, heat=1),
+        )
+    )
+
+    assert result == {"ok": True}
+    assert captured == {
+        "type": "resources",
+        "units": {
+            "megacredits": 2,
+            "steel": 0,
+            "titanium": 0,
+            "plants": 0,
+            "energy": 0,
+            "heat": 1,
+        },
+    }
+
+
+def test_select_resources_validates_single_resource_selection() -> None:
+    extra = _reload_extra()
+    extra.get_player = lambda player_id=None: SimpleNamespace(
+        waitingFor=SimpleNamespace(type="resource")
+    )
+
+    try:
+        _run(
+            extra.select_resources(
+                units=extra_mod.UnitsPayloadModel(steel=1, heat=1),
+            )
+        )
+        assert False, "Expected ValueError for ambiguous resource choice"
+    except ValueError as exc:
+        assert "exactly one" in str(exc).lower()

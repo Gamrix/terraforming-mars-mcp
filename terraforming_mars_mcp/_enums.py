@@ -38,7 +38,6 @@ class ToolName(StrEnum):
     SUBMIT_AND_OPTIONS = "submit_and_options"
     SELECT_AMOUNT = "select_amount"
     SELECT_CARDS = "select_cards"
-    SELECT_DELEGATE_TARGET = "select_delegate_target"
     PAY_FOR_ACTION = "pay_for_action"
     PAY_FOR_PROJECT_CARD = "pay_for_project_card"
     SELECT_INITIAL_CARDS = "select_initial_cards"
@@ -48,12 +47,7 @@ class ToolName(StrEnum):
     SELECT_SPACE = "select_space"
     SELECT_COLONY = "select_colony"
     SELECT_PRODUCTION_TO_LOSE = "select_production_to_lose"
-    SHIFT_ARES_GLOBAL_PARAMETERS = "shift_ares_global_parameters"
-    SELECT_GLOBAL_EVENT = "select_global_event"
-    SELECT_POLICY = "select_policy"
-    SELECT_RESOURCE = "select_resource"
     SELECT_RESOURCES = "select_resources"
-    SELECT_CLAIMED_UNDERGROUND_TOKEN = "select_claimed_underground_tokens"
     PASS_TURN = "pass_turn"
     SUBMIT_MULTI_ACTIONS = "submit_multi_actions"
 
@@ -63,7 +57,6 @@ _INPUT_TYPE_TO_TOOL: dict[InputType, ToolName] = {
     InputType.OR_OPTIONS: ToolName.CHOOSE_OR_OPTION,
     InputType.SELECT_AMOUNT: ToolName.SELECT_AMOUNT,
     InputType.SELECT_CARD: ToolName.SELECT_CARDS,
-    InputType.SELECT_DELEGATE: ToolName.SELECT_DELEGATE_TARGET,
     InputType.SELECT_PAYMENT: ToolName.PAY_FOR_ACTION,
     InputType.SELECT_PROJECT_CARD_TO_PLAY: ToolName.PAY_FOR_PROJECT_CARD,
     InputType.SELECT_INITIAL_CARDS: ToolName.SELECT_INITIAL_CARDS,
@@ -73,12 +66,8 @@ _INPUT_TYPE_TO_TOOL: dict[InputType, ToolName] = {
     InputType.SELECT_SPACE: ToolName.SELECT_SPACE,
     InputType.SELECT_COLONY: ToolName.SELECT_COLONY,
     InputType.SELECT_PRODUCTION_TO_LOSE: ToolName.SELECT_PRODUCTION_TO_LOSE,
-    InputType.SHIFT_ARES_GLOBAL_PARAMETERS: ToolName.SHIFT_ARES_GLOBAL_PARAMETERS,
-    InputType.SELECT_GLOBAL_EVENT: ToolName.SELECT_GLOBAL_EVENT,
-    InputType.SELECT_POLICY: ToolName.SELECT_POLICY,
-    InputType.SELECT_RESOURCE: ToolName.SELECT_RESOURCE,
+    InputType.SELECT_RESOURCE: ToolName.SELECT_RESOURCES,
     InputType.SELECT_RESOURCES: ToolName.SELECT_RESOURCES,
-    InputType.SELECT_CLAIMED_UNDERGROUND_TOKEN: ToolName.SELECT_CLAIMED_UNDERGROUND_TOKEN,
 }
 
 
