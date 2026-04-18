@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import asyncio
 import importlib
+import json
 from types import SimpleNamespace
 from typing import Any
 
+import terraforming_mars_mcp._tools_extra as extra_mod
 import terraforming_mars_mcp.server as server_mod
 from terraforming_mars_mcp._models import PaymentPayloadModel
 from terraforming_mars_mcp.api_response_models import WaitingForInputModel
@@ -254,3 +256,107 @@ def test_pay_for_project_card_errors_when_outer_or_has_no_project_card_branch() 
         assert False, "Expected RuntimeError for missing projectCard branch"
     except RuntimeError as exc:
         assert "projectCard" in str(exc)
+
+
+# --- submit_turn_actions tests ---
+
+
+def _reload_extra() -> Any:
+    return importlib.reload(extra_mod)
+
+
+def test_submit_turn_actions_chains_all_actions() -> None:
+    extra = _reload_extra()
+    calls: list[dict[str, Any]] = []
+
+    def fake_post_input(response: Any, player_id: Any = None) -> Any:
+        calls.append(response)
+        return SimpleNamespace(waitingFor=SimpleNamespace(type="or"))
+
+    extra._post_input = fake_post_input
+    extra.build_agent_state = lambda pm, **kw: {"ok": True}
+
+    actions = [
+        {"type": "or", "index": 0, "response": {"type": "option"}},
+        {"type": "space", "spaceId": "35"},
+        {"type": "or", "index": 1, "response": {"type": "option"}},
+    ]
+    result = _run(extra.submit_turn_actions(actions_json=json.dumps(actions)))
+
+    assert len(calls) == 3
+    assert calls[0]["type"] == "or"
+    assert calls[1]["type"] == "space"
+    assert calls[2]["type"] == "or"
+    assert result["actions_executed"] == 3
+
+
+def test_submit_turn_actions_stops_when_turn_ends_early() -> None:
+    extra = _reload_extra()
+    calls: list[dict[str, Any]] = []
+
+    def fake_post_input(response: Any, player_id: Any = None) -> Any:
+        calls.append(response)
+        if len(calls) >= 2:
+            return SimpleNamespace(waitingFor=None)
+        return SimpleNamespace(waitingFor=SimpleNamespace(type="space"))
+
+    async def fake_wait(pm: Any, initial_logs: Any = None) -> Any:
+        return pm, []
+
+    extra._post_input = fake_post_input
+    extra._get_game_logs = lambda player_id=None: []
+    extra.wait_for_turn_from_player_model = fake_wait
+    extra.build_agent_state = lambda pm, **kw: {"ok": True}
+
+    actions = [
+        {"type": "or", "index": 0, "response": {"type": "option"}},
+        {"type": "space", "spaceId": "35"},
+        {"type": "or", "index": 1, "response": {"type": "option"}},
+    ]
+    result = _run(extra.submit_turn_actions(actions_json=json.dumps(actions)))
+
+    assert len(calls) == 2
+    assert result["actions_executed"] == 2
+
+
+def test_submit_turn_actions_validates_input() -> None:
+    extra = _reload_extra()
+
+    try:
+        _run(extra.submit_turn_actions(actions_json='"not a list"'))
+        assert False, "Expected ValueError"
+    except ValueError as exc:
+        assert "array" in str(exc).lower()
+
+    try:
+        _run(extra.submit_turn_actions(actions_json="[]"))
+        assert False, "Expected ValueError"
+    except ValueError as exc:
+        assert "at least one" in str(exc).lower()
+
+    try:
+        _run(extra.submit_turn_actions(actions_json='[{"no_type": true}]'))
+        assert False, "Expected ValueError"
+    except ValueError as exc:
+        assert "type" in str(exc).lower()
+
+
+def test_submit_turn_actions_normalizes_payment() -> None:
+    extra = _reload_extra()
+    calls: list[dict[str, Any]] = []
+
+    def fake_post_input(response: Any, player_id: Any = None) -> Any:
+        calls.append(response)
+        return SimpleNamespace(waitingFor=SimpleNamespace(type="or"))
+
+    extra._post_input = fake_post_input
+    extra.build_agent_state = lambda pm, **kw: {"ok": True}
+
+    actions = [
+        {"type": "projectCard", "card": "Test Card"},
+    ]
+    _run(extra.submit_turn_actions(actions_json=json.dumps(actions)))
+
+    assert len(calls) == 1
+    assert "payment" in calls[0]
+    assert calls[0]["payment"]["megaCredits"] == 0

@@ -18,6 +18,8 @@ from .card_info import extract_played_cards
 from .game_state import build_agent_state, full_board_state
 from .turn_flow import (
     CFG,
+    _get_game_logs,
+    _post_input,
     get_player,
     submit_and_return_state,
     wait_for_turn_from_player_model,
@@ -126,6 +128,72 @@ async def submit_and_options(responses_json: str) -> dict[str, object]:
     return await submit_and_return_state(
         {"type": "and", "responses": cast(JsonValue, normalized_responses)}
     )
+
+
+@mcp.tool()
+async def submit_turn_actions(actions_json: str) -> dict[str, object]:
+    """Submit a sequence of actions for your entire turn in one call.
+
+    Each action is submitted to the server in order. After each submission,
+    if the server requests more input (select a space, choose resources, etc.),
+    the next action in the list is used as the response. Continues until all
+    actions are consumed or the turn ends.
+
+    actions_json: JSON array of InputResponse objects, each with a `type` field.
+    These are the same raw payloads you would pass to submit_raw_entity.
+
+    Example — play a card that needs space selection, then pass:
+    [
+        {"type": "or", "index": 0, "response": {"type": "projectCard", "card": "Noctis City", "payment": {"megaCredits": 20}}},
+        {"type": "space", "spaceId": "35"},
+        {"type": "or", "index": 5, "response": {"type": "option"}}
+    ]
+    """
+    actions = json.loads(actions_json)
+    if not isinstance(actions, list):
+        raise ValueError("actions_json must decode to a JSON array")
+    if len(actions) == 0:
+        raise ValueError("actions_json must contain at least one action")
+
+    player_model = None
+    actions_executed = 0
+    for i, action in enumerate(actions):
+        if not isinstance(action, dict):
+            raise ValueError(f"Action at index {i} must be a JSON object")
+        if "type" not in action:
+            raise ValueError(f"Action at index {i} must include a 'type' field")
+
+        normalized = normalize_raw_input_entity(cast(dict[str, object], action))
+        player_model = _post_input(cast(dict[str, JsonValue], normalized))
+        actions_executed += 1
+
+        if player_model.waitingFor is None and actions_executed < len(actions):
+            break
+
+    assert player_model is not None
+
+    if player_model.waitingFor is None:
+        initial_logs = _get_game_logs()
+        refreshed, opponent_actions = await wait_for_turn_from_player_model(
+            player_model, initial_logs=initial_logs
+        )
+        result = build_agent_state(
+            refreshed,
+            base_url=CFG.base_url,
+            player_id_fallback=CFG.player_id,
+            auto_response=True,
+            between_turns_actions=opponent_actions,
+        )
+    else:
+        result = build_agent_state(
+            player_model,
+            base_url=CFG.base_url,
+            player_id_fallback=CFG.player_id,
+            auto_response=True,
+        )
+
+    result["actions_executed"] = actions_executed
+    return result
 
 
 @mcp.tool()

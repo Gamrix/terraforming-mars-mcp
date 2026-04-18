@@ -43,6 +43,22 @@ core strategies for playing well. Read through it before playing a game.
 - Treat action-tool responses as the primary state source after each move (`choose_or_option`, `select_cards`, `select_space`, `pay_for_project_card`, etc.).
 - Use `get_game_state` for explicit inspection, planning context, or verification, not as the default follow-up after every action.
 
+### Batching a Full Turn
+
+Use `submit_turn_actions` to send all actions for your entire turn in one call. Pass a JSON array of raw `InputResponse` objects in the order the server will prompt for them. The server submits each one sequentially, using the next element to answer whatever `waitingFor` the previous action produced.
+
+Use this for turns where you know the full sequence, and that it can't be influenced by your actions having random results. (e.g., play a card → select space → second action). The response includes `actions_executed` showing how many of the provided actions were actually executed.
+
+Example — play a card needing space selection, then pass:
+
+```json
+[
+  {"type": "or", "index": 0, "response": {"type": "projectCard", "card": "Noctis City", "payment": {"megaCredits": 20}}},
+  {"type": "space", "spaceId": "35"},
+  {"type": "or", "index": 5, "response": {"type": "option"}}
+]
+```
+
 ## Action Reference
 
 | MCP tool | Response type | What it does | Typical prompt |
@@ -67,6 +83,7 @@ core strategies for playing well. Read through it before playing a game.
 | `select_resource` | `resource` | Chooses one resource key. | Single resource-type choice |
 | `select_resources` | `resources` | Sends resource-unit allocation map. | Multi-resource distribution |
 | `select_claimed_underground_tokens` | `claimedUndergroundToken` | Chooses underground token indexes. | Underworld token prompt |
+| `submit_turn_actions` | *(sequence)* | Submits a full turn's worth of actions in one call. | Any `or` prompt (start of turn) |
 
 ## Important Action Details
 
