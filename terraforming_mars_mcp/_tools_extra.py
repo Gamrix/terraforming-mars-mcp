@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-import json
 from typing import Any, cast
 
 from ._app import mcp
 from ._models import (
     InitialCardsSelectionModel,
     PaymentPayloadModel,
-    RawInputEntityRequest,
     UnitsPayloadModel,
     normalize_raw_input_entity,
 )
@@ -102,36 +100,27 @@ async def wait_for_turn() -> dict[str, Any]:
 
 
 @mcp.tool()
-async def submit_raw_entity(request: RawInputEntityRequest) -> dict[str, object]:
-    """Submit any raw /player/input payload as a JSON object with `type`."""
-    entity = json.loads(request.entity_json)
-    if not isinstance(entity, dict):
-        raise ValueError("entity_json must decode to an object")
+async def submit_raw_entity(entity: dict[str, object]) -> dict[str, object]:
+    """Submit any raw /player/input payload as an object with `type`."""
     if "type" not in entity:
-        raise ValueError("entity_json must include a 'type' field")
+        raise ValueError("entity must include a 'type' field")
+    return await submit_and_return_state(normalize_raw_input_entity(entity))
+
+
+@mcp.tool()
+async def submit_and_options(
+    responses: list[dict[str, object]],
+) -> dict[str, object]:
+    """Respond to `type: and` with a list of InputResponse objects."""
     return await submit_and_return_state(
-        normalize_raw_input_entity(cast(dict[str, object], entity))
+        {"type": "and", "responses": cast(JsonValue, responses)}
     )
 
 
 @mcp.tool()
-async def submit_and_options(responses_json: str) -> dict[str, object]:
-    """Respond to `type: and` with JSON list of InputResponse objects."""
-    responses = json.loads(responses_json)
-    if not isinstance(responses, list):
-        raise ValueError("responses_json must decode to a list of objects")
-    normalized_responses: list[dict[str, JsonValue]] = []
-    for item in responses:
-        if not isinstance(item, dict):
-            raise ValueError("Each response must be an object")
-        normalized_responses.append(cast(dict[str, JsonValue], item))
-    return await submit_and_return_state(
-        {"type": "and", "responses": cast(JsonValue, normalized_responses)}
-    )
-
-
-@mcp.tool()
-async def submit_multi_actions(actions_json: str) -> dict[str, object]:
+async def submit_multi_actions(
+    actions: list[dict[str, object]],
+) -> dict[str, object]:
     """Submit multiple actions in one call.
 
     Each action is submitted to the server in order. After each submission,
@@ -139,8 +128,8 @@ async def submit_multi_actions(actions_json: str) -> dict[str, object]:
     the next action in the list is used as the response. Continues until all
     actions are consumed or the turn ends.
 
-    actions_json: JSON array of InputResponse objects, each with a `type` field.
-    These are the same raw payloads you would pass to submit_raw_entity.
+    actions: list of InputResponse objects, each with a `type` field. These
+    are the same raw payloads you would pass to submit_raw_entity.
 
     Example — play a card that needs space selection, then pass:
     [
@@ -149,21 +138,16 @@ async def submit_multi_actions(actions_json: str) -> dict[str, object]:
         {"type": "or", "index": 5, "response": {"type": "option"}}
     ]
     """
-    actions = json.loads(actions_json)
-    if not isinstance(actions, list):
-        raise ValueError("actions_json must decode to a JSON array")
     if len(actions) == 0:
-        raise ValueError("actions_json must contain at least one action")
+        raise ValueError("actions must contain at least one action")
 
     player_model = None
     actions_executed = 0
     for i, action in enumerate(actions):
-        if not isinstance(action, dict):
-            raise ValueError(f"Action at index {i} must be a JSON object")
         if "type" not in action:
             raise ValueError(f"Action at index {i} must include a 'type' field")
 
-        normalized = normalize_raw_input_entity(cast(dict[str, object], action))
+        normalized = normalize_raw_input_entity(action)
         player_model = _post_input(cast(dict[str, JsonValue], normalized))
         actions_executed += 1
 
@@ -319,6 +303,4 @@ async def select_resources(
         return await submit_and_return_state(
             {"type": "resource", "resource": selected[0]}
         )
-    return await submit_and_return_state(
-        {"type": "resources", "units": payload}
-    )
+    return await submit_and_return_state({"type": "resources", "units": payload})

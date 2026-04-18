@@ -42,7 +42,7 @@ core strategies for playing well. Read through it before playing a game.
 
 ### Batching Multiple Actions
 
-Use `submit_multi_actions` to send multiple actions in one call. Pass a JSON array of raw `InputResponse` objects in the order the server will prompt for them. The server submits each one sequentially, using the next element to answer whatever `waitingFor` the previous action produced.
+Use `submit_multi_actions` to send multiple actions in one call. Pass a list of raw `InputResponse` objects (as the `actions` argument) in the order the server will prompt for them. The server submits each one sequentially, using the next element to answer whatever `waitingFor` the previous action produced.
 Use this when you know the sequence of actions ahead of time, and it can't be influenced by your actions having random results. (e.g., play a card → select space → second action). The response includes `actions_executed` showing how many of the provided actions were actually executed.
 
 #### Example
@@ -115,12 +115,14 @@ play a card needing space selection, then pass:
 Use these exact shapes when you are unsure about setup or nested prompts.
 
 - `select_initial_cards` tool payload:
-- The MCP tool expects a single string field named `request` that contains JSON.
-- JSON keys are snake_case and list-typed fields must be arrays (not comma-separated strings).
+- Pass an object with snake_case keys; list-typed fields must be arrays (not comma-separated strings).
 - Minimal example:
 ```json
 {
-  "request": "{\"corporation_card\":\"Thorgate\",\"prelude_cards\":[\"Martian Industries\",\"Loan\"],\"project_cards\":[\"Noctis City\",\"Mining Area\"],\"ceo_cards\":[]}"
+  "corporation_card": "Thorgate",
+  "prelude_cards": ["Martian Industries", "Loan"],
+  "project_cards": ["Noctis City", "Mining Area"],
+  "ceo_cards": []
 }
 ```
 
@@ -137,8 +139,6 @@ Use these exact shapes when you are unsure about setup or nested prompts.
 ```
 
 - `choose_or_option` with nested `space` response:
-- `sub_response` is a dict (not a JSON string).
-- Example:
 ```json
 {
   "option_index": 1,

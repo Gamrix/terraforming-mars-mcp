@@ -64,10 +64,6 @@ class InitialCardsSelectionModel(BaseModel):
     ceo_cards: CardListField = Field(default_factory=list)
 
 
-class RawInputEntityRequest(BaseModel):
-    entity_json: str
-
-
 def normalize_raw_input_entity(
     entity: dict[str, object],
 ) -> dict[str, object]:
