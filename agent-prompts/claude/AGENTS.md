@@ -44,6 +44,7 @@ core strategies for playing well. Read through it before playing a game.
 
 Use `submit_multi_actions` to send multiple actions in one call. Pass a list of raw `InputResponse` objects (as the `actions` argument) in the order the server will prompt for them. The server submits each one sequentially, using the next element to answer whatever `waitingFor` the previous action produced.
 Use this when you know the sequence of actions ahead of time, and it can't be influenced by your actions having random results. (e.g., play a card → select space → second action). The response includes `actions_executed` showing how many of the provided actions were actually executed.
+Any raw `InputResponse` type is allowed at any position directly.
 
 #### Example
 
@@ -51,7 +52,7 @@ play a card needing space selection, then pass:
 
 ```json
 [
-  {"type": "or", "index": 0, "response": {"type": "projectCard", "card": "Noctis City", "payment": {"megaCredits": 20}}},
+  {"type": "projectCard", "card": "Noctis City", "payment": {"megaCredits": 20}},
   {"type": "space", "spaceId": "35"},
   {"type": "or", "index": 5, "response": {"type": "option"}}
 ]
@@ -95,11 +96,9 @@ play a card needing space selection, then pass:
 
 - `card`:
 - Respect `waiting_for.card_selection.min` and `max`.
-- If `min` is 0, sending an empty list is legal only when the specific prompt allows skipping.
 
 - `or`:
 - Nested response must match the selected branch's expected type (e.g. a `projectCard` branch requires a `projectCard` payload, not `{"type":"option"}`).
-- Raw `OrOptionsResponse` shape is strict: `{"type":"or","index":<number>,"response":<InputResponse>}`. Keys must be exactly `type`, `index`, `response` (extra keys fail validation).
 - If the selected branch is itself another `or` (e.g. milestone/award sub-menu), the nested payload must also be an `or` response, not `option`.
 
 - Milestones and awards:
@@ -123,18 +122,6 @@ Use these exact shapes when you are unsure about setup or nested prompts.
   "prelude_cards": ["Martian Industries", "Loan"],
   "project_cards": ["Noctis City", "Mining Area"],
   "ceo_cards": []
-}
-```
-
-- Raw entity that `select_initial_cards` constructs:
-```json
-{
-  "type": "initialCards",
-  "responses": [
-    { "type": "card", "cards": ["Thorgate"] },
-    { "type": "card", "cards": ["Martian Industries", "Loan"] },
-    { "type": "card", "cards": ["Noctis City", "Mining Area"] }
-  ]
 }
 ```
 

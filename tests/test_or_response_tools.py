@@ -355,6 +355,33 @@ def test_submit_multi_actions_normalizes_payment() -> None:
     assert calls[0]["payment"]["megaCredits"] == 0
 
 
+def test_submit_multi_actions_chains_from_project_card() -> None:
+    extra = _reload_extra()
+    calls: list[dict[str, Any]] = []
+
+    def fake_post_input(response: Any, player_id: Any = None) -> Any:
+        calls.append(response)
+        if len(calls) == 1:
+            return SimpleNamespace(waitingFor=SimpleNamespace(type="space"))
+        return SimpleNamespace(waitingFor=SimpleNamespace(type="or"))
+
+    extra._post_input = fake_post_input
+    extra.build_agent_state = lambda pm, **kw: {"ok": True}
+
+    actions = [
+        {"type": "projectCard", "card": "Noctis City", "payment": {"megaCredits": 20}},
+        {"type": "space", "spaceId": "35"},
+    ]
+    result = _run(extra.submit_multi_actions(actions=actions))
+
+    assert len(calls) == 2
+    assert calls[0]["type"] == "projectCard"
+    assert calls[0]["card"] == "Noctis City"
+    assert calls[0]["payment"]["megaCredits"] == 20
+    assert calls[1] == {"type": "space", "spaceId": "35"}
+    assert result["actions_executed"] == 2
+
+
 def test_select_resources_submits_single_resource_payload() -> None:
     extra = _reload_extra()
     captured: dict[str, Any] = {}
