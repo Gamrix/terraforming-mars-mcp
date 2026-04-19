@@ -265,7 +265,7 @@ def test_build_agent_state_reports_opponent_new_cards() -> None:
 
 
 def test_game_constants_resent_on_generation_change() -> None:
-    """Constants are re-sent when the generation changes."""
+    """Game constants are re-sent when the generation changes; session is not."""
     server = _reload_server()
     importlib.reload(game_state_mod)
 
@@ -276,20 +276,20 @@ def test_game_constants_resent_on_generation_change() -> None:
     # Prime the tracker.
     server.get_game_state()
 
-    # New generation: constants should reappear.
+    # New generation: constants should reappear, but session does not (unchanged).
     raw_gen5 = _make_player_model(generation=5, game_age=200)
     player_view5 = PlayerViewModel.model_validate(raw_gen5)
     server.get_player = lambda player_id=None: player_view5
 
     state = server.get_game_state()
-    assert "session" in state
+    assert "session" not in state
     assert "phase" in state["game"]
     assert "terraforming" in state["game"]
     assert state["game"]["generation"] == 5
 
 
 def test_game_constants_resent_on_value_change_within_generation() -> None:
-    """Constants are re-sent when a value changes even within the same gen."""
+    """Constants are re-sent when a value changes even within the same gen; session is not."""
     server = _reload_server()
     importlib.reload(game_state_mod)
 
@@ -305,7 +305,7 @@ def test_game_constants_resent_on_value_change_within_generation() -> None:
     server.get_player = lambda player_id=None: player_view2
 
     state = server.get_game_state()
-    assert "session" in state
+    assert "session" not in state
     assert "terraforming" in state["game"]
     assert state["game"]["terraforming"]["temperature"] == -18
 

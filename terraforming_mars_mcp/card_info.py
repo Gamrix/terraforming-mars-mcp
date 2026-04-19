@@ -300,7 +300,10 @@ def _compact_card(
     )
 
     # Minimal detail (e.g. blue card actions): name + dynamic fields only.
+    # Cost is irrelevant for already-played cards being selected for their actions.
     if detail_level == DetailLevel.MINIMAL:
+        payload.pop("cost", None)
+        payload.pop("discounted_cost", None)
         return payload
 
     # Full detail: include tags, requirements, and effect text.

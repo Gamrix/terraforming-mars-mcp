@@ -40,6 +40,8 @@ _LAST_GAME_CONSTANTS: dict[str, tuple[int, dict[str, Any]]] = {}
 # Counts responses since the last time full player/game state was included.
 _RESPONSES_SINCE_FULL_STATE: dict[str, int] = {}
 _FULL_STATE_INTERVAL = 10
+# Tracks last-emitted session payload per key so we only re-send when it actually changes.
+_LAST_SESSION: dict[str, dict[str, Any]] = {}
 
 
 @dataclass(frozen=True)
@@ -750,7 +752,8 @@ def build_agent_state(
         _RESPONSES_SINCE_FULL_STATE[state_counter_key] = responses_since + 1
 
     result: dict[str, Any] = {}
-    if constants_changed:
+    if _LAST_SESSION.get(constants_key) != session:
+        _LAST_SESSION[constants_key] = session
         result["session"] = session
     result["game"] = game_state
     if include_player_state:
