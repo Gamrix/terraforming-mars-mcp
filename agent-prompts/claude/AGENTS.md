@@ -32,12 +32,8 @@ core strategies for playing well. Read through it before playing a game.
 ## How Actions Work
 
 - The server always exposes one current prompt at `get_game_state().waiting_for`.
-- `waiting_for.input_type` tells you which tool to call.
+- `waiting_for.input_type` tells you which tools are currently valid.
 - After every write/action tool call, the MCP server auto-waits for your next turn when your action ends your turn.
-- When opponents act between your turns, responses include `opponent_actions_between_turns` (rendered from new game log entries); post-turn state is rebuilt after waiting.
-- For compound prompts:
-- `or`: choose one branch and provide a nested response for that branch.
-- `and`: provide one response for each branch.
 - Treat action-tool responses as the primary state source after each move (`choose_or_option`, `select_cards`, `select_space`, `pay_for_project_card`, etc.). Call `get_game_state` only for explicit inspection, planning context, or a fresh full snapshot — not as the default follow-up after every action.
 
 ### Batching Multiple Actions
@@ -95,16 +91,9 @@ play a card needing space selection, then pass:
 - Used after effects like placing oceans/greenery/cities/special tiles.
 - Example: `{"type":"space","spaceId":"04"}`
 
-- `card`:
-- Respect `waiting_for.card_selection.min` and `max`.
-
 - `or`:
 - Nested response must match the selected branch's expected type (e.g. a `projectCard` branch requires a `projectCard` payload, not `{"type":"option"}`).
 - If the selected branch is itself another `or` (e.g. milestone/award sub-menu), the nested payload must also be an `or` response, not `option`.
-
-- Milestones and awards:
-- Milestone claim and award funding are selected as branches of an `or` prompt. Find the matching option title in `waiting_for.options`, then call `choose_or_option` with that index and nested `{"type":"option"}`.
-- If the server then returns `input_type: payment`, finish with `pay_for_action(...)`.
 
 - `initialCards`:
 - The helper reads the server’s current setup option order and maps your corp/prelude/CEO/project picks into `responses`.
@@ -159,7 +148,7 @@ Use these exact shapes when you are unsure about setup or nested prompts.
 
 ## Game State for Agents
 
-`get_game_state` returns:
+### `get_game_state` returns:
 - current generation/phase/global parameters,
 - your resources and production,
 - opponent summaries,
@@ -171,9 +160,10 @@ Use these exact shapes when you are unsure about setup or nested prompts.
 
 ### `include_full_model`
 
-`get_game_state(include_full_model=true)` includes `raw_player_model`, which is the full unmodified `/api/player` payload for your player id. It includes:
-- `game`: full `GameModel` (global parameters, phases, milestones/awards, colonies/turmoil/pathfinders/moon data, and full `spaces` board array),
+`get_game_state(include_full_model=true)` includes all data available to the player-view API, including:
+
+- `game`: full `GameModel` (global parameters, phases, milestones/awards, colonies/turmoil/pathfinders/moon data),
 - `players`: public model for each player (resources, production, tableau/played cards, etc.),
-- `thisPlayer`: your full public player model,
+- `thisPlayer`: your full private player model,
 - `waitingFor`: the raw current input prompt model (if any),
 - plus player-view fields such as hand and draft/dealt card groups.
