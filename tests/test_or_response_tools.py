@@ -264,16 +264,30 @@ def _reload_extra() -> Any:
     return importlib.reload(extra_mod)
 
 
+def _stub_get_player(extra: Any, waiting_for: Any) -> None:
+    extra.get_player = lambda player_id=None: SimpleNamespace(waitingFor=waiting_for)
+
+
 def test_submit_multi_actions_chains_all_actions() -> None:
     extra = _reload_extra()
     calls: list[dict[str, Any]] = []
+    # Sequence the prompts so the second action answers a `space` prompt
+    # and the third answers an `or` prompt — matching the action types.
+    next_waiting = iter(
+        [
+            SimpleNamespace(type="space"),
+            SimpleNamespace(type="or"),
+            SimpleNamespace(type="or"),
+        ]
+    )
 
     def fake_post_input(response: Any, player_id: Any = None) -> Any:
         calls.append(response)
-        return SimpleNamespace(waitingFor=SimpleNamespace(type="or"))
+        return SimpleNamespace(waitingFor=next(next_waiting))
 
     extra._post_input = fake_post_input
     extra.build_agent_state = lambda pm, **kw: {"ok": True}
+    _stub_get_player(extra, SimpleNamespace(type="or"))
 
     actions = [
         {"type": "or", "index": 0, "response": {"type": "option"}},
@@ -306,6 +320,7 @@ def test_submit_multi_actions_stops_when_turn_ends_early() -> None:
     extra._get_game_logs = lambda player_id=None: []
     extra.wait_for_turn_from_player_model = fake_wait
     extra.build_agent_state = lambda pm, **kw: {"ok": True}
+    _stub_get_player(extra, SimpleNamespace(type="or"))
 
     actions = [
         {"type": "or", "index": 0, "response": {"type": "option"}},
@@ -320,6 +335,7 @@ def test_submit_multi_actions_stops_when_turn_ends_early() -> None:
 
 def test_submit_multi_actions_validates_input() -> None:
     extra = _reload_extra()
+    _stub_get_player(extra, None)
 
     try:
         _run(extra.submit_multi_actions(actions=[]))
@@ -344,6 +360,7 @@ def test_submit_multi_actions_normalizes_payment() -> None:
 
     extra._post_input = fake_post_input
     extra.build_agent_state = lambda pm, **kw: {"ok": True}
+    _stub_get_player(extra, None)
 
     actions = [
         {"type": "projectCard", "card": "Test Card"},
@@ -351,6 +368,7 @@ def test_submit_multi_actions_normalizes_payment() -> None:
     _run(extra.submit_multi_actions(actions=actions))
 
     assert len(calls) == 1
+    assert calls[0]["type"] == "projectCard"
     assert "payment" in calls[0]
     assert calls[0]["payment"]["megaCredits"] == 0
 
@@ -367,6 +385,7 @@ def test_submit_multi_actions_chains_from_project_card() -> None:
 
     extra._post_input = fake_post_input
     extra.build_agent_state = lambda pm, **kw: {"ok": True}
+    _stub_get_player(extra, None)
 
     actions = [
         {"type": "projectCard", "card": "Noctis City", "payment": {"megaCredits": 20}},
@@ -380,6 +399,74 @@ def test_submit_multi_actions_chains_from_project_card() -> None:
     assert calls[0]["payment"]["megaCredits"] == 20
     assert calls[1] == {"type": "space", "spaceId": "35"}
     assert result["actions_executed"] == 2
+
+
+def test_submit_multi_actions_auto_wraps_raw_action_for_or_prompt() -> None:
+    extra = _reload_extra()
+    calls: list[dict[str, Any]] = []
+
+    def fake_post_input(response: Any, player_id: Any = None) -> Any:
+        calls.append(response)
+        # After the wrapped projectCard, server opens a space prompt.
+        return SimpleNamespace(waitingFor=SimpleNamespace(type="space"))
+
+    extra._post_input = fake_post_input
+    extra.build_agent_state = lambda pm, **kw: {"ok": True}
+
+    waiting_for = WaitingForInputModel.model_validate(
+        {
+            "type": "or",
+            "title": "Take your first action",
+            "buttonLabel": "Take action",
+            "options": [
+                {"type": "option", "title": "Pass", "buttonLabel": "Pass"},
+                {
+                    "type": "projectCard",
+                    "title": "Play project card",
+                    "buttonLabel": "Play card",
+                },
+            ],
+        }
+    )
+    _stub_get_player(extra, waiting_for)
+
+    actions = [
+        {"type": "projectCard", "card": "Noctis City", "payment": {"megaCredits": 20}},
+        {"type": "space", "spaceId": "35"},
+    ]
+    result = _run(extra.submit_multi_actions(actions=actions))
+
+    assert len(calls) == 2
+    # The raw projectCard was wrapped in the matching outer `or` option.
+    assert calls[0]["type"] == "or"
+    assert calls[0]["index"] == 1
+    assert calls[0]["response"]["type"] == "projectCard"
+    assert calls[0]["response"]["card"] == "Noctis City"
+    assert calls[0]["response"]["payment"]["megaCredits"] == 20
+    # Subsequent action answers a non-`or` prompt and is sent raw.
+    assert calls[1] == {"type": "space", "spaceId": "35"}
+    assert result["actions_executed"] == 2
+
+
+def test_submit_multi_actions_leaves_or_action_unwrapped() -> None:
+    extra = _reload_extra()
+    calls: list[dict[str, Any]] = []
+
+    def fake_post_input(response: Any, player_id: Any = None) -> Any:
+        calls.append(response)
+        return SimpleNamespace(waitingFor=SimpleNamespace(type="or"))
+
+    extra._post_input = fake_post_input
+    extra.build_agent_state = lambda pm, **kw: {"ok": True}
+    _stub_get_player(extra, SimpleNamespace(type="or"))
+
+    actions = [
+        {"type": "or", "index": 2, "response": {"type": "option"}},
+    ]
+    _run(extra.submit_multi_actions(actions=actions))
+
+    assert len(calls) == 1
+    assert calls[0] == {"type": "or", "index": 2, "response": {"type": "option"}}
 
 
 def test_select_resources_submits_single_resource_payload() -> None:

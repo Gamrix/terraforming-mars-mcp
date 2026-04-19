@@ -15,6 +15,7 @@ import argparse
 import logging
 import os
 from pathlib import Path
+from typing import cast
 
 from ._app import mcp
 from ._enums import DetailLevel, InputType
@@ -24,10 +25,10 @@ from .card_info import compact_cards
 from .game_state import build_agent_state
 from .turn_flow import CFG, get_player, submit_and_return_state
 from .waiting_for import (
-    find_or_option_index,
     find_pass_option_index,
     normalize_or_sub_response,
     normalize_waiting_for,  # noqa: F401 – re-exported for test monkey-patching
+    wrap_action_for_prompt,
 )
 
 DEFAULT_LOG_LEVEL = os.environ.get("TM_MCP_LOG_LEVEL", "DEBUG").upper()
@@ -174,27 +175,15 @@ async def pay_for_project_card(
     """Respond to `type: projectCard`."""
     if not card_name:
         raise ValueError("card_name is required")
-    project_card_response: dict[str, JsonValue] = {
+    project_card_response: dict[str, object] = {
         "type": "projectCard",
         "card": card_name,
         "payment": payment.model_dump(by_alias=True),
     }
 
     player_model = get_player()
-    waiting_for = player_model.waitingFor
-    if waiting_for is not None and waiting_for.type == InputType.OR_OPTIONS.value:
-        option_index = find_or_option_index(
-            waiting_for, InputType.SELECT_PROJECT_CARD_TO_PLAY.value
-        )
-        return await submit_and_return_state(
-            {
-                "type": "or",
-                "index": option_index,
-                "response": project_card_response,
-            }
-        )
-
-    return await submit_and_return_state(project_card_response)
+    wrapped = wrap_action_for_prompt(project_card_response, player_model.waitingFor)
+    return await submit_and_return_state(cast(dict[str, JsonValue], wrapped))
 
 
 # Import _tools_extra to register its @mcp.tool() handlers on the shared mcp instance

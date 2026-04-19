@@ -308,6 +308,11 @@ More cards seen = more VP cards found and played. John's 57 card VP vs my 15 is 
 17. **Don't spend Miner resources after funding Miner** — every Ti/steel spent reduces your Miner score. Either stockpile or don't fund it.
 18. **Economy target: 30+ MC prod by Gen 8** — 20 MC prod vs 61 is unrecoverable. A 3:1 economy gap means opponent plays 3-4x more cards. Prioritize MC production cards alongside VP engine.
 19. **Protect against plant production theft in 2-player** — Birds, Fish, Predators can reduce plant prod from 4 to 1. Draft Protected Habitats or diversify VP into sources that can't be stolen (microbes, fighters, Jovian tags).
+20. **3-milestone cap is a hard ceiling** — Only 3 milestones can be claimed per game. If opponent claims 2 and I claim 1, all 5 are effectively closed. Track milestone claims from gen 1 — if 2 are already gone, reassess whether remaining milestone investment is viable. Don't build 3 cities hoping for Mayor if the cap will block it.
+21. **Scientist award is VOLATILE, don't fund on 1-tag lead** — Science tags keep appearing via events (Adaptation Technology, Technology Demonstration, Research, Fusion Power, Invention Contest). A 7-6 lead in Gen 11 evaporated in Gen 12 when John played Adaptation Tech. Only fund Scientist with 3+ tag lead OR when clearly ahead in remaining science cards.
+22. **Ecological Zone + Herbivores are broken VP-per-resource cards** — Unlike Ants/Birds which need per-gen ACTIONS, these trigger on EFFECTS (tag plays, greenery placements) and accumulate passively. In Game 6, John's EZ hit 13 animals = 6 VP and Herbivores 13 = 6 VP. Always take these in draft (or hate-draft them) when seen.
+23. **Hate-draft Toll Station and Miranda Resort** — These are game-warping MC scalers. Toll Station: +1 MC prod per ocean placement (scales to +9 over a game). Miranda Resort: +1 MC prod per Earth tag (scales with typical 5-10 Earth tags). Both give opponent 20+ MC income over game.
+24. **PhoboLog + Satellites is an S-tier opening** — Satellites at 10 MC for +5 MC prod (if 5 space tags) was game-making. PhoboLog makes Ti worth 4 MC for space cards. Combined with Io Mining Industries (+2 Ti prod + 2 MC prod, VP per Jovian), this creates a compounding engine in gens 3-5.
 
 ---
 
@@ -320,3 +325,4 @@ More cards seen = more VP cards found and played. John's 57 card VP vs my 15 is 
 | Game 3 vs John (2p, Tharsis, Prelude)   | Lost 93–163  | Awards: 0 vs 15, Card VP: 15 vs 57 | 2 milestones, TR 50, strong early economy |
 | Game 4 vs John (2p, Tharsis, Prelude)   | Lost 109–129 | Awards: 0 vs 15, City adj: 10 vs 20 | Card VP 35 (won!), 2 milestones, VP-per-resource strategy worked |
 | Game 5 vs John (2p, Tharsis, Prelude)   | Lost 120–155 | Awards: 0 vs 15, City adj: 9 vs 25, Economy: 20 vs 61 MC prod | Card VP 37, 2 milestones (first 2-claim), TR 52 (best ever), ECF+Ants combo 8 VP |
+| Game 6 vs John (2p, Tharsis, Prelude)   | Lost 110–162 | Awards: 0 vs 15 (funded Scientist, lost to late Adaptation Tech), 3-milestone cap blocked Mayor, City adj 8 vs 20 | Card VP 38 (best!), Terraformer, TR 52, PhoboLog+Satellites engine, Ants 7 VP |

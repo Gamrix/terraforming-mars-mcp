@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from typing import cast
+
 from .api_response_models import (
+    JsonValue,
     MessageModel,
     WaitingForInputModel as ApiWaitingForInputModel,
 )
@@ -85,6 +88,30 @@ def find_or_option_index(
     raise RuntimeError(
         f"No outer 'or' option of type '{expected_type}' is currently available"
     )
+
+
+def wrap_action_for_prompt(
+    action: dict[str, object],
+    waiting_for: ApiWaitingForInputModel | None,
+) -> dict[str, object]:
+    """Wrap a raw InputResponse in an `or` envelope if the current prompt is an `or`.
+
+    The server only accepts an OrOptionsResponse when `waitingFor.type == "or"`.
+    If the caller supplies a raw inner-type action (e.g. `projectCard`, `space`,
+    `card`), locate the matching outer option and wrap accordingly. Actions
+    already shaped as `or` or submitted against a non-`or` prompt pass through.
+    """
+    if waiting_for is None or waiting_for.type != InputType.OR_OPTIONS.value:
+        return action
+    action_type = action.get("type")
+    if not isinstance(action_type, str) or action_type == InputType.OR_OPTIONS.value:
+        return action
+    option_index = find_or_option_index(waiting_for, action_type)
+    return {
+        "type": "or",
+        "index": option_index,
+        "response": cast(JsonValue, action),
+    }
 
 
 def normalize_waiting_for(

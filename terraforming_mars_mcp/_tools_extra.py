@@ -22,6 +22,7 @@ from .turn_flow import (
     submit_and_return_state,
     wait_for_turn_from_player_model,
 )
+from .waiting_for import wrap_action_for_prompt
 
 
 @mcp.tool()
@@ -129,11 +130,14 @@ async def submit_multi_actions(
     actions are consumed or the turn ends.
 
     actions: list of InputResponse objects, each with a `type` field. These
-    are the same raw payloads you would pass to submit_raw_entity.
+    are the same raw payloads you would pass to submit_raw_entity. When the
+    current prompt is an `or` (e.g. the main action menu), raw inner-type
+    actions are auto-wrapped into the matching outer option — you do not
+    need to wrap them yourself.
 
     Example — play a card that needs space selection, then pass:
     [
-        {"type": "or", "index": 0, "response": {"type": "projectCard", "card": "Noctis City", "payment": {"megaCredits": 20}}},
+        {"type": "projectCard", "card": "Noctis City", "payment": {"megaCredits": 20}},
         {"type": "space", "spaceId": "35"},
         {"type": "or", "index": 5, "response": {"type": "option"}}
     ]
@@ -141,13 +145,14 @@ async def submit_multi_actions(
     if len(actions) == 0:
         raise ValueError("actions must contain at least one action")
 
-    player_model = None
+    player_model = get_player()
     actions_executed = 0
     for i, action in enumerate(actions):
         if "type" not in action:
             raise ValueError(f"Action at index {i} must include a 'type' field")
 
         normalized = normalize_raw_input_entity(action)
+        normalized = wrap_action_for_prompt(normalized, player_model.waitingFor)
         player_model = _post_input(cast(dict[str, JsonValue], normalized))
         actions_executed += 1
 
