@@ -68,20 +68,21 @@ play a card needing space selection, then pass:
 | MCP tool | Response type | What it does | Typical prompt |
 |---|---|---|---|
 | `choose_or_option` | `or` | Selects one option index and submits nested response. | Main action menu / mixed choice prompt |
-| `submit_and_options` | `and` | Submits responses for all required sub-prompts. | Multi-part prompt |
-| `confirm_option` | `option` | Click/confirm style action with no extra data. | Pass, convert resources, trigger optional action |
+| `submit_and_options` | `and` | Submits responses for all required sub-prompts. | Multi-part prompt (Rare) |
+| `confirm_option` | `option` | Click/confirm style action with no extra data. | convert resources, trigger optional action |
 | `select_amount` | `amount` | Chooses a numeric amount. | Spend/remove/select X |
 | `select_cards` | `card` | Picks one or more card names. | Research cards, standard project choice, blue-card action selection, sell patents |
 | `select_player` | `player` | Chooses a player color. | Target player effects |
 | `select_space` | `space` | Chooses a board hex by `spaceId`. | Tile placement after cards/SPs |
 | `select_party` | `party` | Chooses a Turmoil party by name. | Send delegate to party |
-| `select_colony` | `colony` | Chooses a colony name. | Colony-related effects |
+| `select_colony` | `colony` | Chooses a planet to place colony. | Colony-related effects |
 | `pay_for_action` | `payment` | Pays costs for a generic payment prompt. | Non-card payment step |
 | `pay_for_project_card` | `projectCard` | Plays a specific project card with payment object. | “Play project card” branch |
 | `select_initial_cards` | `initialCards` | Submits corp/prelude/(optional CEO)/project selections in server option order. | Game setup |
 | `select_production_to_lose` | `productionToLose` | Chooses which production units to reduce. | Production-loss effects |
-| `select_resources` | `resource` / `resources` | Uses one units payload for both single-resource choice and multi-resource allocation prompts. | Resource-type choice / multi-resource distribution |
-| `submit_multi_actions` | *(sequence)* | Submits multiple actions in one call. | Any `or` prompt |
+| `select_resources` | `resource` / `resources` |  payload for both single-resource choice and multi-resource allocation prompts. | Resource-type distribution |
+| `pass_turn` | *(shortcut)* | Submits the "Pass for this generation" / "End Turn" option in the current `or` prompt. | End-of-turn or end-of-generation `or` prompt |
+| `submit_multi_actions` | *(sequence)* | Submits multiple actions in one call. | Any prompt |
 
 ## Important Action Details
 
