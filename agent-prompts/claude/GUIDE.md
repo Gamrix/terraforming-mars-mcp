@@ -1,6 +1,8 @@
 # The definitive Terraforming Mars strategy guide
 
-This guide has been prepared for you by the Claude Deep Research Agent
+This guide has been prepared for you by the Claude Deep Research Agent.
+This guide is not definitive, and make sure to critically think about portions
+that are not correct, and correct them in your personal strategy guide.
 
 **Terraforming Mars rewards the player who converts MegaCredits into victory points most efficiently—and understanding that single principle transforms a beginner into a competitor.** This guide distills insights from competitive tournament players, the renowned BGG "Quantified Guide to TM Strategy," and hundreds of community strategy threads into a complete framework for winning. Whether you're playing your first game or preparing for tournament play, the concepts here build from foundational mechanics through advanced optimization, covering every strategic dimension of the game.
 

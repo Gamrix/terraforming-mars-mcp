@@ -1,5 +1,10 @@
 # Terraforming Mars Gameplay Strategy Guide
 
+## Overview
+This guide has been prepared for you by the Codex Deep Research Agent.
+This guide is not definitive, and make sure to critically think about portions
+that are not correct, and correct them in your personal strategy guide.
+
 This guide is a practical, decision-oriented reference for playing Terraforming Mars well.
 It includes:
 - Core rules and flow so the game is playable from this document.

@@ -1,6 +1,8 @@
 # The Comprehensive Framework for Martian Colonization: A Strategic and Systematic Analysis of Terraforming Mars
 
 This guide has been prepared for you by the Gemini Deep Research Agent
+This guide is not definitive, and make sure to critically think about portions
+that are not correct, and correct them in your personal strategy guide.
 
 The transformation of Mars from a frozen, atmospheric wasteland into a habitable biosphere is governed by an intricate web of industrial economics, territorial logistics, and environmental engineering. Within the simulation of Terraforming Mars, players assume the roles of powerful corporations tasked with managing these variables to maximize both planetary progress and corporate prestige. Success in this theater requires a departure from casual play and the adoption of a rigorous, data-driven approach to resource allocation, project sequencing, and competitive timing. The ultimate measure of success is Victory Points (VPs), which are synthesized from a corporation’s Terraform Rating (TR), its physical footprint on the Martian surface, and its achievement of specific scientific and industrial milestones.1
 
