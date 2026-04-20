@@ -271,7 +271,18 @@ async def wait_for_turn_from_player_model(
 
 
 async def submit_and_return_state(response: Mapping[str, object]) -> dict[str, Any]:
-    player_model = _post_input(cast(dict[str, JsonValue], dict(response)))
+    try:
+        player_model = _post_input(cast(dict[str, JsonValue], dict(response)))
+    except RuntimeError as exc:
+        refreshed = get_player()
+        state = build_agent_state(
+            refreshed,
+            base_url=CFG.base_url,
+            player_id_fallback=CFG.player_id,
+            auto_response=True,
+        )
+        state["error"] = str(exc)
+        return state
     if player_model.waitingFor is None:
         initial_logs = _get_game_logs()
         refreshed, opponent_actions = await wait_for_turn_from_player_model(

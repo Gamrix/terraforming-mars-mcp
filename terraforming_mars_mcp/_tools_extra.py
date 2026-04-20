@@ -147,13 +147,23 @@ async def submit_multi_actions(
 
     player_model = get_player()
     actions_executed = 0
+    error_info: dict[str, object] | None = None
     for i, action in enumerate(actions):
         if "type" not in action:
             raise ValueError(f"Action at index {i} must include a 'type' field")
 
         normalized = normalize_raw_input_entity(action)
         normalized = wrap_action_for_prompt(normalized, player_model.waitingFor)
-        player_model = _post_input(cast(dict[str, JsonValue], normalized))
+        try:
+            player_model = _post_input(cast(dict[str, JsonValue], normalized))
+        except RuntimeError as exc:
+            error_info = {
+                "message": str(exc),
+                "failed_action_index": i,
+                "failed_action": action,
+            }
+            player_model = get_player()
+            break
         actions_executed += 1
 
         if player_model.waitingFor is None and actions_executed < len(actions):
@@ -182,6 +192,8 @@ async def submit_multi_actions(
         )
 
     result["actions_executed"] = actions_executed
+    if error_info is not None:
+        result["error"] = error_info
     return result
 
 

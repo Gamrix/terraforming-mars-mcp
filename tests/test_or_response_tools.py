@@ -448,6 +448,45 @@ def test_submit_multi_actions_auto_wraps_raw_action_for_or_prompt() -> None:
     assert result["actions_executed"] == 2
 
 
+def test_submit_multi_actions_returns_state_on_http_error() -> None:
+    extra = _reload_extra()
+    calls: list[dict[str, Any]] = []
+
+    def fake_post_input(response: Any, player_id: Any = None) -> Any:
+        calls.append(response)
+        if len(calls) == 2:
+            raise RuntimeError(
+                "HTTP 400 POST /player/input: Not a valid SelectCardResponse"
+            )
+        # After first action, server prompts for card selection.
+        return SimpleNamespace(waitingFor=SimpleNamespace(type="card"))
+
+    def fake_get_player(player_id: Any = None) -> Any:
+        return SimpleNamespace(waitingFor=SimpleNamespace(type="card"))
+
+    extra._post_input = fake_post_input
+    extra.get_player = fake_get_player
+    extra.build_agent_state = lambda pm, **kw: {"ok": True}
+
+    actions = [
+        {"type": "or", "index": 0, "response": {"type": "option"}},
+        {"type": "card", "cards": ["Ants"]},
+        {"type": "card", "cards": ["Next"]},
+    ]
+    result = _run(extra.submit_multi_actions(actions=actions))
+
+    assert len(calls) == 2
+    assert result == {
+        "ok": True,
+        "actions_executed": 1,
+        "error": {
+            "message": "HTTP 400 POST /player/input: Not a valid SelectCardResponse",
+            "failed_action_index": 1,
+            "failed_action": {"type": "card", "cards": ["Ants"]},
+        },
+    }
+
+
 def test_submit_multi_actions_leaves_or_action_unwrapped() -> None:
     extra = _reload_extra()
     calls: list[dict[str, Any]] = []
@@ -467,6 +506,31 @@ def test_submit_multi_actions_leaves_or_action_unwrapped() -> None:
 
     assert len(calls) == 1
     assert calls[0] == {"type": "or", "index": 2, "response": {"type": "option"}}
+
+
+def test_submit_and_return_state_returns_state_on_http_error(monkeypatch) -> None:
+    import terraforming_mars_mcp.turn_flow as turn_flow
+
+    def fake_post_input(response: Any, player_id: Any = None) -> Any:
+        raise RuntimeError(
+            "HTTP 400 POST /player/input: Not a valid SelectCardResponse"
+        )
+
+    def fake_get_player(player_id: Any = None) -> Any:
+        return SimpleNamespace(waitingFor=SimpleNamespace(type="card"))
+
+    monkeypatch.setattr(turn_flow, "_post_input", fake_post_input)
+    monkeypatch.setattr(turn_flow, "get_player", fake_get_player)
+    monkeypatch.setattr(
+        turn_flow, "build_agent_state", lambda pm, **kw: {"state": "current"}
+    )
+
+    result = _run(turn_flow.submit_and_return_state({"type": "card", "cards": ["X"]}))
+
+    assert result == {
+        "state": "current",
+        "error": "HTTP 400 POST /player/input: Not a valid SelectCardResponse",
+    }
 
 
 def test_select_resources_submits_single_resource_payload() -> None:
