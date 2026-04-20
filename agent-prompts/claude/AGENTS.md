@@ -36,11 +36,13 @@ core strategies for playing well. Read through it before playing a game.
 - After every write/action tool call, the MCP server auto-waits for your next turn when your action ends your turn.
 - Treat action-tool responses as the primary state source after each move (`choose_or_option`, `select_cards`, `select_space`, `pay_for_project_card`, etc.). Call `get_game_state` only for explicit inspection, planning context, or a fresh full snapshot — not as the default follow-up after every action.
 
-### Batching Multiple Actions
+### Submitting Multiple Actions
 
-Use `submit_multi_actions` to send multiple actions in one call. Pass a list of raw `InputResponse` objects (as the `actions` argument) in the order the server will prompt for them. The server submits each one sequentially, using the next element to answer whatever `waitingFor` the previous action produced.
-Use this when you know the sequence of actions ahead of time, and it can't be influenced by your actions having random results. (e.g., play a card → select space → second action). The response includes `actions_executed` showing how many of the provided actions were actually executed.
-Any raw `InputResponse` type is allowed at any position directly.
+Use `submit_multi_actions` to send multiple actions in one call. Pass a list of raw `InputResponse` objects (as the `actions` argument) in the order the server will prompt for them.
+The server submits them **one at a time, in the order given**. Each response is the answer to whatever `waitingFor` the previous submission produced.
+Dependent actions are fine: each step uses the game state produced by the previous step, exactly as if you had called the tools sequentially yourself.
+Always use this whenever you know the sequence of responses ahead of time, including multi-step flows like play a card → select space → follow-up action.
+The response `actions_executed` is the count of actions that were actually executed.
 
 #### Example
 
