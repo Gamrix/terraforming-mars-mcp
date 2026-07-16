@@ -16,9 +16,9 @@ from .card_info import extract_played_cards
 from .game_state import build_agent_state, full_board_state
 from .turn_flow import (
     CFG,
-    _get_game_logs,
     _post_input,
     get_player,
+    state_after_submission,
     submit_and_return_state,
     wait_for_turn_from_player_model,
 )
@@ -169,28 +169,7 @@ async def submit_multi_actions(
         if player_model.waitingFor is None and actions_executed < len(actions):
             break
 
-    assert player_model is not None
-
-    if player_model.waitingFor is None:
-        initial_logs = _get_game_logs()
-        refreshed, opponent_actions = await wait_for_turn_from_player_model(
-            player_model, initial_logs=initial_logs
-        )
-        result = build_agent_state(
-            refreshed,
-            base_url=CFG.base_url,
-            player_id_fallback=CFG.player_id,
-            auto_response=True,
-            between_turns_actions=opponent_actions,
-        )
-    else:
-        result = build_agent_state(
-            player_model,
-            base_url=CFG.base_url,
-            player_id_fallback=CFG.player_id,
-            auto_response=True,
-        )
-
+    result = await state_after_submission(player_model)
     result["actions_executed"] = actions_executed
     if error_info is not None:
         result["error"] = error_info
@@ -245,12 +224,11 @@ async def select_colony(colony_name: str) -> dict[str, object]:
 
 @mcp.tool()
 async def pay_for_action(
-    payment: PaymentPayloadModel = PaymentPayloadModel(),
+    payment: PaymentPayloadModel | None = None,
 ) -> dict[str, object]:
     """Respond to `type: payment`."""
-    return await submit_and_return_state(
-        {"type": "payment", "payment": payment.model_dump(by_alias=True)}
-    )
+    payload = (payment or PaymentPayloadModel()).model_dump(by_alias=True)
+    return await submit_and_return_state({"type": "payment", "payment": payload})
 
 
 @mcp.tool()
@@ -287,17 +265,16 @@ async def select_initial_cards(
 
 @mcp.tool()
 async def select_production_to_lose(
-    units: UnitsPayloadModel = UnitsPayloadModel(),
+    units: UnitsPayloadModel | None = None,
 ) -> dict[str, object]:
     """Respond to `type: productionToLose`."""
-    return await submit_and_return_state(
-        {"type": "productionToLose", "units": units.model_dump()}
-    )
+    payload = (units or UnitsPayloadModel()).model_dump()
+    return await submit_and_return_state({"type": "productionToLose", "units": payload})
 
 
 @mcp.tool()
 async def select_resources(
-    units: UnitsPayloadModel = UnitsPayloadModel(),
+    units: UnitsPayloadModel | None = None,
 ) -> dict[str, object]:
     """Respond to `type: resource` or `type: resources`.
 
@@ -308,8 +285,8 @@ async def select_resources(
     For a `resources` prompt, the full units payload is submitted.
     """
     waiting_for = get_player().waitingFor
-    waiting_for_type = getattr(waiting_for, "type", None)
-    payload = units.model_dump()
+    waiting_for_type = waiting_for.type if waiting_for is not None else None
+    payload = (units or UnitsPayloadModel()).model_dump()
 
     if waiting_for_type == "resource":
         selected = [name for name, amount in payload.items() if amount > 0]

@@ -170,7 +170,7 @@ async def pass_turn() -> dict[str, object]:
 @mcp.tool()
 async def pay_for_project_card(
     card_name: str,
-    payment: PaymentPayloadModel = PaymentPayloadModel(),
+    payment: PaymentPayloadModel | None = None,
 ) -> dict[str, object]:
     """Respond to `type: projectCard`."""
     if not card_name:
@@ -178,7 +178,7 @@ async def pay_for_project_card(
     project_card_response: dict[str, object] = {
         "type": "projectCard",
         "card": card_name,
-        "payment": payment.model_dump(by_alias=True),
+        "payment": (payment or PaymentPayloadModel()).model_dump(by_alias=True),
     }
 
     player_model = get_player()

@@ -224,22 +224,9 @@ async def wait_for_turn_from_player_model(
         waiting = _get_waiting_for_state(game_age, undo_count)
         last_waitingfor = waiting.model_dump(exclude_none=True)
         status = waiting.result
-        if status == "GO":
+        if status in ("GO", "REFRESH"):
             refreshed = get_player()
-            final_logs = _get_game_logs()
-            opponent_actions = extract_opponent_actions(
-                start_logs,
-                final_logs,
-                opponent_colors,
-                color_to_name,
-            )
-            return refreshed, opponent_actions
-        if status == "REFRESH":
-            refreshed = get_player()
-            refreshed_game = refreshed.game
-            game_age = int(refreshed_game.gameAge)
-            undo_count = int(refreshed_game.undoCount)
-            if refreshed.waitingFor is not None:
+            if status == "GO" or refreshed.waitingFor is not None:
                 final_logs = _get_game_logs()
                 opponent_actions = extract_opponent_actions(
                     start_logs,
@@ -248,6 +235,9 @@ async def wait_for_turn_from_player_model(
                     color_to_name,
                 )
                 return refreshed, opponent_actions
+            refreshed_game = refreshed.game
+            game_age = int(refreshed_game.gameAge)
+            undo_count = int(refreshed_game.undoCount)
 
         now = time.monotonic()
         while now >= next_progress_report_at:
@@ -270,6 +260,23 @@ async def wait_for_turn_from_player_model(
         await asyncio.sleep(TURN_WAIT_POLL_INTERVAL_SECONDS)
 
 
+async def state_after_submission(player_model: ApiPlayerViewModel) -> dict[str, Any]:
+    """Build the auto-response agent state, waiting out opponents if the turn ended."""
+    between_turns_actions: list[str] | None = None
+    if player_model.waitingFor is None:
+        initial_logs = _get_game_logs()
+        player_model, between_turns_actions = await wait_for_turn_from_player_model(
+            player_model, initial_logs=initial_logs
+        )
+    return build_agent_state(
+        player_model,
+        base_url=CFG.base_url,
+        player_id_fallback=CFG.player_id,
+        auto_response=True,
+        between_turns_actions=between_turns_actions,
+    )
+
+
 async def submit_and_return_state(response: Mapping[str, object]) -> dict[str, Any]:
     try:
         player_model = _post_input(cast(dict[str, JsonValue], dict(response)))
@@ -283,21 +290,4 @@ async def submit_and_return_state(response: Mapping[str, object]) -> dict[str, A
         )
         state["error"] = str(exc)
         return state
-    if player_model.waitingFor is None:
-        initial_logs = _get_game_logs()
-        refreshed, opponent_actions = await wait_for_turn_from_player_model(
-            player_model, initial_logs=initial_logs
-        )
-        return build_agent_state(
-            refreshed,
-            base_url=CFG.base_url,
-            player_id_fallback=CFG.player_id,
-            auto_response=True,
-            between_turns_actions=opponent_actions,
-        )
-    return build_agent_state(
-        player_model,
-        base_url=CFG.base_url,
-        player_id_fallback=CFG.player_id,
-        auto_response=True,
-    )
+    return await state_after_submission(player_model)

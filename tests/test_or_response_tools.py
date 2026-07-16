@@ -268,6 +268,13 @@ def _stub_get_player(extra: Any, waiting_for: Any) -> None:
     extra.get_player = lambda player_id=None: SimpleNamespace(waitingFor=waiting_for)
 
 
+def _stub_state_after_submission(extra: Any) -> None:
+    async def fake_state(player_model: Any) -> dict[str, Any]:
+        return {"ok": True}
+
+    extra.state_after_submission = fake_state
+
+
 def test_submit_multi_actions_chains_all_actions() -> None:
     extra = _reload_extra()
     calls: list[dict[str, Any]] = []
@@ -286,7 +293,7 @@ def test_submit_multi_actions_chains_all_actions() -> None:
         return SimpleNamespace(waitingFor=next(next_waiting))
 
     extra._post_input = fake_post_input
-    extra.build_agent_state = lambda pm, **kw: {"ok": True}
+    _stub_state_after_submission(extra)
     _stub_get_player(extra, SimpleNamespace(type="or"))
 
     actions = [
@@ -313,13 +320,8 @@ def test_submit_multi_actions_stops_when_turn_ends_early() -> None:
             return SimpleNamespace(waitingFor=None)
         return SimpleNamespace(waitingFor=SimpleNamespace(type="space"))
 
-    async def fake_wait(pm: Any, initial_logs: Any = None) -> Any:
-        return pm, []
-
     extra._post_input = fake_post_input
-    extra._get_game_logs = lambda player_id=None: []
-    extra.wait_for_turn_from_player_model = fake_wait
-    extra.build_agent_state = lambda pm, **kw: {"ok": True}
+    _stub_state_after_submission(extra)
     _stub_get_player(extra, SimpleNamespace(type="or"))
 
     actions = [
@@ -359,7 +361,7 @@ def test_submit_multi_actions_normalizes_payment() -> None:
         return SimpleNamespace(waitingFor=SimpleNamespace(type="or"))
 
     extra._post_input = fake_post_input
-    extra.build_agent_state = lambda pm, **kw: {"ok": True}
+    _stub_state_after_submission(extra)
     _stub_get_player(extra, None)
 
     actions = [
@@ -384,7 +386,7 @@ def test_submit_multi_actions_chains_from_project_card() -> None:
         return SimpleNamespace(waitingFor=SimpleNamespace(type="or"))
 
     extra._post_input = fake_post_input
-    extra.build_agent_state = lambda pm, **kw: {"ok": True}
+    _stub_state_after_submission(extra)
     _stub_get_player(extra, None)
 
     actions = [
@@ -411,7 +413,7 @@ def test_submit_multi_actions_auto_wraps_raw_action_for_or_prompt() -> None:
         return SimpleNamespace(waitingFor=SimpleNamespace(type="space"))
 
     extra._post_input = fake_post_input
-    extra.build_agent_state = lambda pm, **kw: {"ok": True}
+    _stub_state_after_submission(extra)
 
     waiting_for = WaitingForInputModel.model_validate(
         {
@@ -466,7 +468,7 @@ def test_submit_multi_actions_returns_state_on_http_error() -> None:
 
     extra._post_input = fake_post_input
     extra.get_player = fake_get_player
-    extra.build_agent_state = lambda pm, **kw: {"ok": True}
+    _stub_state_after_submission(extra)
 
     actions = [
         {"type": "or", "index": 0, "response": {"type": "option"}},
@@ -496,7 +498,7 @@ def test_submit_multi_actions_leaves_or_action_unwrapped() -> None:
         return SimpleNamespace(waitingFor=SimpleNamespace(type="or"))
 
     extra._post_input = fake_post_input
-    extra.build_agent_state = lambda pm, **kw: {"ok": True}
+    _stub_state_after_submission(extra)
     _stub_get_player(extra, SimpleNamespace(type="or"))
 
     actions = [
