@@ -186,14 +186,14 @@ def test_pay_for_project_card_submits_direct_project_card_payload() -> None:
     _set_submit_capture(server, captured)
     result = _run(
         server.pay_for_project_card(
-            card_name="Noctis City", payment=PaymentPayloadModel(megaCredits=18)
+            card_name="Noctis City", payment=PaymentPayloadModel(megacredits=18)
         )
     )
 
     assert result == {"ok": True}
     assert captured["type"] == "projectCard"
     assert captured["card"] == "Noctis City"
-    assert captured["payment"]["megaCredits"] == 18
+    assert captured["payment"]["megacredits"] == 18
 
 
 def test_pay_for_project_card_wraps_outer_or_menu() -> None:
@@ -216,7 +216,7 @@ def test_pay_for_project_card_wraps_outer_or_menu() -> None:
     _set_submit_capture(server, captured)
     result = _run(
         server.pay_for_project_card(
-            card_name="Noctis City", payment=PaymentPayloadModel(megaCredits=18)
+            card_name="Noctis City", payment=PaymentPayloadModel(megacredits=18)
         )
     )
 
@@ -225,7 +225,7 @@ def test_pay_for_project_card_wraps_outer_or_menu() -> None:
     assert captured["index"] == 0
     assert captured["response"]["type"] == "projectCard"
     assert captured["response"]["card"] == "Noctis City"
-    assert captured["response"]["payment"]["megaCredits"] == 18
+    assert captured["response"]["payment"]["megacredits"] == 18
 
 
 def test_pay_for_project_card_errors_when_outer_or_has_no_project_card_branch() -> None:
@@ -249,7 +249,7 @@ def test_pay_for_project_card_errors_when_outer_or_has_no_project_card_branch() 
     try:
         _run(
             server.pay_for_project_card(
-                card_name="Noctis City", payment=PaymentPayloadModel(megaCredits=18)
+                card_name="Noctis City", payment=PaymentPayloadModel(megacredits=18)
             )
         )
         assert False, "Expected RuntimeError for missing projectCard branch"
@@ -372,7 +372,7 @@ def test_submit_multi_actions_normalizes_payment() -> None:
     assert len(calls) == 1
     assert calls[0]["type"] == "projectCard"
     assert "payment" in calls[0]
-    assert calls[0]["payment"]["megaCredits"] == 0
+    assert calls[0]["payment"]["megacredits"] == 0
 
 
 def test_submit_multi_actions_chains_from_project_card() -> None:
@@ -390,7 +390,7 @@ def test_submit_multi_actions_chains_from_project_card() -> None:
     _stub_get_player(extra, None)
 
     actions = [
-        {"type": "projectCard", "card": "Noctis City", "payment": {"megaCredits": 20}},
+        {"type": "projectCard", "card": "Noctis City", "payment": {"megacredits": 20}},
         {"type": "space", "spaceId": "35"},
     ]
     result = _run(extra.submit_multi_actions(actions=actions))
@@ -398,7 +398,7 @@ def test_submit_multi_actions_chains_from_project_card() -> None:
     assert len(calls) == 2
     assert calls[0]["type"] == "projectCard"
     assert calls[0]["card"] == "Noctis City"
-    assert calls[0]["payment"]["megaCredits"] == 20
+    assert calls[0]["payment"]["megacredits"] == 20
     assert calls[1] == {"type": "space", "spaceId": "35"}
     assert result["actions_executed"] == 2
 
@@ -433,7 +433,7 @@ def test_submit_multi_actions_auto_wraps_raw_action_for_or_prompt() -> None:
     _stub_get_player(extra, waiting_for)
 
     actions = [
-        {"type": "projectCard", "card": "Noctis City", "payment": {"megaCredits": 20}},
+        {"type": "projectCard", "card": "Noctis City", "payment": {"megacredits": 20}},
         {"type": "space", "spaceId": "35"},
     ]
     result = _run(extra.submit_multi_actions(actions=actions))
@@ -444,7 +444,7 @@ def test_submit_multi_actions_auto_wraps_raw_action_for_or_prompt() -> None:
     assert calls[0]["index"] == 1
     assert calls[0]["response"]["type"] == "projectCard"
     assert calls[0]["response"]["card"] == "Noctis City"
-    assert calls[0]["response"]["payment"]["megaCredits"] == 20
+    assert calls[0]["response"]["payment"]["megacredits"] == 20
     # Subsequent action answers a non-`or` prompt and is sent raw.
     assert calls[1] == {"type": "space", "spaceId": "35"}
     assert result["actions_executed"] == 2

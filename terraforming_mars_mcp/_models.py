@@ -33,7 +33,7 @@ CardListField = Annotated[
 class PaymentPayloadModel(BaseModel):
     model_config = ConfigDict(extra="ignore", populate_by_name=True)
 
-    mega_credits: int = Field(default=0, alias="megaCredits")
+    megacredits: int = 0
     steel: int = 0
     titanium: int = 0
     heat: int = 0

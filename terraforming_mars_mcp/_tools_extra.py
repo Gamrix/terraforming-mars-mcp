@@ -137,7 +137,7 @@ async def submit_multi_actions(
 
     Example — play a card that needs space selection, then pass:
     [
-        {"type": "projectCard", "card": "Noctis City", "payment": {"megaCredits": 20}},
+        {"type": "projectCard", "card": "Noctis City", "payment": {"megacredits": 20}},
         {"type": "space", "spaceId": "35"},
         {"type": "or", "index": 5, "response": {"type": "option"}}
     ]
