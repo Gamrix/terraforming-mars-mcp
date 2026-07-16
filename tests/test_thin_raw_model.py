@@ -89,13 +89,13 @@ def _make_raw_model(
 
 def test_this_player_removed() -> None:
     raw = _make_raw_model()
-    result = thin_raw_player_model(raw, this_color="red")
+    result = thin_raw_player_model(raw)
     assert "thisPlayer" not in result
 
 
 def test_resources_zero_stripped_from_tableau() -> None:
     raw = _make_raw_model()
-    result = thin_raw_player_model(raw, this_color="red")
+    result = thin_raw_player_model(raw)
     tableau = result["players"][0]["tableau"]
     card_a = next(c for c in tableau if c["name"] == "Card A")
     card_b = next(c for c in tableau if c["name"] == "Card B")
@@ -105,7 +105,7 @@ def test_resources_zero_stripped_from_tableau() -> None:
 
 def test_disabled_expansion_fields_stripped() -> None:
     raw = _make_raw_model()
-    result = thin_raw_player_model(raw, this_color="red")
+    result = thin_raw_player_model(raw)
     player = result["players"][0]
     # Colonies disabled: these should be gone.
     assert "coloniesCount" not in player
@@ -144,7 +144,7 @@ def test_enabled_expansion_fields_kept() -> None:
             "pathfinders": True,
         }
     )
-    result = thin_raw_player_model(raw, this_color="red")
+    result = thin_raw_player_model(raw)
     player = result["players"][0]
     assert "coloniesCount" in player
     assert "influence" in player
@@ -156,7 +156,7 @@ def test_enabled_expansion_fields_kept() -> None:
 
 def test_dealt_cards_stripped_during_action_phase() -> None:
     raw = _make_raw_model(phase="action")
-    result = thin_raw_player_model(raw, this_color="red")
+    result = thin_raw_player_model(raw)
     assert "dealtCorporationCards" not in result
     assert "dealtPreludeCards" not in result
     assert "dealtProjectCards" not in result
@@ -165,7 +165,7 @@ def test_dealt_cards_stripped_during_action_phase() -> None:
 
 def test_dealt_cards_kept_during_end_phase() -> None:
     raw = _make_raw_model(phase="end")
-    result = thin_raw_player_model(raw, this_color="red")
+    result = thin_raw_player_model(raw)
     assert "dealtCorporationCards" in result
     assert "dealtPreludeCards" in result
     assert "dealtProjectCards" in result
@@ -173,7 +173,7 @@ def test_dealt_cards_kept_during_end_phase() -> None:
 
 def test_vp_details_stripped_during_action_phase() -> None:
     raw = _make_raw_model(phase="action")
-    result = thin_raw_player_model(raw, this_color="red")
+    result = thin_raw_player_model(raw)
     vpb = result["players"][0]["victoryPointsBreakdown"]
     assert "detailsCards" not in vpb
     assert "detailsMilestones" not in vpb
@@ -186,7 +186,7 @@ def test_vp_details_stripped_during_action_phase() -> None:
 
 def test_vp_details_kept_during_end_phase() -> None:
     raw = _make_raw_model(phase="end")
-    result = thin_raw_player_model(raw, this_color="red")
+    result = thin_raw_player_model(raw)
     vpb = result["players"][0]["victoryPointsBreakdown"]
     assert "detailsCards" in vpb
     assert "detailsMilestones" in vpb
@@ -195,7 +195,7 @@ def test_vp_details_kept_during_end_phase() -> None:
 
 def test_empty_self_replicating_robots_stripped() -> None:
     raw = _make_raw_model(player_extras={"selfReplicatingRobotsCards": []})
-    result = thin_raw_player_model(raw, this_color="red")
+    result = thin_raw_player_model(raw)
     assert "selfReplicatingRobotsCards" not in result["players"][0]
 
 
@@ -205,7 +205,7 @@ def test_nonempty_self_replicating_robots_kept() -> None:
             "selfReplicatingRobotsCards": [{"name": "Something"}],
         }
     )
-    result = thin_raw_player_model(raw, this_color="red")
+    result = thin_raw_player_model(raw)
     assert result["players"][0]["selfReplicatingRobotsCards"] == [{"name": "Something"}]
 
 
@@ -230,7 +230,7 @@ def test_all_off_protected_resources_stripped() -> None:
             },
         }
     )
-    result = thin_raw_player_model(raw, this_color="red")
+    result = thin_raw_player_model(raw)
     player = result["players"][0]
     assert "protectedResources" not in player
     assert "protectedProduction" not in player
@@ -257,7 +257,7 @@ def test_protected_resources_kept_when_some_on() -> None:
             },
         }
     )
-    result = thin_raw_player_model(raw, this_color="red")
+    result = thin_raw_player_model(raw)
     player = result["players"][0]
     assert "protectedResources" in player
     assert "protectedProduction" not in player
@@ -270,7 +270,7 @@ def test_victory_points_by_generation_stripped_mid_game() -> None:
             "victoryPointsByGeneration": [20, 22, 25, 30],
         },
     )
-    result = thin_raw_player_model(raw, this_color="red")
+    result = thin_raw_player_model(raw)
     assert "victoryPointsByGeneration" not in result["players"][0]
 
 
@@ -281,7 +281,7 @@ def test_victory_points_by_generation_kept_at_end() -> None:
             "victoryPointsByGeneration": [20, 22, 25, 30],
         },
     )
-    result = thin_raw_player_model(raw, this_color="red")
+    result = thin_raw_player_model(raw)
     assert result["players"][0]["victoryPointsByGeneration"] == [20, 22, 25, 30]
 
 
@@ -300,7 +300,7 @@ def test_zero_valued_tags_stripped() -> None:
             },
         }
     )
-    result = thin_raw_player_model(raw, this_color="red")
+    result = thin_raw_player_model(raw)
     tags = result["players"][0]["tags"]
     assert tags == {"building": 10, "space": 5, "science": 4}
     assert "venus" not in tags
@@ -313,5 +313,5 @@ def test_all_nonzero_tags_kept() -> None:
             "tags": {"building": 3, "space": 1},
         }
     )
-    result = thin_raw_player_model(raw, this_color="red")
+    result = thin_raw_player_model(raw)
     assert result["players"][0]["tags"] == {"building": 3, "space": 1}

@@ -4,29 +4,22 @@ import importlib
 from typing import Any, Mapping, cast
 
 import terraforming_mars_mcp.card_info as card_info_mod
-import terraforming_mars_mcp.server as server_mod
 from terraforming_mars_mcp.api_response_models import WaitingForInputModel
-
-
-def _reload_server() -> Any:
-    return importlib.reload(server_mod)
+from terraforming_mars_mcp.waiting_for import normalize_waiting_for
 
 
 def _reload_card_info() -> Any:
     return importlib.reload(card_info_mod)
 
 
-def _normalize_waiting_for(
-    server: Any, waiting_for: Mapping[str, Any]
-) -> dict[str, Any]:
+def _normalize_waiting_for(waiting_for: Mapping[str, Any]) -> dict[str, Any]:
     wf_model = WaitingForInputModel.model_validate(dict(waiting_for))
-    normalized = server.normalize_waiting_for(wf_model)
+    normalized = normalize_waiting_for(wf_model)
     assert isinstance(normalized, dict)
     return cast(dict[str, Any], normalized)
 
 
 def test_initial_cards_options_include_effect_text_previews() -> None:
-    server = _reload_server()
     waiting_for = {
         "type": "initialCards",
         "title": " ",
@@ -59,7 +52,7 @@ def test_initial_cards_options_include_effect_text_previews() -> None:
         ],
     }
 
-    normalized = _normalize_waiting_for(server, waiting_for)
+    normalized = _normalize_waiting_for(waiting_for)
     options = normalized["options"]
 
     assert options[0]["cards"][0]["name"] == "Helion"
@@ -74,7 +67,6 @@ def test_initial_cards_options_include_effect_text_previews() -> None:
 
 
 def test_waiting_for_card_lists_accept_string_card_names() -> None:
-    server = _reload_server()
     waiting_for = {
         "type": "card",
         "title": "Select initial cards to buy",
@@ -84,7 +76,7 @@ def test_waiting_for_card_lists_accept_string_card_names() -> None:
         "cards": ["Helion", "Comet"],
     }
 
-    normalized = _normalize_waiting_for(server, waiting_for)
+    normalized = _normalize_waiting_for(waiting_for)
     cards = normalized["cards"]
 
     assert [card["name"] for card in cards] == ["Helion", "Comet"]
@@ -93,7 +85,6 @@ def test_waiting_for_card_lists_accept_string_card_names() -> None:
 
 
 def test_waiting_for_card_includes_all_effect_texts_for_multi_action_cards() -> None:
-    server = _reload_server()
     waiting_for = {
         "type": "card",
         "title": "Select initial cards to buy",
@@ -103,7 +94,7 @@ def test_waiting_for_card_includes_all_effect_texts_for_multi_action_cards() -> 
         "cards": ["Regolith Eaters"],
     }
 
-    normalized = _normalize_waiting_for(server, waiting_for)
+    normalized = _normalize_waiting_for(waiting_for)
     card = normalized["cards"][0]
 
     assert card["effect_texts"] == [
@@ -113,7 +104,6 @@ def test_waiting_for_card_includes_all_effect_texts_for_multi_action_cards() -> 
 
 
 def test_waiting_for_card_includes_all_effect_texts_for_arctic_algae() -> None:
-    server = _reload_server()
     waiting_for = {
         "type": "card",
         "title": "Select initial cards to buy",
@@ -123,7 +113,7 @@ def test_waiting_for_card_includes_all_effect_texts_for_arctic_algae() -> None:
         "cards": ["Arctic Algae"],
     }
 
-    normalized = _normalize_waiting_for(server, waiting_for)
+    normalized = _normalize_waiting_for(waiting_for)
     card = normalized["cards"][0]
 
     # Requirement text is stripped from effect_texts when play_requirements_text is present.
@@ -135,7 +125,6 @@ def test_waiting_for_card_includes_all_effect_texts_for_arctic_algae() -> None:
 
 
 def test_disabled_cards_filtered_and_learner_mode_still_tagged() -> None:
-    server = _reload_server()
     waiting_for = {
         "type": "card",
         "title": "Standard projects",
@@ -153,7 +142,7 @@ def test_disabled_cards_filtered_and_learner_mode_still_tagged() -> None:
         ],
     }
 
-    normalized = _normalize_waiting_for(server, waiting_for)
+    normalized = _normalize_waiting_for(waiting_for)
     # Disabled cards are filtered out.
     assert normalized["cards"] == []
     # show_only_in_learner_mode is still present in card_selection metadata.
@@ -163,7 +152,6 @@ def test_disabled_cards_filtered_and_learner_mode_still_tagged() -> None:
 
 
 def test_waiting_for_card_surfaces_base_and_discounted_cost() -> None:
-    server = _reload_server()
     card_info = _reload_card_info()
     original_card_info_fn = card_info.card_info
     card_info.card_info = lambda card_name, include_play_details=False: {
@@ -186,7 +174,7 @@ def test_waiting_for_card_surfaces_base_and_discounted_cost() -> None:
             "cards": [{"name": "Birds", "calculatedCost": 7}],
         }
 
-        normalized = _normalize_waiting_for(server, waiting_for)
+        normalized = _normalize_waiting_for(waiting_for)
         card = normalized["cards"][0]
 
         assert card["cost"] == 10
@@ -196,7 +184,6 @@ def test_waiting_for_card_surfaces_base_and_discounted_cost() -> None:
 
 
 def test_waiting_for_surfaces_warnings_and_branch_metadata() -> None:
-    server = _reload_server()
     waiting_for = {
         "type": "or",
         "title": "Take your next action",
@@ -221,7 +208,7 @@ def test_waiting_for_surfaces_warnings_and_branch_metadata() -> None:
         ],
     }
 
-    normalized = _normalize_waiting_for(server, waiting_for)
+    normalized = _normalize_waiting_for(waiting_for)
 
     assert normalized["warning"] == "Some context warning"
     assert normalized["initial_index"] == 1
@@ -232,10 +219,7 @@ def test_waiting_for_surfaces_warnings_and_branch_metadata() -> None:
 
 
 def test_waiting_for_surfaces_resource_and_token_selectors() -> None:
-    server = _reload_server()
-
     normalized_resource = _normalize_waiting_for(
-        server,
         {
             "type": "resource",
             "title": "Select a resource",
@@ -246,7 +230,6 @@ def test_waiting_for_surfaces_resource_and_token_selectors() -> None:
     assert normalized_resource["include"] == ["steel", "titanium"]
 
     normalized_resources = _normalize_waiting_for(
-        server,
         {
             "type": "resources",
             "title": "Select resources",
@@ -257,7 +240,6 @@ def test_waiting_for_surfaces_resource_and_token_selectors() -> None:
     assert normalized_resources["count"] == 2
 
     normalized_tokens = _normalize_waiting_for(
-        server,
         {
             "type": "claimedUndergroundToken",
             "title": "Select tokens",
@@ -272,7 +254,6 @@ def test_waiting_for_surfaces_resource_and_token_selectors() -> None:
 
 
 def test_sell_patents_omits_cards_field() -> None:
-    server = _reload_server()
     waiting_for = {
         "type": "or",
         "title": "Take your next action",
@@ -289,14 +270,13 @@ def test_sell_patents_omits_cards_field() -> None:
         ],
     }
 
-    normalized = _normalize_waiting_for(server, waiting_for)
+    normalized = _normalize_waiting_for(waiting_for)
     option = normalized["options"][0]
     assert option["title"] == "Sell patents"
     assert "cards" not in option
 
 
 def test_undo_option_is_omitted_from_options() -> None:
-    server = _reload_server()
     waiting_for = {
         "type": "or",
         "title": "Take your next action",
@@ -316,7 +296,7 @@ def test_undo_option_is_omitted_from_options() -> None:
         ],
     }
 
-    normalized = _normalize_waiting_for(server, waiting_for)
+    normalized = _normalize_waiting_for(waiting_for)
     options = normalized["options"]
     assert len(options) == 1
     assert options[0]["title"] == "Play something"

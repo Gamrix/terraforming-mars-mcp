@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import Counter
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from typing import Any, Literal, NotRequired, TypedDict
 
 from ._enums import (
@@ -13,12 +13,9 @@ from ._enums import (
 )
 from .api_response_models import (
     GameModel as ApiGameModel,
-)
-from .api_response_models import (
     PlayerViewModel as ApiPlayerViewModel,
-)
-from .api_response_models import (
     PublicPlayerModel as ApiPublicPlayerModel,
+    WaitingForInputModel as ApiWaitingForInputModel,
 )
 from .card_info import (
     card_info,
@@ -34,14 +31,7 @@ from .waiting_for import (
 END_OF_GENERATION_PHASES = {"production", "solar", "intergeneration", "end"}
 
 
-_LAST_OPPONENT_TABLEAU: dict[str, dict[str, Counter[str]]] = {}
-# Tracks (generation, constants_dict) so we send full constants once per gen.
-_LAST_GAME_CONSTANTS: dict[str, tuple[int, dict[str, Any]]] = {}
-# Counts responses since the last time full player/game state was included.
-_RESPONSES_SINCE_FULL_STATE: dict[str, int] = {}
 _FULL_STATE_INTERVAL = 10
-# Tracks last-emitted session payload per key so we only re-send when it actually changes.
-_LAST_SESSION: dict[str, dict[str, Any]] = {}
 
 
 @dataclass(frozen=True)
@@ -50,6 +40,30 @@ class _MilestonesAwardsSnapshot:
     claimed: frozenset[str]
     funded: frozenset[str]
     claimable: frozenset[tuple[str, str]]
+
+
+@dataclass
+class _SessionCache:
+    """Per-(game, player) memory of what was already sent to the agent.
+
+    Used to avoid re-sending unchanged data (constants, milestones, player
+    summaries) on every auto-response.
+    """
+
+    opponent_tableau: dict[str, Counter[str]] = field(default_factory=dict)
+    last_generation: int | None = None
+    last_game_constants: dict[str, Any] | None = None
+    # Responses since full player state was last included, keyed by detail level.
+    responses_since_full_state: dict[str, int] = field(default_factory=dict)
+    last_session: dict[str, Any] | None = None
+    last_ma_snapshot: _MilestonesAwardsSnapshot | None = None
+
+
+_SESSION_CACHES: dict[str, _SessionCache] = {}
+
+
+def _session_cache(game_id: str, player_id: str) -> _SessionCache:
+    return _SESSION_CACHES.setdefault(f"{game_id}:{player_id}", _SessionCache())
 
 
 @dataclass(frozen=True)
@@ -95,9 +109,6 @@ class _PlayerSummary:
         if self.active:
             payload["active"] = True
         return payload
-
-
-_LAST_MA_SNAPSHOT: dict[str, _MilestonesAwardsSnapshot] = {}
 
 
 class _MilestoneScorePayload(TypedDict):
@@ -329,10 +340,10 @@ def _summarize_awards(game: ApiGameModel) -> list[_AwardPayload]:
 
 
 def _should_include_milestones_awards(
-    game: ApiGameModel,
     milestones: list[_MilestonePayload],
     awards: list[_AwardPayload],
-    player_id: str,
+    generation: int,
+    cache: _SessionCache,
 ) -> bool:
     """Include milestones/awards once per generation or when a critical change occurs.
 
@@ -343,36 +354,16 @@ def _should_include_milestones_awards(
     - Generation changed (show once at start of each generation)
     - First call for this game (no previous snapshot)
     """
-    game_id = game.id or ""
-    ma_key = f"{game_id}:{player_id}"
-    prev = _LAST_MA_SNAPSHOT.get(ma_key)
-
-    claimed_set = frozenset(m["name"] for m in milestones if m["status"] == "claimed")
-    funded_set = frozenset(a["name"] for a in awards if a["status"] == "funded")
-    claimable_set = frozenset(
-        (m["name"], c) for m in milestones for c in m.get("claimable_by", [])
-    )
-    generation = game.generation
     current = _MilestonesAwardsSnapshot(
         generation=generation,
-        claimed=claimed_set,
-        funded=funded_set,
-        claimable=claimable_set,
+        claimed=frozenset(m["name"] for m in milestones if m["status"] == "claimed"),
+        funded=frozenset(a["name"] for a in awards if a["status"] == "funded"),
+        claimable=frozenset(
+            (m["name"], c) for m in milestones for c in m.get("claimable_by", [])
+        ),
     )
-
-    include = False
-    if prev is None:
-        include = True
-    elif prev.generation != generation:
-        include = True
-    elif prev.claimed != claimed_set:
-        include = True
-    elif prev.funded != funded_set:
-        include = True
-    elif prev.claimable != claimable_set:
-        include = True
-
-    _LAST_MA_SNAPSHOT[ma_key] = current
+    include = cache.last_ma_snapshot != current
+    cache.last_ma_snapshot = current
     return include
 
 
@@ -458,7 +449,6 @@ def _new_opponent_cards_from_counts(
                     "play_requirements_text": info.get("play_requirements_text"),
                     "on_play_effect_text": info.get("on_play_effect_text"),
                     "cost": info.get("base_cost"),
-                    "discounted_cost": info.get("base_cost"),
                     "vp": info.get("vp"),
                 }
                 events.append(event)
@@ -467,16 +457,12 @@ def _new_opponent_cards_from_counts(
 
 def _detect_new_opponent_cards(
     player_model: ApiPlayerViewModel,
+    cache: _SessionCache,
 ) -> list[dict[str, Any]]:
-    game_id = player_model.game.id
-    pid = player_model.id or ""
-    if not isinstance(game_id, str) or not isinstance(pid, str):
-        return []
-    key = f"{game_id}:{pid}"
-
-    previous = _LAST_OPPONENT_TABLEAU.get(key, {})
-    events, current = _new_opponent_cards_from_counts(player_model, previous)
-    _LAST_OPPONENT_TABLEAU[key] = current
+    events, current = _new_opponent_cards_from_counts(
+        player_model, cache.opponent_tableau
+    )
+    cache.opponent_tableau = current
     return events
 
 
@@ -537,13 +523,10 @@ def _strip_expansion_fields(
                 vpb.pop(key, None)
 
 
-def thin_raw_player_model(
-    raw: dict[str, Any],
-    this_color: str,
-) -> dict[str, Any]:
+def thin_raw_player_model(raw: dict[str, Any]) -> dict[str, Any]:
     """Apply all thinning passes to a raw ``model_dump`` of the player model."""
 
-    # 1. Drop `thisPlayer` — it duplicates one entry in `players`.
+    # Drop `thisPlayer` — it duplicates one entry in `players`.
     raw.pop("thisPlayer", None)
 
     # Determine disabled expansions from gameOptions.
@@ -560,7 +543,7 @@ def thin_raw_player_model(
                     if not enabled:
                         disabled_expansions.add(exp_name)
 
-    # 3. Strip disabled-expansion fields from game-level globals.
+    # Strip disabled-expansion fields from game-level globals.
     if isinstance(game, dict):
         # Strip venus scale from game when venus is disabled.
         if "venus" in disabled_expansions:
@@ -579,24 +562,24 @@ def thin_raw_player_model(
             if not isinstance(player_data, dict):
                 continue
 
-            # 2. Filter resources: 0 from tableau cards.
+            # Filter resources: 0 from tableau cards.
             tableau = player_data.get("tableau")
             if isinstance(tableau, list):
                 for card in tableau:
                     if card.get("resources") == 0:
                         card.pop("resources", None)
 
-            # 3. Strip disabled-expansion fields from player data.
+            # Strip disabled-expansion fields from player data.
             _strip_expansion_fields(player_data, disabled_expansions)
 
-            # 4. Gate dealtX cards on phase == "end".
+            # Gate dealtX cards on phase == "end".
             if phase != "end":
                 player_data.pop("dealtCorporationCards", None)
                 player_data.pop("dealtPreludeCards", None)
                 player_data.pop("dealtProjectCards", None)
                 player_data.pop("dealtCeoCards", None)
 
-            # 5. Gate VP breakdown details on phase == "end".
+            # Gate VP breakdown details on phase == "end".
             vpb = player_data.get("victoryPointsBreakdown")
             if isinstance(vpb, dict) and phase != "end":
                 vpb.pop("detailsCards", None)
@@ -604,8 +587,8 @@ def thin_raw_player_model(
                 vpb.pop("detailsAwards", None)
                 vpb.pop("detailsPlanetaryTracks", None)
 
-            # 9. Strip empty selfReplicatingRobotsCards and all-off
-            #    protectedResources/protectedProduction.
+            # Strip empty selfReplicatingRobotsCards and all-off
+            # protectedResources/protectedProduction.
             if player_data.get("selfReplicatingRobotsCards") == []:
                 player_data.pop("selfReplicatingRobotsCards", None)
             pr = player_data.get("protectedResources")
@@ -615,11 +598,11 @@ def thin_raw_player_model(
             if isinstance(pp, dict) and all(v == "off" for v in pp.values()):
                 player_data.pop("protectedProduction", None)
 
-            # 10. Strip victoryPointsByGeneration mid-game.
+            # Strip victoryPointsByGeneration mid-game.
             if phase != "end":
                 player_data.pop("victoryPointsByGeneration", None)
 
-            # 11. Strip zero-valued tags.
+            # Strip zero-valued tags.
             tags = player_data.get("tags")
             if isinstance(tags, dict):
                 player_data["tags"] = {k: v for k, v in tags.items() if v}
@@ -632,6 +615,115 @@ def thin_raw_player_model(
         raw.pop("dealtCeoCards", None)
 
     return raw
+
+
+def _build_game_constants(game: ApiGameModel) -> dict[str, Any]:
+    """Core game constants that rarely change mid-turn."""
+    terraforming: dict[str, Any] = {
+        "temperature": game.temperature,
+        "oxygen": game.oxygenLevel,
+        "oceans": game.oceans,
+    }
+    if game.isTerraformed:
+        terraforming["terraformed"] = True
+    game_extra = game.model_extra or {}
+    game_options_raw = game_extra.get("gameOptions")
+    if isinstance(game_options_raw, dict):
+        expansions = game_options_raw.get("expansions")
+        if isinstance(expansions, dict) and expansions.get("venus"):
+            terraforming["venus"] = game.venusScaleLevel
+    return {
+        "phase": game.phase,
+        "generation": game.generation,
+        "terraforming": terraforming,
+    }
+
+
+def _build_game_state_section(
+    game: ApiGameModel,
+    cache: _SessionCache,
+    detail_level: DetailLevel,
+    show_board: bool,
+) -> tuple[dict[str, Any], bool]:
+    """Build the `game` payload; returns it plus whether a new generation started."""
+    generation = game.generation
+    game_constants = _build_game_constants(game)
+
+    # Send full constants on first call, generation change, or value change.
+    is_gen_start = cache.last_generation != generation
+    constants_changed = is_gen_start or cache.last_game_constants != game_constants
+    cache.last_generation = generation
+    cache.last_game_constants = game_constants
+
+    game_state: dict[str, Any] = {
+        "game_age": game.gameAge,
+    }
+    if game.id:
+        game_state["id"] = game.id
+    if game.undoCount:
+        game_state["undo_count"] = game.undoCount
+    if game.passedPlayers:
+        game_state["passed_players"] = game.passedPlayers
+
+    if constants_changed:
+        game_state.update(game_constants)
+    else:
+        # Only include generation (always useful context) when constants unchanged.
+        game_state["generation"] = generation
+
+    if detail_level == DetailLevel.FULL:
+        milestones = _summarize_milestones(game)
+        awards = _summarize_awards(game)
+        if _should_include_milestones_awards(milestones, awards, generation, cache):
+            game_state["milestones"] = milestones
+            game_state["awards"] = awards
+        else:
+            game_state["milestones_changed"] = False
+    if show_board:
+        game_state["board"] = summarize_board(game)
+        game_state["board_visible"] = True
+
+    return game_state, is_gen_start
+
+
+def _should_include_player_state(
+    cache: _SessionCache, detail_level: DetailLevel, is_gen_start: bool
+) -> bool:
+    """Include you/opponents at generation start or every N responses."""
+    key = str(detail_level)
+    responses_since = cache.responses_since_full_state.get(key, _FULL_STATE_INTERVAL)
+    include = is_gen_start or responses_since >= _FULL_STATE_INTERVAL
+    cache.responses_since_full_state[key] = 0 if include else responses_since + 1
+    return include
+
+
+def _build_generation_start(
+    player_model: ApiPlayerViewModel, generation: int
+) -> dict[str, Any]:
+    gen_start_cards = compact_cards(
+        player_model.cardsInHand,
+        detail_level=DetailLevel.FULL,
+        generation=generation,
+        auto_response=False,
+    )
+    return {
+        "cards_in_hand_count": len(gen_start_cards),
+        "cards_in_hand": gen_start_cards,
+        "played_card_effects_and_actions": extract_played_card_effects_and_actions(
+            player_model.thisPlayer
+        ),
+    }
+
+
+def _suggested_tools(
+    input_type: str | None, waiting_for: ApiWaitingForInputModel | None
+) -> list[str]:
+    suggested = action_tools_for_input_type(input_type)
+    if input_type == InputType.OR_OPTIONS.value:
+        suggested.append(ToolName.SUBMIT_MULTI_ACTIONS.value)
+        if waiting_for is not None and find_pass_option_index(waiting_for) is not None:
+            suggested.append(ToolName.PASS_TURN.value)
+    return suggested
 
 
 def build_agent_state(
@@ -649,114 +741,37 @@ def build_agent_state(
     input_type = input_type_name(waiting_for)
     you, opponents = _summarize_players(player_model)
 
-    phase = game.phase
     show_board = include_board_state or (
-        detail_level == DetailLevel.FULL and phase in END_OF_GENERATION_PHASES
+        detail_level == DetailLevel.FULL and game.phase in END_OF_GENERATION_PHASES
     )
 
     generation = game.generation
     player_id = player_model.id or player_id_fallback or ""
-    game_id = game.id or ""
-    constants_key = f"{game_id}:{player_id}"
+    cache = _session_cache(game.id or "", player_id)
 
-    # Build session and game constants, then check if they changed.
-    session: dict[str, Any] = {
-        "player_id": player_id,
-    }
+    session: dict[str, Any] = {"player_id": player_id}
     if detail_level == DetailLevel.FULL and base_url is not None:
         session["base_url"] = base_url
 
-    # Core game constants that rarely change mid-turn.
-    terraforming: dict[str, Any] = {
-        "temperature": game.temperature,
-        "oxygen": game.oxygenLevel,
-        "oceans": game.oceans,
-    }
-    if game.isTerraformed:
-        terraforming["terraformed"] = True
-    game_extra = game.model_extra or {}
-    game_options_raw = game_extra.get("gameOptions")
-    if isinstance(game_options_raw, dict):
-        expansions = game_options_raw.get("expansions")
-        if isinstance(expansions, dict) and expansions.get("venus"):
-            terraforming["venus"] = game.venusScaleLevel
-    game_constants: dict[str, Any] = {
-        "phase": game.phase,
-        "generation": generation,
-        "terraforming": terraforming,
-    }
-
-    prev = _LAST_GAME_CONSTANTS.get(constants_key)
-    prev_gen, prev_constants = prev if prev is not None else (None, None)
-    # Send full constants on first call, generation change, or value change.
-    constants_changed = prev_gen != generation or prev_constants != game_constants
-    _LAST_GAME_CONSTANTS[constants_key] = (generation, game_constants)
-
-    game_state: dict[str, Any] = {
-        "game_age": game.gameAge,
-    }
-    if game_id:
-        game_state["id"] = game_id
-    if game.undoCount:
-        game_state["undo_count"] = game.undoCount
-    if game.passedPlayers:
-        game_state["passed_players"] = game.passedPlayers
-
-    if constants_changed:
-        game_state.update(game_constants)
-    else:
-        # Only include generation (always useful context) when constants unchanged.
-        game_state["generation"] = generation
+    game_state, is_gen_start = _build_game_state_section(
+        game, cache, detail_level, show_board
+    )
 
     if detail_level == DetailLevel.FULL:
-        milestones = _summarize_milestones(game)
-        awards = _summarize_awards(game)
-        include_ma = _should_include_milestones_awards(
-            game,
-            milestones,
-            awards,
-            player_model.id,
-        )
-        if include_ma:
-            game_state["milestones"] = milestones
-            game_state["awards"] = awards
-        else:
-            game_state["milestones_changed"] = False
-    if show_board:
-        game_state["board"] = summarize_board(game)
-        game_state["board_visible"] = True
-
-    if detail_level == DetailLevel.FULL:
+        you_state = you.to_full_payload()
         opponents_state = [summary.to_full_payload() for summary in opponents]
-        opponent_new_cards = _detect_new_opponent_cards(player_model)
+        opponent_new_cards = _detect_new_opponent_cards(player_model, cache)
     else:
+        you_state = you.to_minimal_payload()
         opponents_state = [summary.to_minimal_payload() for summary in opponents]
         opponent_new_cards = []
 
-    you_state = (
-        you.to_full_payload()
-        if detail_level == DetailLevel.FULL
-        else you.to_minimal_payload()
-    )
-
-    # Include you/opponents at generation start or every N responses.
-    is_gen_start = prev_gen != generation
-    state_counter_key = f"{constants_key}:{detail_level}"
-    responses_since = _RESPONSES_SINCE_FULL_STATE.get(
-        state_counter_key, _FULL_STATE_INTERVAL
-    )
-    include_player_state = is_gen_start or responses_since >= _FULL_STATE_INTERVAL
-    if include_player_state:
-        _RESPONSES_SINCE_FULL_STATE[state_counter_key] = 0
-    else:
-        _RESPONSES_SINCE_FULL_STATE[state_counter_key] = responses_since + 1
-
     result: dict[str, Any] = {}
-    if _LAST_SESSION.get(constants_key) != session:
-        _LAST_SESSION[constants_key] = session
+    if cache.last_session != session:
+        cache.last_session = session
         result["session"] = session
     result["game"] = game_state
-    if include_player_state:
+    if _should_include_player_state(cache, detail_level, is_gen_start):
         result["you"] = you_state
         result["opponents"] = opponents_state
     result["waiting_for"] = normalize_waiting_for(
@@ -765,33 +780,15 @@ def build_agent_state(
         generation=generation,
         auto_response=auto_response,
     )
-    if auto_response and detail_level == DetailLevel.FULL and prev_gen != generation:
-        gen_start_cards = compact_cards(
-            player_model.cardsInHand,
-            detail_level=DetailLevel.FULL,
-            generation=generation,
-            auto_response=False,
-        )
-        result["generation_start"] = {
-            "cards_in_hand_count": len(gen_start_cards),
-            "cards_in_hand": gen_start_cards,
-            "played_card_effects_and_actions": extract_played_card_effects_and_actions(
-                player_model.thisPlayer
-            ),
-        }
-    suggested_tools = action_tools_for_input_type(input_type)
-    if input_type == InputType.OR_OPTIONS.value:
-        suggested_tools.append(ToolName.SUBMIT_MULTI_ACTIONS.value)
-        if waiting_for is not None and find_pass_option_index(waiting_for) is not None:
-            suggested_tools.append(ToolName.PASS_TURN.value)
-    result["suggested_tools"] = suggested_tools
+    if auto_response and detail_level == DetailLevel.FULL and is_gen_start:
+        result["generation_start"] = _build_generation_start(player_model, generation)
+    result["suggested_tools"] = _suggested_tools(input_type, waiting_for)
     result["opponent_new_cards"] = opponent_new_cards
     if between_turns_actions:
         result["opponent_actions_between_turns"] = between_turns_actions
 
     if include_full_model:
         result["raw_player_model"] = thin_raw_player_model(
-            player_model.model_dump(exclude_none=True),
-            this_color=player_model.thisPlayer.color,
+            player_model.model_dump(exclude_none=True)
         )
     return strip_empty(result)

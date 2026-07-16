@@ -61,7 +61,11 @@ def test_observe_player_model_flushes_only_at_end(monkeypatch, tmp_path: Path) -
         type(
             "FixedDatetime",
             (),
-            {"now": staticmethod(lambda: __import__("datetime").datetime(2026, 3, 15))},
+            {
+                "now": staticmethod(
+                    lambda tz=None: __import__("datetime").datetime(2026, 3, 15)
+                )
+            },
         ),
     )
 

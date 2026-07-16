@@ -27,20 +27,25 @@ from .turn_flow import CFG, get_player, submit_and_return_state
 from .waiting_for import (
     find_pass_option_index,
     normalize_or_sub_response,
-    normalize_waiting_for,  # noqa: F401 – re-exported for test monkey-patching
     wrap_action_for_prompt,
 )
+
+LOG_LEVELS = ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL")
 
 DEFAULT_LOG_LEVEL = os.environ.get("TM_MCP_LOG_LEVEL", "DEBUG").upper()
 DEFAULT_LOG_FILE = os.environ.get(
     "TM_MCP_LOG_FILE",
-    str(Path(__file__).parent / "tmp" / "terraforming-mars-mcp.log"),
+    str(
+        Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache")
+        / "terraforming-mars-mcp"
+        / "terraforming-mars-mcp.log"
+    ),
 )
 
 
 def _configure_server_logging(log_level: str, log_file: str) -> Path:
     normalized_level = log_level.upper()
-    if normalized_level not in {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}:
+    if normalized_level not in LOG_LEVELS:
         raise ValueError(f"Unsupported log level: {log_level}")
 
     log_path = Path(log_file).expanduser()
@@ -205,7 +210,7 @@ def main() -> None:
     parser.add_argument(
         "--log-level",
         default=DEFAULT_LOG_LEVEL,
-        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        choices=list(LOG_LEVELS),
         help="Log level for server logging (overrides TM_MCP_LOG_LEVEL)",
     )
     parser.add_argument(

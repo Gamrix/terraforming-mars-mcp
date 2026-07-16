@@ -52,6 +52,11 @@ def _is_undo_option(
 _PASS_TITLES = {"pass for this generation", "end turn"}
 
 
+def _is_sell_patents(title: str | MessageModel) -> bool:
+    """The sell-patents card list duplicates the hand, so it is omitted."""
+    return "sell patents" in title_to_text(title).lower()
+
+
 def find_pass_option_index(
     waiting_for: ApiWaitingForInputModel,
 ) -> int | None:
@@ -168,7 +173,7 @@ def normalize_waiting_for(
         )
         if card_selection:
             normalized["card_selection"] = card_selection
-        if "sell patents" in title_to_text(wf.title).lower():
+        if _is_sell_patents(wf.title):
             normalized.pop("cards", None)
     elif wf.min is not None or wf.max is not None:
         normalized["amount_range"] = strip_empty(
@@ -252,7 +257,7 @@ def normalize_waiting_for(
                     if isinstance(option_cards, list) and len(option_cards) == 0:
                         continue
 
-                if "sell patents" in title_to_text(option.title).lower():
+                if _is_sell_patents(option.title):
                     option_payload.pop("cards", None)
 
                 normalized_options.append(option_payload)

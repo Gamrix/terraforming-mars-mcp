@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -126,7 +126,7 @@ def observe_player_model(player_model: PlayerViewModel) -> None:
     if game.phase == "end":
         if not game_id:
             return
-        date_slug = datetime.now().strftime("%Y_%m_%d")
+        date_slug = datetime.now(UTC).strftime("%Y_%m_%d")
         final_path = _REPO_OUTPUT_ROOT / date_slug / f"observed-cards-{game_id}.json"
 
         final_state = {
