@@ -23,7 +23,13 @@ from ._models import PaymentPayloadModel
 from .api_response_models import JsonValue
 from .card_info import compact_cards
 from .game_state import build_agent_state
-from .turn_flow import CFG, get_player, submit_and_return_state
+from .turn_flow import (
+    CFG,
+    get_player,
+    is_revisable_selection_prompt,
+    submit_and_return_state,
+    wait_for_turn_from_player_model,
+)
 from .waiting_for import (
     find_pass_option_index,
     normalize_or_sub_response,
@@ -75,13 +81,20 @@ def configure_session(
 
 
 @mcp.tool()
-def get_game_state(
+async def get_game_state(
     include_full_model: bool = False,
     include_board_state: bool = False,
     detail_level: DetailLevel = DetailLevel.FULL,
 ) -> dict[str, object]:
     """Fetch current player state plus compact, agent-friendly action/game summary."""
     player_model = get_player()
+    between_turns_actions: list[str] | None = None
+    if is_revisable_selection_prompt(player_model):
+        # A submitted draft pick is still revisable until the opponent picks;
+        # never surface that prompt — wait for the next real one instead.
+        player_model, between_turns_actions = await wait_for_turn_from_player_model(
+            player_model
+        )
     return build_agent_state(
         player_model,
         include_full_model=include_full_model,
@@ -89,6 +102,7 @@ def get_game_state(
         detail_level=detail_level,
         base_url=CFG.base_url,
         player_id_fallback=CFG.player_id,
+        between_turns_actions=between_turns_actions,
     )
 
 

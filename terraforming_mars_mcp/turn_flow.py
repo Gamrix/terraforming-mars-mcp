@@ -9,15 +9,22 @@ from dataclasses import dataclass
 from typing import Any, Mapping, Sequence, cast
 from urllib import error, parse, request
 
+from ._app import mcp
 from .api_response_models import (
     GameLogEntryModel as ApiGameLogEntryModel,
+)
+from .api_response_models import (
     JsonValue,
+)
+from .api_response_models import (
     PlayerViewModel as ApiPlayerViewModel,
+)
+from .api_response_models import (
     WaitingForStatusModel as ApiWaitingForStatusModel,
 )
-from ._app import mcp
 from .game_state import build_agent_state
 from .observed_cards import observe_player_model
+from .waiting_for import title_to_text
 
 TURN_WAIT_TIMEOUT_SECONDS = 2 * 60 * 60
 TURN_WAIT_POLL_INTERVAL_SECONDS = 2
@@ -199,6 +206,17 @@ def _is_player_log_data_type(data_type: int | str | None) -> bool:
     return False
 
 
+def is_revisable_selection_prompt(player_model: ApiPlayerViewModel) -> bool:
+    """
+    During drafting, after this player selects a card the server keeps serving a
+    "You can change your selection until all players have selected a card" prompt
+    """
+    waiting_for = player_model.waitingFor
+    if waiting_for is None:
+        return False
+    return "change your selection" in title_to_text(waiting_for.title).lower()
+
+
 async def wait_for_turn_from_player_model(
     player_model: ApiPlayerViewModel,
     initial_logs: Sequence[ApiGameLogEntryModel] | None = None,
@@ -226,7 +244,11 @@ async def wait_for_turn_from_player_model(
         status = waiting.result
         if status in ("GO", "REFRESH"):
             refreshed = get_player()
-            if status == "GO" or refreshed.waitingFor is not None:
+            if is_revisable_selection_prompt(refreshed):
+                refreshed_game = refreshed.game
+                game_age = int(refreshed_game.gameAge)
+                undo_count = int(refreshed_game.undoCount)
+            elif status == "GO" or refreshed.waitingFor is not None:
                 final_logs = _get_game_logs()
                 opponent_actions = extract_opponent_actions(
                     start_logs,
@@ -263,7 +285,7 @@ async def wait_for_turn_from_player_model(
 async def state_after_submission(player_model: ApiPlayerViewModel) -> dict[str, Any]:
     """Build the auto-response agent state, waiting out opponents if the turn ended."""
     between_turns_actions: list[str] | None = None
-    if player_model.waitingFor is None:
+    if player_model.waitingFor is None or is_revisable_selection_prompt(player_model):
         initial_logs = _get_game_logs()
         player_model, between_turns_actions = await wait_for_turn_from_player_model(
             player_model, initial_logs=initial_logs

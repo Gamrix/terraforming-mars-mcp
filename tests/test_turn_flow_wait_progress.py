@@ -197,3 +197,131 @@ def test_submit_and_return_state_surfaces_between_turn_opponent_new_cards(
         "Trans-Neptune Probe",
         "Anti-Gravity Technology",
     ]
+
+
+def _player_view_with_waiting_for(title: object) -> PlayerViewModel:
+    return PlayerViewModel.model_validate(
+        {
+            "id": "player-1",
+            "game": {
+                "phase": "drafting",
+                "generation": 2,
+                "temperature": -30,
+                "oxygenLevel": 0,
+                "oceans": 0,
+                "venusScaleLevel": 0,
+                "isTerraformed": False,
+                "gameAge": 10,
+                "undoCount": 0,
+            },
+            "players": [
+                {"name": "Me", "color": "red", "isActive": True},
+                {"name": "Opponent", "color": "blue", "isActive": False},
+            ],
+            "thisPlayer": {"name": "Me", "color": "red", "isActive": True},
+            "waitingFor": {
+                "type": "card",
+                "title": title,
+                "buttonLabel": "Save",
+                "cards": [{"name": "Grass"}],
+                "min": 1,
+                "max": 1,
+            },
+        }
+    )
+
+
+def test_revisable_draft_prompt_is_detected() -> None:
+    revisable = _player_view_with_waiting_for(
+        "You can change your selection until all players have selected a card. "
+        "Passing to ${0}"
+    )
+    assert turn_flow.is_revisable_selection_prompt(revisable)
+
+    revisable_message = _player_view_with_waiting_for(
+        {
+            "message": (
+                "You can change your selection until all players have selected "
+                "a card. Passing to ${0}"
+            ),
+            "data": [],
+        }
+    )
+    assert turn_flow.is_revisable_selection_prompt(revisable_message)
+
+    normal = _player_view_with_waiting_for(
+        "Select a card to keep and pass the rest to ${0}"
+    )
+    assert not turn_flow.is_revisable_selection_prompt(normal)
+
+    no_prompt = PlayerViewModel.model_validate(
+        {
+            "id": "player-1",
+            "game": {
+                "phase": "drafting",
+                "generation": 2,
+                "temperature": -30,
+                "oxygenLevel": 0,
+                "oceans": 0,
+                "venusScaleLevel": 0,
+                "isTerraformed": False,
+                "gameAge": 10,
+                "undoCount": 0,
+            },
+            "players": [{"name": "Me", "color": "red", "isActive": True}],
+            "thisPlayer": {"name": "Me", "color": "red", "isActive": True},
+        }
+    )
+    assert not turn_flow.is_revisable_selection_prompt(no_prompt)
+
+
+def test_wait_for_turn_skips_revisable_prompt_until_real_prompt(
+    monkeypatch,
+) -> None:
+    clock = {"now": 0.0}
+
+    class FakeContext:
+        async def report_progress(self, **kwargs: object) -> None:
+            return None
+
+    class FakeWaitingFor:
+        def __init__(self, result: str) -> None:
+            self.result = result
+
+        def model_dump(self, exclude_none: bool = True) -> dict[str, str]:
+            return {"result": self.result}
+
+    revisable = _player_view_with_waiting_for(
+        "You can change your selection until all players have selected a card. "
+        "Passing to ${0}"
+    )
+    real_prompt = _player_view_with_waiting_for(
+        "Select a card to keep and pass the rest to ${0}"
+    )
+
+    monkeypatch.setattr(turn_flow.mcp, "get_context", lambda: FakeContext())
+    monkeypatch.setattr(turn_flow.time, "monotonic", lambda: clock["now"])
+
+    async def fake_sleep(seconds: float) -> None:
+        clock["now"] += seconds
+
+    monkeypatch.setattr(turn_flow.asyncio, "sleep", fake_sleep)
+
+    # First GO still shows the revisable prompt; the waiter must keep polling
+    # until the second GO delivers the real next prompt.
+    states = iter(["GO", "WAIT", "GO"])
+    players = iter([revisable, real_prompt])
+
+    monkeypatch.setattr(
+        turn_flow,
+        "_get_waiting_for_state",
+        lambda game_age, undo_count: FakeWaitingFor(next(states)),
+    )
+    monkeypatch.setattr(turn_flow, "get_player", lambda: next(players))
+    monkeypatch.setattr(turn_flow, "_get_game_logs", lambda: [])
+
+    refreshed, _ = asyncio.run(
+        turn_flow.wait_for_turn_from_player_model(revisable, initial_logs=[])
+    )
+
+    assert refreshed is real_prompt

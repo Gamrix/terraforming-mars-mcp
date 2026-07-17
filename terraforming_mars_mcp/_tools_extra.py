@@ -18,6 +18,7 @@ from .turn_flow import (
     CFG,
     _post_input,
     get_player,
+    is_revisable_selection_prompt,
     state_after_submission,
     submit_and_return_state,
     wait_for_turn_from_player_model,
@@ -83,7 +84,9 @@ def get_mars_board_state(include_empty_spaces: bool = False) -> dict[str, object
 async def wait_for_turn() -> dict[str, Any]:
     """Poll /api/waitingfor until it's your turn using fixed server defaults."""
     player_model = get_player()
-    if player_model.waitingFor is not None:
+    if player_model.waitingFor is not None and not is_revisable_selection_prompt(
+        player_model
+    ):
         return {
             "status": "GO",
             "state": build_agent_state(

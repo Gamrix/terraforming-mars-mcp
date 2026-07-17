@@ -273,14 +273,14 @@ class PublicPlayerModel(TMBaseModel):
     isActive: bool
 
     terraformRating: int = 0
-    megaCredits: int = 0
+    megacredits: int = 0
     steel: int = 0
     titanium: int = 0
     plants: int = 0
     energy: int = 0
     heat: int = 0
 
-    megaCreditProduction: int = 0
+    megacreditProduction: int = 0
     steelProduction: int = 0
     titaniumProduction: int = 0
     plantProduction: int = 0

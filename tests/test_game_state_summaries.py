@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import importlib
 from typing import Any
 
@@ -84,7 +85,7 @@ def test_get_game_state_surfaces_milestones_and_awards() -> None:
 
     player_view = PlayerViewModel.model_validate(player_model)
     server.get_player = lambda player_id=None: player_view
-    state = server.get_game_state()
+    state = asyncio.run(server.get_game_state())
 
     assert state["game"]["milestones"][0]["name"] == "Builder"
     assert state["game"]["milestones"][0]["status"] == "claimed"
@@ -221,7 +222,7 @@ def test_game_constants_sent_on_first_call_and_omitted_on_repeat() -> None:
     server.get_player = lambda player_id=None: player_view
 
     # First call: constants are included.
-    state1 = server.get_game_state()
+    state1 = asyncio.run(server.get_game_state())
     assert "session" in state1
     assert "phase" in state1["game"]
     assert "terraforming" in state1["game"]
@@ -231,7 +232,7 @@ def test_game_constants_sent_on_first_call_and_omitted_on_repeat() -> None:
     player_view2 = PlayerViewModel.model_validate(raw2)
     server.get_player = lambda player_id=None: player_view2
 
-    state2 = server.get_game_state()
+    state2 = asyncio.run(server.get_game_state())
     assert "session" not in state2
     assert "phase" not in state2["game"]
     assert "terraforming" not in state2["game"]
@@ -274,14 +275,14 @@ def test_game_constants_resent_on_generation_change() -> None:
     server.get_player = lambda player_id=None: player_view4
 
     # Prime the tracker.
-    server.get_game_state()
+    asyncio.run(server.get_game_state())
 
     # New generation: constants should reappear, but session does not (unchanged).
     raw_gen5 = _make_player_model(generation=5, game_age=200)
     player_view5 = PlayerViewModel.model_validate(raw_gen5)
     server.get_player = lambda player_id=None: player_view5
 
-    state = server.get_game_state()
+    state = asyncio.run(server.get_game_state())
     assert "session" not in state
     assert "phase" in state["game"]
     assert "terraforming" in state["game"]
@@ -297,14 +298,14 @@ def test_game_constants_resent_on_value_change_within_generation() -> None:
     player_view = PlayerViewModel.model_validate(raw)
     server.get_player = lambda player_id=None: player_view
 
-    server.get_game_state()
+    asyncio.run(server.get_game_state())
 
     # Temperature changed within same generation.
     raw2 = _make_player_model(generation=4, temperature=-18, game_age=101)
     player_view2 = PlayerViewModel.model_validate(raw2)
     server.get_player = lambda player_id=None: player_view2
 
-    state = server.get_game_state()
+    state = asyncio.run(server.get_game_state())
     assert "session" not in state
     assert "terraforming" in state["game"]
     assert state["game"]["terraforming"]["temperature"] == -18
@@ -318,14 +319,14 @@ def test_you_and_opponents_omitted_between_intervals() -> None:
     raw = _make_player_model(generation=4, game_age=100)
     player_view = PlayerViewModel.model_validate(raw)
     server.get_player = lambda player_id=None: player_view
-    first = server.get_game_state()
+    first = asyncio.run(server.get_game_state())
     # First call in a new generation → included
     assert "you" in first
 
     raw2 = _make_player_model(generation=4, game_age=101)
     player_view2 = PlayerViewModel.model_validate(raw2)
     server.get_player = lambda player_id=None: player_view2
-    second = server.get_game_state()
+    second = asyncio.run(server.get_game_state())
     # Same generation, not yet at interval → omitted
     assert "you" not in second
 
@@ -333,7 +334,7 @@ def test_you_and_opponents_omitted_between_intervals() -> None:
     raw3 = _make_player_model(generation=5, game_age=120)
     player_view3 = PlayerViewModel.model_validate(raw3)
     server.get_player = lambda player_id=None: player_view3
-    third = server.get_game_state()
+    third = asyncio.run(server.get_game_state())
     assert "you" in third
 
 
@@ -357,7 +358,7 @@ def test_proactive_calls_always_return_full_card_details() -> None:
     server.get_player = lambda player_id=None: player_view
 
     # First proactive call: full details.
-    state1 = server.get_game_state()
+    state1 = asyncio.run(server.get_game_state())
     card1 = state1["waiting_for"]["cards"][0]
     assert card1["name"] == "Comet"
     assert "tags" in card1
@@ -368,7 +369,7 @@ def test_proactive_calls_always_return_full_card_details() -> None:
     player_view2 = PlayerViewModel.model_validate(raw2)
     server.get_player = lambda player_id=None: player_view2
 
-    state2 = server.get_game_state()
+    state2 = asyncio.run(server.get_game_state())
     card2 = state2["waiting_for"]["cards"][0]
     assert card2["name"] == "Comet"
     assert "tags" in card2
@@ -624,7 +625,7 @@ def test_disabled_cards_are_filtered_out() -> None:
     player_view = PlayerViewModel.model_validate(raw)
     server.get_player = lambda player_id=None: player_view
 
-    state = server.get_game_state()
+    state = asyncio.run(server.get_game_state())
     cards = state["waiting_for"]["cards"]
 
     # Only enabled cards remain after filtering.
