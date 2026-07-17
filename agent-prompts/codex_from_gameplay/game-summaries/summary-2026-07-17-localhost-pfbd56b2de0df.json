@@ -1,0 +1,168 @@
+{
+  "game_date": "2026-07-17",
+  "game_url": "http://localhost:8080/player?id=pfbd56b2de0df",
+  "game_id": "pfbd56b2de0df",
+  "board": "tharsis",
+  "self_player": "Codex",
+  "opponent_player": "John",
+  "self_corp": "Valley Trust",
+  "opponent_corp": "Vitor",
+  "planned_strategy": "engine",
+  "pivot_generation": 12,
+  "macro_call_specific": false,
+  "finish_generation": 14,
+  "score": {
+    "self": 111,
+    "opponent": 153
+  },
+  "breakdown": {
+    "self": {
+      "tr": 52,
+      "milestones": 10,
+      "awards": 10,
+      "greenery": 10,
+      "city": 5,
+      "card_vp": 24
+    },
+    "opponent": {
+      "tr": 57,
+      "milestones": 5,
+      "awards": 10,
+      "greenery": 7,
+      "city": 11,
+      "card_vp": 63
+    }
+  },
+  "opponent_engine_tags": [
+    "science",
+    "space",
+    "jovian",
+    "titanium",
+    "animal",
+    "microbe",
+    "city",
+    "discount-stack"
+  ],
+  "forecast": {
+    "generation": 6,
+    "self": {
+      "tr": 50,
+      "awards": 10,
+      "greenery": 9,
+      "city": 7,
+      "card_vp": 28
+    },
+    "opponent": {
+      "tr": 50,
+      "awards": 10,
+      "greenery": 7,
+      "city": 9,
+      "card_vp": 42
+    },
+    "miss_summary": "No category forecast was written in-game; this reconstruction shows the implicit line underestimated John's final card VP by 21 and did not model the Generation 14 Terraforming Ganymede/Jovian/animal burst."
+  },
+  "mistake_tags": [
+    "strategy_misread",
+    "late_strategy_pivot",
+    "hybrid_drift",
+    "insufficient_card_vp_scaling",
+    "forecasting_failure",
+    "opponent_engine_underrated",
+    "discount_stack_ignored",
+    "vp_ceiling_miscalculated",
+    "alarm_threshold_missed"
+  ],
+  "key_turning_points": [
+    {
+      "generation": 8,
+      "title": "Continued the outscale thesis after John's science, titanium, and Jovian package was visibly live",
+      "impact_vp_est": 12
+    },
+    {
+      "generation": 10,
+      "title": "Continued broad infrastructure without a written card-VP plus city-VP forecast",
+      "impact_vp_est": 8
+    },
+    {
+      "generation": 12,
+      "title": "Pivoted to hard close only after John's scalable scoring engine was mature",
+      "impact_vp_est": 10
+    },
+    {
+      "generation": 13,
+      "title": "Maxed oxygen and oceans but lacked the prebuilt temperature capacity to prevent Generation 14",
+      "impact_vp_est": 18
+    }
+  ],
+  "counterfactuals": [
+    {
+      "change": "Treat the Mars University/Research Outpost plus Io/Callisto/Shuttles package as a hard-close alarm by Generation 8-9",
+      "swing_vp_est": 18,
+      "confidence": "med"
+    },
+    {
+      "change": "Build a second city anchor and reserve more greeneries for city adjacency instead of relying on the single city at space 18",
+      "swing_vp_est": 6,
+      "confidence": "med"
+    },
+    {
+      "change": "Require a scalable card-VP lane by Generation 7 and reject the outscale call if none is available",
+      "swing_vp_est": 10,
+      "confidence": "med"
+    },
+    {
+      "change": "Script enough temperature capacity before Generation 13 to finish all remaining global steps in the same generation",
+      "swing_vp_est": 15,
+      "confidence": "low"
+    }
+  ],
+  "rule_updates": [
+    "If an outscale call cannot show a plausible advantage in projected card VP plus city VP by Generation 6, then revoke it and switch to hard close or a named scoring lane.",
+    "If John has card cycling plus two major discount or Jovian-production pieces by Generation 8, then calculate the fastest closure line and treat generic setup actions as suspect.",
+    "If only one city anchor exists by Generation 7 and its adjacency ring is nearly full, then establish a second city or stop valuing future greeneries as city-multiplied points.",
+    "If the game can end within two generations, then assign a funded action or card to every remaining global step before spending on direct VP.",
+    "If a mutating MCP call times out while waiting for the opponent, then inspect state before retrying because the mutation may already be committed."
+  ],
+  "active_hypotheses": [
+    {
+      "hypothesis": "Earlier explicit macro calls reduce hybrid drift and improve late conversion quality.",
+      "result": "A macro label existed, but it lacked a category forecast and failed to constrain play until the Generation 12 pivot.",
+      "status": "weakened"
+    },
+    {
+      "hypothesis": "Early city anchors can offset or prevent a card-VP deficit.",
+      "result": "Only one city anchor was established; Codex lost city VP 5-11 and card VP 24-63.",
+      "status": "weakened"
+    },
+    {
+      "hypothesis": "Continuing actions after terraforming completion materially changes outcomes.",
+      "result": "Codex correctly continued and added multiple card and board VP after Mars was complete, avoiding a repeat pass error.",
+      "status": "strengthened"
+    }
+  ],
+  "endgame_review": {
+    "liquidation_plan_written": false,
+    "post_terraform_actions_checked": true,
+    "stranded_resources": [
+      "4 pre-pass MC",
+      "2 pre-pass plants",
+      "post-action production resources"
+    ],
+    "best_missed_conversion": "No profitable final conversion was clearly missed; the decisive miss was failing to build earlier closure capacity and a competitive scoring ceiling."
+  },
+  "tool_mismatches": [
+    {
+      "tool": "typed project-card payment helper",
+      "expected": "Submit the nested project-card option with the live server's full payment object.",
+      "actual": "The nested helper failed while an explicit outer-or submit_raw_entity payload with lowercase megacredits worked.",
+      "mitigation": "Use the strict raw payload until the typed helper passes both unit tests and a live smoke test."
+    },
+    {
+      "tool": "select_space",
+      "expected": "Commit the greenery placement and return when the next prompt was available.",
+      "actual": "The placement committed but the call waited on John's turn and timed out after 600 seconds.",
+      "mitigation": "After a timeout, inspect game age and board state before retrying any mutation."
+    }
+  ],
+  "postmortem_path": "agent-prompts/codex_from_gameplay/agent_game_notes/2026_07_17/postmortem-localhost-pfbd56b2de0df.md"
+}
