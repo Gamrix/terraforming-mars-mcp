@@ -93,7 +93,10 @@ async def get_game_state(
         # A submitted draft pick is still revisable until the opponent picks;
         # never surface that prompt — wait for the next real one instead.
         player_model, between_turns_actions = await wait_for_turn_from_player_model(
-            player_model
+            player_model,
+            committed_summary=(
+                "This was a read-only state fetch; no input was submitted."
+            ),
         )
     return build_agent_state(
         player_model,

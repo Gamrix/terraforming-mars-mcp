@@ -220,6 +220,9 @@ def is_revisable_selection_prompt(player_model: ApiPlayerViewModel) -> bool:
 async def wait_for_turn_from_player_model(
     player_model: ApiPlayerViewModel,
     initial_logs: Sequence[ApiGameLogEntryModel] | None = None,
+    committed_summary: str = (
+        "No game state input was submitted in this call, so nothing changed on the server. "
+    ),
 ) -> tuple[ApiPlayerViewModel, list[str]]:
     game = player_model.game
 
@@ -276,8 +279,9 @@ async def wait_for_turn_from_player_model(
 
         if now >= deadline:
             raise TimeoutError(
-                f"Timed out waiting for turn after {TURN_WAIT_TIMEOUT_SECONDS} seconds. "
-                f"Last waitingfor={last_waitingfor}"
+                f"Timed out after {TURN_WAIT_TIMEOUT_SECONDS} seconds while polling for "
+                "your turn. {committed_summary} "
+                f"Current server state: last waitingfor={last_waitingfor}"
             )
         await asyncio.sleep(TURN_WAIT_POLL_INTERVAL_SECONDS)
 
@@ -288,7 +292,12 @@ async def state_after_submission(player_model: ApiPlayerViewModel) -> dict[str, 
     if player_model.waitingFor is None or is_revisable_selection_prompt(player_model):
         initial_logs = _get_game_logs()
         player_model, between_turns_actions = await wait_for_turn_from_player_model(
-            player_model, initial_logs=initial_logs
+            player_model,
+            initial_logs=initial_logs,
+            committed_summary=(
+                "The input you submitted this call was accepted by the server and is "
+                "committed; do not resubmit it."
+            ),
         )
     return build_agent_state(
         player_model,
