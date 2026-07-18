@@ -35,7 +35,7 @@ Payload example:
 ```json
 {
   "option_index":"1",
-  "sub_response_json":"{\"type\":\"projectCard\",\"card\":\"Geothermal Power\",\"payment\":{\"megaCredits\":9,\"steel\":0,\"titanium\":0,\"heat\":0,\"plants\":0,\"microbes\":0,\"floaters\":0,\"lunaArchivesScience\":0,\"spireScience\":0,\"seeds\":0,\"auroraiData\":0,\"graphene\":0,\"kuiperAsteroids\":0}}"
+  "sub_response_json":"{\"type\":\"projectCard\",\"card\":\"Geothermal Power\",\"payment\":{\"megacredits\":9,\"steel\":0,\"titanium\":0,\"heat\":0,\"plants\":0,\"microbes\":0,\"floaters\":0,\"lunaArchivesScience\":0,\"spireScience\":0,\"seeds\":0,\"auroraiData\":0,\"graphene\":0,\"kuiperAsteroids\":0}}"
 }
 ```
 Result:
@@ -50,7 +50,7 @@ Payload example:
 ```json
 {
   "option_index":"0",
-  "sub_response_json":"{\"type\":\"projectCard\",\"card\":\"Tropical Resort\",\"payment\":{\"steel\":5,\"megaCredits\":1}}"
+  "sub_response_json":"{\"type\":\"projectCard\",\"card\":\"Tropical Resort\",\"payment\":{\"steel\":5,\"megacredits\":1}}"
 }
 ```
 Result:
@@ -182,4 +182,4 @@ How I chose it:
 - `space` -> nested `{"type":"space","spaceId":"..."}`.
 4. Only select cards shown in that option's `detail.cards` to avoid unknown-card errors.
 5. For nested `projectCard`, include all spendable payment keys with numeric values:
-- `megaCredits`, `steel`, `titanium`, `heat`, `plants`, `microbes`, `floaters`, `lunaArchivesScience`, `spireScience`, `seeds`, `auroraiData`, `graphene`, `kuiperAsteroids`.
+- `megacredits`, `steel`, `titanium`, `heat`, `plants`, `microbes`, `floaters`, `lunaArchivesScience`, `spireScience`, `seeds`, `auroraiData`, `graphene`, `kuiperAsteroids`.

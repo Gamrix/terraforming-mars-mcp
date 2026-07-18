@@ -138,7 +138,7 @@ Use these exact payload shapes when `waiting_for.input_type` is `or`.
     "type": "projectCard",
     "card": "Anti-Gravity Technology",
     "payment": {
-      "megaCredits": 13,
+      "megacredits": 13,
       "steel": 0,
       "titanium": 0,
       "heat": 0,

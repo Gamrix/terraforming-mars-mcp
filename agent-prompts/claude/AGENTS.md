@@ -50,7 +50,7 @@ play a card needing space selection, then pass:
 
 ```json
 [
-  {"type": "projectCard", "card": "Noctis City", "payment": {"megaCredits": 20}},
+  {"type": "projectCard", "card": "Noctis City", "payment": {"megacredits": 20}},
   {"type": "space", "spaceId": "35"},
   {"type": "or", "index": 5, "response": {"type": "option"}}
 ]
@@ -86,7 +86,7 @@ play a card needing space selection, then pass:
 
 - `projectCard`:
 - Requires `card` plus a `payment` object. Only include the resources you are actually spending; omitted fields default to 0.
-- Example: `{"type":"projectCard","card":"Imported Nitrogen","payment":{"megaCredits":23}}`
+- Example: `{"type":"projectCard","card":"Imported Nitrogen","payment":{"megacredits":23}}`
 
 - `space`:
 - Requires a legal `spaceId` from `waiting_for.spaces`.
@@ -129,7 +129,7 @@ Use these exact shapes when you are unsure about setup or nested prompts.
 ```json
 {
   "option_index": 0,
-  "sub_response": {"type": "projectCard", "card": "Noctis City", "payment": {"megaCredits": 18}}
+  "sub_response": {"type": "projectCard", "card": "Noctis City", "payment": {"megacredits": 18}}
 }
 ```
 
