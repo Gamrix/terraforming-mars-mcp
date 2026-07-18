@@ -13,10 +13,10 @@ core strategies for playing well. Read through it before playing a game.
 
 - Board square information is in `tharsis-board-shape.md`.
 - The board coordinate system is a unique system.
-- Adjacent coordinate rule: candidates are left/right `(x-1,y),(x+1,y)` plus four diagonals:
-  - for `y<4` use `(x-1,y-1),(x,y-1),(x-1,y+1),(x,y+1)`,
-  - for `y=4` use `(x-1,y-1),(x,y-1),(x,y+1),(x+1,y+1)`,
-  - for `y>4` use `(x,y-1),(x+1,y-1),(x,y+1),(x+1,y+1)`.
+- Adjacent coordinate rule (verified against server `Board.computeAdjacentSpaces` after Game 9): neighbors are left/right `(x-1,y),(x+1,y)` plus:
+  - `y<4`: up `(x,y-1),(x+1,y-1)`; down `(x-1,y+1),(x,y+1)`.
+  - `y=4`: up `(x,y-1),(x+1,y-1)`; down `(x,y+1),(x+1,y+1)`.
+  - `y>4`: up `(x-1,y-1),(x,y-1)`; down `(x,y+1),(x+1,y+1)`.
 
 ## Core Tools
 

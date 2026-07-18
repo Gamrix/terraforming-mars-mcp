@@ -69,6 +69,9 @@ How spaces relate to each other:
 - The map is a 9-row hex layout with row widths 5,6,7,8,9,8,7,6,5.
 - Coordinates use (x,y); y increases downward, and x is shifted by row (top row starts at x=4, middle row starts at x=0).
 - Each non-edge space can have up to 6 adjacent neighbors (hex adjacency), used for city/greenery scoring and ocean adjacency MC bonuses.
-- Adjacent coordinate rule: candidates are left/right `(x-1,y),(x+1,y)` plus four diagonals; for `y<4` use `(x-1,y-1),(x,y-1),(x-1,y+1),(x,y+1)`, for `y=4` use `(x-1,y-1),(x,y-1),(x,y+1),(x+1,y+1)`, for `y>4` use `(x,y-1),(x+1,y-1),(x,y+1),(x+1,y+1)`.
+- Adjacent coordinate rule: neighbors are left/right `(x-1,y),(x+1,y)` plus two up-diagonals and two down-diagonals:
+  - `y<4` (rows widen going down): up `(x,y-1),(x+1,y-1)`; down `(x-1,y+1),(x,y+1)`.
+  - `y=4` (middle row): up `(x,y-1),(x+1,y-1)`; down `(x,y+1),(x+1,y+1)`.
+  - `y>4` (rows narrow going down): up `(x-1,y-1),(x,y-1)`; down `(x,y+1),(x+1,y+1)`.
 - Ocean spaces are fixed board slots that can only hold ocean-type tiles; land and volcanic spaces are used for most other tile placements.
 - Volcanic areas are still land for normal placement, but are specifically valid for effects that require volcanic placement.
