@@ -151,6 +151,16 @@ def test_prepare_action_rejects_ambiguous_name() -> None:
         assert "Cannot uniquely resolve" in str(exc)
 
 
+def test_prepare_action_rejects_index_addressed_or() -> None:
+    try:
+        prepare_action(
+            {"type": "or", "index": 1, "response": {"type": "option"}}, _MENU
+        )
+        assert False, "Expected ValueError for index-addressed or action"
+    except ValueError as exc:
+        assert "'name'" in str(exc)
+
+
 def test_prepare_action_wraps_raw_project_card_into_branch_listing_it() -> None:
     prepared = prepare_action(
         {"type": "projectCard", "card": "Asteroid:SP", "payment": {"megacredits": 14}},
@@ -329,8 +339,8 @@ def test_submit_multi_actions_chains_all_actions() -> None:
     next_waiting = iter(
         [
             _wf("space"),
-            _wf("or"),
-            _wf("or"),
+            _or_menu("First", "Second"),
+            _or_menu("First", "Second"),
         ]
     )
 
@@ -597,15 +607,12 @@ def test_submit_multi_actions_returns_state_on_http_error() -> None:
         # After first action, server prompts for card selection.
         return SimpleNamespace(waitingFor=_wf("card"))
 
-    def fake_get_player(player_id: Any = None) -> Any:
-        return SimpleNamespace(waitingFor=_wf("card"))
-
     extra._post_input = fake_post_input
-    extra.get_player = fake_get_player
     _stub_state_after_submission(extra)
+    _stub_get_player(extra, _or_menu("First"))
 
     actions = [
-        {"type": "or", "index": 0, "response": {"type": "option"}},
+        {"type": "or", "name": "First", "response": {"type": "option"}},
         {"type": "card", "cards": ["Ants"]},
         {"type": "card", "cards": ["Next"]},
     ]
@@ -623,25 +630,20 @@ def test_submit_multi_actions_returns_state_on_http_error() -> None:
     }
 
 
-def test_submit_multi_actions_leaves_or_action_unwrapped() -> None:
+def test_submit_multi_actions_rejects_index_addressed_or() -> None:
     extra = _reload_extra()
-    calls: list[dict[str, Any]] = []
-
-    def fake_post_input(response: Any, player_id: Any = None) -> Any:
-        calls.append(response)
-        return SimpleNamespace(waitingFor=_wf("or"))
-
-    extra._post_input = fake_post_input
     _stub_state_after_submission(extra)
-    _stub_get_player(extra, _wf("or"))
+    _stub_get_player(extra, _or_menu("First", "Second"))
 
-    actions = [
-        {"type": "or", "index": 2, "response": {"type": "option"}},
-    ]
-    _run(extra.submit_multi_actions(actions=actions))
-
-    assert len(calls) == 1
-    assert calls[0] == {"type": "or", "index": 2, "response": {"type": "option"}}
+    try:
+        _run(
+            extra.submit_multi_actions(
+                actions=[{"type": "or", "index": 1, "response": {"type": "option"}}]
+            )
+        )
+        assert False, "Expected ValueError for index-addressed or action"
+    except ValueError as exc:
+        assert "'name'" in str(exc)
 
 
 def test_submit_and_return_state_returns_state_on_http_error(monkeypatch) -> None:
