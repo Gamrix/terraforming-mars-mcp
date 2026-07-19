@@ -3,12 +3,36 @@ from __future__ import annotations
 import asyncio
 import importlib
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, cast
 
 import terraforming_mars_mcp._tools_extra as extra_mod
 import terraforming_mars_mcp.server as server_mod
+import terraforming_mars_mcp.turn_flow as turn_flow
 from terraforming_mars_mcp._models import PaymentPayloadModel
 from terraforming_mars_mcp.api_response_models import WaitingForInputModel
+from terraforming_mars_mcp.waiting_for import find_pass_option_index, prepare_action
+
+
+def _wf(input_type: str) -> WaitingForInputModel:
+    """Minimal real prompt model for a given input type."""
+    return WaitingForInputModel.model_validate(
+        {"type": input_type, "title": "", "buttonLabel": ""}
+    )
+
+
+def _or_menu(*titles: str) -> WaitingForInputModel:
+    """An `or` prompt with one plain option per title."""
+    return WaitingForInputModel.model_validate(
+        {
+            "type": "or",
+            "title": "Take your next action",
+            "buttonLabel": "OK",
+            "options": [
+                {"type": "option", "title": title, "buttonLabel": "OK"}
+                for title in titles
+            ],
+        }
+    )
 
 
 def _reload_server() -> Any:
@@ -63,87 +87,82 @@ _ACTION_MENU = {
 }
 
 
-def _stub_action_menu(server: Any) -> None:
-    waiting_for = WaitingForInputModel.model_validate(_ACTION_MENU)
-    server.get_player = lambda player_id=None: SimpleNamespace(waitingFor=waiting_for)
+_MENU = WaitingForInputModel.model_validate(_ACTION_MENU)
 
 
-def test_choose_or_option_resolves_name_and_defaults_nested_response() -> None:
-    server = _reload_server()
-    captured: dict[str, Any] = {}
-    _set_submit_capture(server, captured)
-    _stub_action_menu(server)
-    result = _run(server.choose_or_option(option_name="End Turn"))
-
-    assert result == {"ok": True}
-    assert captured == {"type": "or", "index": 1, "response": {"type": "option"}}
+# --- prepare_action: the single submission-prep pipeline ---
 
 
-def test_choose_or_option_resolves_templated_title_and_nested_name() -> None:
-    server = _reload_server()
-    captured: dict[str, Any] = {}
-    _set_submit_capture(server, captured)
-    _stub_action_menu(server)
-    result = _run(
-        server.choose_or_option(
-            option_name="Fund an award",
-            sub_response={
+def test_prepare_action_resolves_or_name() -> None:
+    prepared = prepare_action(
+        {"type": "or", "name": "End Turn", "response": {"type": "option"}}, _MENU
+    )
+    assert prepared == {"type": "or", "index": 1, "response": {"type": "option"}}
+
+
+def test_prepare_action_resolves_templated_title_and_nested_name() -> None:
+    prepared = prepare_action(
+        {
+            "type": "or",
+            "name": "Fund an award",
+            "response": {
                 "type": "or",
                 "name": "Banker",
                 "response": {"type": "option"},
             },
-        )
+        },
+        _MENU,
     )
-
-    assert result == {"ok": True}
-    assert captured == {
+    assert prepared == {
         "type": "or",
         "index": 2,
         "response": {"type": "or", "index": 1, "response": {"type": "option"}},
     }
 
 
-def test_choose_or_option_resolves_standard_project_by_card_and_fills_payment() -> None:
-    server = _reload_server()
-    captured: dict[str, Any] = {}
-    _set_submit_capture(server, captured)
-    _stub_action_menu(server)
-    result = _run(
-        server.choose_or_option(
-            option_name="Standard projects",
-            sub_response={
+def test_prepare_action_resolves_standard_project_by_card_and_fills_payment() -> None:
+    prepared = prepare_action(
+        {
+            "type": "or",
+            "name": "Standard projects",
+            "response": {
                 "type": "projectCard",
                 "card": "Power Plant:SP",
                 "payment": {"megacredits": 11},
             },
-        )
+        },
+        _MENU,
     )
-
-    assert result == {"ok": True}
-    assert captured["index"] == 3
-    payment = captured["response"]["payment"]
+    assert prepared["index"] == 3
+    response = cast("dict[str, Any]", prepared["response"])
+    payment = response["payment"]
     assert payment["megacredits"] == 11
     assert payment["steel"] == 0
     assert payment["titanium"] == 0
 
 
-def test_choose_or_option_rejects_ambiguous_name() -> None:
-    server = _reload_server()
-    _set_submit_capture(server, captured={})
-    _stub_action_menu(server)
-
+def test_prepare_action_rejects_ambiguous_name() -> None:
     try:
-        _run(server.choose_or_option(option_name="an"))
+        prepare_action(
+            {"type": "or", "name": "an", "response": {"type": "option"}}, _MENU
+        )
         assert False, "Expected RuntimeError for ambiguous option name"
     except RuntimeError as exc:
         assert "Cannot uniquely resolve" in str(exc)
 
 
-def test_confirm_option_submits_or_response_when_waiting_for_or() -> None:
-    server = _reload_server()
-    captured: dict[str, Any] = {}
+def test_prepare_action_wraps_raw_project_card_into_branch_listing_it() -> None:
+    prepared = prepare_action(
+        {"type": "projectCard", "card": "Asteroid:SP", "payment": {"megacredits": 14}},
+        _MENU,
+    )
+    assert prepared["type"] == "or"
+    assert prepared["index"] == 3
+    assert cast("dict[str, Any]", prepared["response"])["card"] == "Asteroid:SP"
 
-    waiting_for = WaitingForInputModel.model_validate(
+
+def test_prepare_action_wraps_option_using_initial_idx() -> None:
+    menu = WaitingForInputModel.model_validate(
         {
             "type": "or",
             "title": "Choose",
@@ -155,22 +174,64 @@ def test_confirm_option_submits_or_response_when_waiting_for_or() -> None:
             ],
         }
     )
-    server.get_player = lambda player_id=None: SimpleNamespace(waitingFor=waiting_for)
-    _set_submit_capture(server, captured)
-    result = _run(server.confirm_option())
-
-    assert result == {"ok": True}
-    assert captured == {"type": "or", "index": 1, "response": {"type": "option"}}
+    prepared = prepare_action({"type": "option"}, menu)
+    assert prepared == {"type": "or", "index": 1, "response": {"type": "option"}}
 
 
-def test_confirm_option_submits_option_for_option_prompt() -> None:
-    server = _reload_server()
-    captured: dict[str, Any] = {}
-
-    waiting_for = WaitingForInputModel.model_validate(
+def test_prepare_action_passes_through_on_non_or_prompt() -> None:
+    prompt = WaitingForInputModel.model_validate(
         {"type": "option", "title": "Confirm", "buttonLabel": "OK"}
     )
-    server.get_player = lambda player_id=None: SimpleNamespace(waitingFor=waiting_for)
+    assert prepare_action({"type": "option"}, prompt) == {"type": "option"}
+    assert prepare_action({"type": "space", "spaceId": "35"}, None) == {
+        "type": "space",
+        "spaceId": "35",
+    }
+
+
+def test_prepare_action_errors_when_no_branch_matches_type() -> None:
+    menu = WaitingForInputModel.model_validate(
+        {
+            "type": "or",
+            "title": "Choose",
+            "buttonLabel": "OK",
+            "options": [
+                {"type": "option", "title": "Pass", "buttonLabel": "OK"},
+                {"type": "card", "title": "Select card", "buttonLabel": "OK"},
+            ],
+        }
+    )
+    try:
+        prepare_action({"type": "projectCard", "card": "Noctis City"}, menu)
+        assert False, "Expected RuntimeError for missing projectCard branch"
+    except RuntimeError as exc:
+        assert "projectCard" in str(exc)
+
+
+# --- thin tool wrappers submit raw payloads; prep happens in turn_flow ---
+
+
+def test_choose_or_option_submits_name_envelope() -> None:
+    server = _reload_server()
+    captured: dict[str, Any] = {}
+    _set_submit_capture(server, captured)
+    result = _run(
+        server.choose_or_option(
+            option_name="End Turn", sub_response={"type": "space", "spaceId": "35"}
+        )
+    )
+
+    assert result == {"ok": True}
+    assert captured == {
+        "type": "or",
+        "name": "End Turn",
+        "response": {"type": "space", "spaceId": "35"},
+    }
+
+
+def test_confirm_option_submits_plain_option() -> None:
+    server = _reload_server()
+    captured: dict[str, Any] = {}
     _set_submit_capture(server, captured)
     result = _run(server.confirm_option())
 
@@ -178,40 +239,21 @@ def test_confirm_option_submits_option_for_option_prompt() -> None:
     assert captured == {"type": "option"}
 
 
-def test_pass_turn_finds_pass_option_by_warning() -> None:
+def test_pass_turn_submits_static_pass_name() -> None:
     server = _reload_server()
     captured: dict[str, Any] = {}
-
-    waiting_for = WaitingForInputModel.model_validate(
-        {
-            "type": "or",
-            "title": "Take your first action",
-            "buttonLabel": "OK",
-            "options": [
-                {"type": "projectCard", "title": "Play card", "buttonLabel": "OK"},
-                {"type": "card", "title": "Standard projects", "buttonLabel": "OK"},
-                {
-                    "type": "option",
-                    "title": "Pass for this generation",
-                    "buttonLabel": "Pass",
-                    "warnings": ["pass"],
-                },
-                {"type": "card", "title": "Sell patents", "buttonLabel": "OK"},
-            ],
-        }
-    )
-    server.get_player = lambda player_id=None: SimpleNamespace(waitingFor=waiting_for)
     _set_submit_capture(server, captured)
     result = _run(server.pass_turn())
 
     assert result == {"ok": True}
-    assert captured == {"type": "or", "index": 2, "response": {"type": "option"}}
+    assert captured == {
+        "type": "or",
+        "name": "Pass for this generation",
+        "response": {"type": "option"},
+    }
 
 
-def test_pass_turn_prefers_pass_over_earlier_end_turn() -> None:
-    server = _reload_server()
-    captured: dict[str, Any] = {}
-
+def test_find_pass_option_index_never_matches_end_turn() -> None:
     waiting_for = WaitingForInputModel.model_validate(
         {
             "type": "or",
@@ -229,18 +271,9 @@ def test_pass_turn_prefers_pass_over_earlier_end_turn() -> None:
             ],
         }
     )
-    server.get_player = lambda player_id=None: SimpleNamespace(waitingFor=waiting_for)
-    _set_submit_capture(server, captured)
-    result = _run(server.pass_turn())
+    assert find_pass_option_index(waiting_for) == 2
 
-    assert result == {"ok": True}
-    assert captured == {"type": "or", "index": 2, "response": {"type": "option"}}
-
-
-def test_pass_turn_never_matches_end_turn() -> None:
-    server = _reload_server()
-
-    waiting_for = WaitingForInputModel.model_validate(
+    end_turn_only = WaitingForInputModel.model_validate(
         {
             "type": "or",
             "title": "Take your next action",
@@ -251,48 +284,12 @@ def test_pass_turn_never_matches_end_turn() -> None:
             ],
         }
     )
-    server.get_player = lambda player_id=None: SimpleNamespace(waitingFor=waiting_for)
-    _set_submit_capture(server, captured={})
-
-    try:
-        _run(server.pass_turn())
-        assert False, "Expected RuntimeError when only End Turn is available"
-    except RuntimeError as exc:
-        assert "No pass option" in str(exc)
+    assert find_pass_option_index(end_turn_only) is None
 
 
-def test_pass_turn_errors_when_no_pass_option() -> None:
-    server = _reload_server()
-
-    waiting_for = WaitingForInputModel.model_validate(
-        {
-            "type": "or",
-            "title": "Choose",
-            "buttonLabel": "OK",
-            "options": [
-                {"type": "projectCard", "title": "Play card", "buttonLabel": "OK"},
-                {"type": "card", "title": "Select card", "buttonLabel": "OK"},
-            ],
-        }
-    )
-    server.get_player = lambda player_id=None: SimpleNamespace(waitingFor=waiting_for)
-    _set_submit_capture(server, captured={})
-
-    try:
-        _run(server.pass_turn())
-        assert False, "Expected RuntimeError for missing pass option"
-    except RuntimeError as exc:
-        assert "pass" in str(exc).lower() or "end-turn" in str(exc).lower()
-
-
-def test_pay_for_project_card_submits_direct_project_card_payload() -> None:
+def test_pay_for_project_card_submits_project_card_payload() -> None:
     server = _reload_server()
     captured: dict[str, Any] = {}
-
-    waiting_for = WaitingForInputModel.model_validate(
-        {"type": "projectCard", "title": "Play", "buttonLabel": "OK"}
-    )
-    server.get_player = lambda player_id=None: SimpleNamespace(waitingFor=waiting_for)
     _set_submit_capture(server, captured)
     result = _run(
         server.pay_for_project_card(
@@ -304,107 +301,6 @@ def test_pay_for_project_card_submits_direct_project_card_payload() -> None:
     assert captured["type"] == "projectCard"
     assert captured["card"] == "Noctis City"
     assert captured["payment"]["megacredits"] == 18
-
-
-def test_pay_for_project_card_wraps_outer_or_menu() -> None:
-    server = _reload_server()
-    captured: dict[str, Any] = {}
-
-    waiting_for = WaitingForInputModel.model_validate(
-        {
-            "type": "or",
-            "title": "Choose",
-            "buttonLabel": "OK",
-            "initialIdx": 0,
-            "options": [
-                {"type": "projectCard", "title": "Play card", "buttonLabel": "OK"},
-                {"type": "option", "title": "Pass", "buttonLabel": "OK"},
-            ],
-        }
-    )
-    server.get_player = lambda player_id=None: SimpleNamespace(waitingFor=waiting_for)
-    _set_submit_capture(server, captured)
-    result = _run(
-        server.pay_for_project_card(
-            card_name="Noctis City", payment=PaymentPayloadModel(megacredits=18)
-        )
-    )
-
-    assert result == {"ok": True}
-    assert captured["type"] == "or"
-    assert captured["index"] == 0
-    assert captured["response"]["type"] == "projectCard"
-    assert captured["response"]["card"] == "Noctis City"
-    assert captured["response"]["payment"]["megacredits"] == 18
-
-
-def test_pay_for_project_card_picks_branch_listing_the_card() -> None:
-    server = _reload_server()
-    captured: dict[str, Any] = {}
-
-    waiting_for = WaitingForInputModel.model_validate(
-        {
-            "type": "or",
-            "title": "Take your first action",
-            "buttonLabel": "OK",
-            "initialIdx": 0,
-            "options": [
-                {
-                    "type": "projectCard",
-                    "title": "Play project card",
-                    "buttonLabel": "OK",
-                    "cards": [{"name": "Noctis City"}],
-                },
-                {
-                    "type": "projectCard",
-                    "title": "Standard projects",
-                    "buttonLabel": "OK",
-                    "cards": [{"name": "Power Plant:SP"}, {"name": "Asteroid:SP"}],
-                },
-            ],
-        }
-    )
-    server.get_player = lambda player_id=None: SimpleNamespace(waitingFor=waiting_for)
-    _set_submit_capture(server, captured)
-    result = _run(
-        server.pay_for_project_card(
-            card_name="Power Plant:SP", payment=PaymentPayloadModel(megacredits=11)
-        )
-    )
-
-    assert result == {"ok": True}
-    assert captured["type"] == "or"
-    assert captured["index"] == 1
-    assert captured["response"]["card"] == "Power Plant:SP"
-
-
-def test_pay_for_project_card_errors_when_outer_or_has_no_project_card_branch() -> None:
-    server = _reload_server()
-
-    waiting_for = WaitingForInputModel.model_validate(
-        {
-            "type": "or",
-            "title": "Choose",
-            "buttonLabel": "OK",
-            "options": [
-                {"type": "option", "title": "Pass", "buttonLabel": "OK"},
-                {"type": "card", "title": "Select card", "buttonLabel": "OK"},
-            ],
-        }
-    )
-    server.get_player = lambda player_id=None: SimpleNamespace(waitingFor=waiting_for)
-
-    _set_submit_capture(server, captured={})
-
-    try:
-        _run(
-            server.pay_for_project_card(
-                card_name="Noctis City", payment=PaymentPayloadModel(megacredits=18)
-            )
-        )
-        assert False, "Expected RuntimeError for missing projectCard branch"
-    except RuntimeError as exc:
-        assert "projectCard" in str(exc)
 
 
 # --- submit_multi_actions tests ---
@@ -432,9 +328,9 @@ def test_submit_multi_actions_chains_all_actions() -> None:
     # and the third answers an `or` prompt — matching the action types.
     next_waiting = iter(
         [
-            SimpleNamespace(type="space"),
-            SimpleNamespace(type="or"),
-            SimpleNamespace(type="or"),
+            _wf("space"),
+            _wf("or"),
+            _wf("or"),
         ]
     )
 
@@ -444,19 +340,19 @@ def test_submit_multi_actions_chains_all_actions() -> None:
 
     extra._post_input = fake_post_input
     _stub_state_after_submission(extra)
-    _stub_get_player(extra, SimpleNamespace(type="or"))
+    _stub_get_player(extra, _or_menu("First", "Second"))
 
     actions = [
-        {"type": "or", "index": 0, "response": {"type": "option"}},
+        {"type": "or", "name": "First", "response": {"type": "option"}},
         {"type": "space", "spaceId": "35"},
-        {"type": "or", "index": 1, "response": {"type": "option"}},
+        {"type": "or", "name": "Second", "response": {"type": "option"}},
     ]
     result = _run(extra.submit_multi_actions(actions=actions))
 
     assert len(calls) == 3
-    assert calls[0]["type"] == "or"
+    assert calls[0] == {"type": "or", "index": 0, "response": {"type": "option"}}
     assert calls[1]["type"] == "space"
-    assert calls[2]["type"] == "or"
+    assert calls[2] == {"type": "or", "index": 1, "response": {"type": "option"}}
     assert result["actions_executed"] == 3
 
 
@@ -468,16 +364,16 @@ def test_submit_multi_actions_stops_when_turn_ends_early() -> None:
         calls.append(response)
         if len(calls) >= 2:
             return SimpleNamespace(waitingFor=None)
-        return SimpleNamespace(waitingFor=SimpleNamespace(type="space"))
+        return SimpleNamespace(waitingFor=_wf("space"))
 
     extra._post_input = fake_post_input
     _stub_state_after_submission(extra)
-    _stub_get_player(extra, SimpleNamespace(type="or"))
+    _stub_get_player(extra, _or_menu("First", "Second"))
 
     actions = [
-        {"type": "or", "index": 0, "response": {"type": "option"}},
+        {"type": "or", "name": "First", "response": {"type": "option"}},
         {"type": "space", "spaceId": "35"},
-        {"type": "or", "index": 1, "response": {"type": "option"}},
+        {"type": "or", "name": "Second", "response": {"type": "option"}},
     ]
     result = _run(extra.submit_multi_actions(actions=actions))
 
@@ -508,7 +404,7 @@ def test_submit_multi_actions_normalizes_payment() -> None:
 
     def fake_post_input(response: Any, player_id: Any = None) -> Any:
         calls.append(response)
-        return SimpleNamespace(waitingFor=SimpleNamespace(type="or"))
+        return SimpleNamespace(waitingFor=_wf("or"))
 
     extra._post_input = fake_post_input
     _stub_state_after_submission(extra)
@@ -532,8 +428,8 @@ def test_submit_multi_actions_chains_from_project_card() -> None:
     def fake_post_input(response: Any, player_id: Any = None) -> Any:
         calls.append(response)
         if len(calls) == 1:
-            return SimpleNamespace(waitingFor=SimpleNamespace(type="space"))
-        return SimpleNamespace(waitingFor=SimpleNamespace(type="or"))
+            return SimpleNamespace(waitingFor=_wf("space"))
+        return SimpleNamespace(waitingFor=_wf("or"))
 
     extra._post_input = fake_post_input
     _stub_state_after_submission(extra)
@@ -560,7 +456,7 @@ def test_submit_multi_actions_auto_wraps_raw_action_for_or_prompt() -> None:
     def fake_post_input(response: Any, player_id: Any = None) -> Any:
         calls.append(response)
         # After the wrapped projectCard, server opens a space prompt.
-        return SimpleNamespace(waitingFor=SimpleNamespace(type="space"))
+        return SimpleNamespace(waitingFor=_wf("space"))
 
     extra._post_input = fake_post_input
     _stub_state_after_submission(extra)
@@ -654,7 +550,7 @@ def test_submit_multi_actions_normalizes_nested_payment_in_or_envelope() -> None
 
     def fake_post_input(response: Any, player_id: Any = None) -> Any:
         calls.append(response)
-        return SimpleNamespace(waitingFor=SimpleNamespace(type="or"))
+        return SimpleNamespace(waitingFor=_wf("or"))
 
     extra._post_input = fake_post_input
     _stub_state_after_submission(extra)
@@ -699,10 +595,10 @@ def test_submit_multi_actions_returns_state_on_http_error() -> None:
                 "HTTP 400 POST /player/input: Not a valid SelectCardResponse"
             )
         # After first action, server prompts for card selection.
-        return SimpleNamespace(waitingFor=SimpleNamespace(type="card"))
+        return SimpleNamespace(waitingFor=_wf("card"))
 
     def fake_get_player(player_id: Any = None) -> Any:
-        return SimpleNamespace(waitingFor=SimpleNamespace(type="card"))
+        return SimpleNamespace(waitingFor=_wf("card"))
 
     extra._post_input = fake_post_input
     extra.get_player = fake_get_player
@@ -733,11 +629,11 @@ def test_submit_multi_actions_leaves_or_action_unwrapped() -> None:
 
     def fake_post_input(response: Any, player_id: Any = None) -> Any:
         calls.append(response)
-        return SimpleNamespace(waitingFor=SimpleNamespace(type="or"))
+        return SimpleNamespace(waitingFor=_wf("or"))
 
     extra._post_input = fake_post_input
     _stub_state_after_submission(extra)
-    _stub_get_player(extra, SimpleNamespace(type="or"))
+    _stub_get_player(extra, _wf("or"))
 
     actions = [
         {"type": "or", "index": 2, "response": {"type": "option"}},
@@ -749,7 +645,6 @@ def test_submit_multi_actions_leaves_or_action_unwrapped() -> None:
 
 
 def test_submit_and_return_state_returns_state_on_http_error(monkeypatch) -> None:
-    import terraforming_mars_mcp.turn_flow as turn_flow
 
     def fake_post_input(response: Any, player_id: Any = None) -> Any:
         raise RuntimeError(
@@ -757,7 +652,7 @@ def test_submit_and_return_state_returns_state_on_http_error(monkeypatch) -> Non
         )
 
     def fake_get_player(player_id: Any = None) -> Any:
-        return SimpleNamespace(waitingFor=SimpleNamespace(type="card"))
+        return SimpleNamespace(waitingFor=_wf("card"))
 
     monkeypatch.setattr(turn_flow, "_post_input", fake_post_input)
     monkeypatch.setattr(turn_flow, "get_player", fake_get_player)
@@ -782,7 +677,7 @@ def test_select_resources_submits_single_resource_payload() -> None:
         return {"ok": True}
 
     extra.get_player = lambda player_id=None: SimpleNamespace(
-        waitingFor=SimpleNamespace(type="resource")
+        waitingFor=_wf("resource")
     )
     extra.submit_and_return_state = _submit
 
@@ -801,7 +696,7 @@ def test_select_resources_submits_units_payload() -> None:
         return {"ok": True}
 
     extra.get_player = lambda player_id=None: SimpleNamespace(
-        waitingFor=SimpleNamespace(type="resources")
+        waitingFor=_wf("resources")
     )
     extra.submit_and_return_state = _submit
 
@@ -828,7 +723,7 @@ def test_select_resources_submits_units_payload() -> None:
 def test_select_resources_validates_single_resource_selection() -> None:
     extra = _reload_extra()
     extra.get_player = lambda player_id=None: SimpleNamespace(
-        waitingFor=SimpleNamespace(type="resource")
+        waitingFor=_wf("resource")
     )
 
     try:

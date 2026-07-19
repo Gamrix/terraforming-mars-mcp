@@ -172,6 +172,7 @@ def test_submit_and_return_state_surfaces_between_turn_opponent_new_cards(
 
     monkeypatch.setattr(turn_flow, "_post_input", lambda response: post_input_model)
     monkeypatch.setattr(turn_flow, "_get_game_logs", lambda: logs)
+    monkeypatch.setattr(turn_flow, "get_player", lambda: post_input_model)
 
     async def fake_wait_for_turn_from_player_model(
         player_model, initial_logs=None, committed_summary=""

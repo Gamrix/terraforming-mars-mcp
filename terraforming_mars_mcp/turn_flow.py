@@ -24,7 +24,7 @@ from .api_response_models import (
 )
 from .game_state import build_agent_state
 from .observed_cards import observe_player_model
-from .waiting_for import title_to_text
+from .waiting_for import prepare_action, title_to_text
 
 TURN_WAIT_TIMEOUT_SECONDS = 2 * 60 * 60
 TURN_WAIT_POLL_INTERVAL_SECONDS = 2
@@ -309,8 +309,15 @@ async def state_after_submission(player_model: ApiPlayerViewModel) -> dict[str, 
 
 
 async def submit_and_return_state(response: Mapping[str, object]) -> dict[str, Any]:
+    """Prepare a raw InputResponse against the live prompt and submit it.
+
+    This is the single submission pipeline: payment defaults are filled and
+    `or` options addressed by name are resolved here, so every action tool
+    gets identical behavior.
+    """
     try:
-        player_model = _post_input(cast(dict[str, JsonValue], dict(response)))
+        prepared = prepare_action(dict(response), get_player().waitingFor)
+        player_model = _post_input(cast(dict[str, JsonValue], prepared))
     except RuntimeError as exc:
         refreshed = get_player()
         state = build_agent_state(

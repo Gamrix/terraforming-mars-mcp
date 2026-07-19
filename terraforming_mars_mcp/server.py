@@ -15,12 +15,10 @@ import argparse
 import logging
 import os
 from pathlib import Path
-from typing import cast
 
 from ._app import mcp
-from ._enums import DetailLevel, InputType
-from ._models import PaymentPayloadModel, normalize_raw_input_entity
-from .api_response_models import JsonValue
+from ._enums import DetailLevel
+from ._models import PaymentPayloadModel
 from .card_info import compact_cards
 from .game_state import build_agent_state
 from .turn_flow import (
@@ -30,12 +28,7 @@ from .turn_flow import (
     submit_and_return_state,
     wait_for_turn_from_player_model,
 )
-from .waiting_for import (
-    find_pass_option_index,
-    normalize_or_sub_response,
-    resolve_or_action,
-    wrap_action_for_prompt,
-)
+from .waiting_for import normalize_or_sub_response
 
 LOG_LEVELS = ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL")
 
@@ -140,36 +133,18 @@ async def choose_or_option(
     they are immune to menu reordering. A nested `or` in `sub_response` uses
     `"name"` the same way (e.g. a milestone or award title).
     """
-    action: dict[str, object] = {
-        "type": "or",
-        "name": option_name,
-        "response": normalize_or_sub_response(sub_response),
-    }
-    action = normalize_raw_input_entity(action)
-    action = resolve_or_action(action, get_player().waitingFor)
-    return await submit_and_return_state(action)
+    return await submit_and_return_state(
+        {
+            "type": "or",
+            "name": option_name,
+            "response": normalize_or_sub_response(sub_response),
+        }
+    )
 
 
 @mcp.tool()
 async def confirm_option() -> dict[str, object]:
     """Respond to `type: option`."""
-    player_model = get_player()
-    waiting_for = player_model.waitingFor
-    if waiting_for is not None and waiting_for.type == InputType.OR_OPTIONS.value:
-        index = 0
-        initial_idx = waiting_for.initialIdx
-        if isinstance(initial_idx, int) and initial_idx >= 0:
-            index = initial_idx
-        else:
-            options = waiting_for.options
-            if options is not None:
-                for idx, option in enumerate(options):
-                    if option.type == InputType.SELECT_OPTION.value:
-                        index = idx
-                        break
-        return await submit_and_return_state(
-            {"type": "or", "index": index, "response": {"type": "option"}}
-        )
     return await submit_and_return_state({"type": "option"})
 
 
@@ -177,25 +152,15 @@ async def confirm_option() -> dict[str, object]:
 async def pass_turn() -> dict[str, object]:
     """Pass for the generation.
 
-    Shortcut that finds the "Pass for this generation" option in the current
-    `or` prompt and submits it. To merely end the turn, use
-    `choose_or_option(option_name="End Turn")`.
+    Submits the "Pass for this generation" option of the current `or` prompt.
+    To merely end the turn, use `choose_or_option(option_name="End Turn")`.
     """
-    player_model = get_player()
-    waiting_for = player_model.waitingFor
-    if waiting_for is None:
-        raise RuntimeError("No action is currently waiting for input")
-
-    if waiting_for.type == InputType.OR_OPTIONS.value:
-        pass_index = find_pass_option_index(waiting_for)
-        if pass_index is not None:
-            return await submit_and_return_state(
-                {"type": "or", "index": pass_index, "response": {"type": "option"}}
-            )
-        raise RuntimeError("No pass option available in the current prompt")
-
-    raise RuntimeError(
-        f"pass_turn requires an 'or' prompt, but current prompt is '{waiting_for.type}'"
+    return await submit_and_return_state(
+        {
+            "type": "or",
+            "name": "Pass for this generation",
+            "response": {"type": "option"},
+        }
     )
 
 
@@ -204,18 +169,20 @@ async def pay_for_project_card(
     card_name: str,
     payment: PaymentPayloadModel | None = None,
 ) -> dict[str, object]:
-    """Respond to `type: projectCard`."""
+    """Respond to `type: projectCard`.
+
+    Works for hand cards and standard projects alike — the card name selects
+    the matching branch of the current action menu.
+    """
     if not card_name:
         raise ValueError("card_name is required")
-    project_card_response: dict[str, object] = {
-        "type": "projectCard",
-        "card": card_name,
-        "payment": (payment or PaymentPayloadModel()).model_dump(by_alias=True),
-    }
-
-    player_model = get_player()
-    wrapped = wrap_action_for_prompt(project_card_response, player_model.waitingFor)
-    return await submit_and_return_state(cast(dict[str, JsonValue], wrapped))
+    return await submit_and_return_state(
+        {
+            "type": "projectCard",
+            "card": card_name,
+            "payment": (payment or PaymentPayloadModel()).model_dump(by_alias=True),
+        }
+    )
 
 
 # Import _tools_extra to register its @mcp.tool() handlers on the shared mcp instance

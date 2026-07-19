@@ -4,6 +4,7 @@ import re
 from typing import cast
 
 from ._enums import DetailLevel, InputType, strip_empty
+from ._models import normalize_raw_input_entity
 from .api_response_models import (
     JsonValue,
     MessageModel,
@@ -57,6 +58,30 @@ def _is_sell_patents(title: str | MessageModel) -> bool:
     return "sell patents" in title_to_text(title).lower()
 
 
+def _should_hide_option(
+    option: ApiWaitingForInputModel,
+    option_detail: dict[str, object] | None,
+    input_type: str | None,
+) -> bool:
+    """Hide options that are noise for agents: undo, learner-mode-only
+    standard projects, and options whose cards all got filtered as disabled."""
+    if option_detail is None:
+        return _is_undo_option(input_type=input_type, title=option.title, warnings=None)
+    raw_warnings = option_detail.get("warnings")
+    warnings = (
+        [w for w in raw_warnings if isinstance(w, str)]
+        if isinstance(raw_warnings, list)
+        else None
+    )
+    if _is_undo_option(input_type=input_type, title=option.title, warnings=warnings):
+        return True
+    card_sel = option_detail.get("card_selection")
+    if isinstance(card_sel, dict) and card_sel.get("show_only_in_learner_mode"):
+        return True
+    cards = option_detail.get("cards")
+    return isinstance(cards, list) and len(cards) == 0
+
+
 def find_pass_option_index(
     waiting_for: ApiWaitingForInputModel,
 ) -> int | None:
@@ -78,37 +103,6 @@ def find_pass_option_index(
 
 def _option_card_names(option: ApiWaitingForInputModel) -> list[str]:
     return [card if isinstance(card, str) else card.name for card in option.cards or []]
-
-
-def find_or_option_index(
-    waiting_for: ApiWaitingForInputModel,
-    expected_type: str,
-    card_name: str | None = None,
-) -> int:
-    options = waiting_for.options
-    if options is None:
-        raise RuntimeError("Current waitingFor has no options for an 'or' prompt")
-
-    candidates = [
-        idx for idx, option in enumerate(options) if option.type == expected_type
-    ]
-    if not candidates:
-        raise RuntimeError(
-            f"No outer 'or' option of type '{expected_type}' is currently available"
-        )
-
-    # Several branches can share a type (e.g. "Play project card" and
-    # "Standard projects" are both projectCard) — pick the branch that
-    # actually lists the requested card.
-    if card_name is not None and len(candidates) > 1:
-        for idx in candidates:
-            if card_name in _option_card_names(options[idx]):
-                return idx
-
-    initial_idx = waiting_for.initialIdx
-    if isinstance(initial_idx, int) and initial_idx in candidates:
-        return initial_idx
-    return candidates[0]
 
 
 _TEMPLATE_PLACEHOLDER = re.compile(r"\$\{\d+\}")
@@ -157,75 +151,96 @@ def find_or_option_index_by_name(
     )
 
 
-def resolve_or_action(
+def _find_branch_index(
+    waiting_for: ApiWaitingForInputModel,
+    expected_type: str,
+    card_name: str | None,
+) -> int:
+    """Pick the `or` branch matching a raw inner-type action."""
+    options = waiting_for.options
+    if options is None:
+        raise RuntimeError("Current waitingFor has no options for an 'or' prompt")
+
+    candidates = [
+        idx for idx, option in enumerate(options) if option.type == expected_type
+    ]
+    if not candidates:
+        raise RuntimeError(
+            f"No outer 'or' option of type '{expected_type}' is currently available"
+        )
+
+    # Several branches can share a type (e.g. "Play project card" and
+    # "Standard projects" are both projectCard) — pick the branch that
+    # actually lists the requested card.
+    if card_name is not None and len(candidates) > 1:
+        for idx in candidates:
+            if card_name in _option_card_names(options[idx]):
+                return idx
+
+    initial_idx = waiting_for.initialIdx
+    if isinstance(initial_idx, int) and initial_idx in candidates:
+        return initial_idx
+    return candidates[0]
+
+
+def resolve_action_for_prompt(
     action: dict[str, object],
     waiting_for: ApiWaitingForInputModel | None,
 ) -> dict[str, object]:
-    """Fill in 'index' for 'or' envelopes addressed by option 'name'.
+    """Resolve a raw InputResponse against the live prompt.
 
-    Names are resolved against the live prompt (recursively for nested 'or'
-    menus like milestone/award submenus), so callers are immune to option
-    reordering. Actions that already carry an index pass through with any
-    stray 'name' keys removed.
+    `or` envelopes address their option by ``"name"`` (title or offered card);
+    the matching index is filled in, recursively for nested menus, so callers
+    are immune to option reordering. Raw inner-type actions (`projectCard`,
+    `space`, `card`, `option`, ...) submitted against an `or` prompt are
+    wrapped into the matching branch — chosen by card name for projectCard,
+    then by type with ``initialIdx`` preference. Everything else passes
+    through unchanged.
     """
-    if action.get("type") != InputType.OR_OPTIONS.value:
-        return action
-    resolved = dict(action)
-    name = resolved.pop("name", None)
-    options = (
-        getattr(waiting_for, "options", None)
-        if getattr(waiting_for, "type", None) == InputType.OR_OPTIONS.value
+    prompt = (
+        waiting_for
+        if waiting_for is not None and waiting_for.type == InputType.OR_OPTIONS.value
         else None
     )
 
-    index = resolved.get("index")
-    if not isinstance(index, int):
-        if name is None:
-            raise ValueError("'or' action requires either 'index' or 'name'")
-        if waiting_for is None or options is None:
-            raise RuntimeError(
-                "Current prompt is not an 'or'; cannot resolve option by name"
-            )
-        index = find_or_option_index_by_name(waiting_for, str(name))
-        resolved["index"] = index
+    action_type = action.get("type")
+    if action_type != InputType.OR_OPTIONS.value:
+        if prompt is None or not isinstance(action_type, str):
+            return action
+        card = action.get("card")
+        index = _find_branch_index(
+            prompt, action_type, card if isinstance(card, str) else None
+        )
+        return {"type": "or", "index": index, "response": cast(JsonValue, action)}
 
+    resolved = dict(action)
+    if "index" in resolved:
+        raise ValueError("'or' actions are addressed by 'name', not 'index'")
+    name = resolved.pop("name", None)
+    if name is None:
+        raise ValueError("'or' action requires 'name'")
+    if prompt is None:
+        raise RuntimeError(
+            "Current prompt is not an 'or'; cannot resolve option by name"
+        )
+    index = find_or_option_index_by_name(prompt, str(name))
+    resolved["index"] = index
+
+    options = prompt.options
     response = resolved.get("response")
-    if isinstance(response, dict) and options is not None and 0 <= index < len(options):
+    if isinstance(response, dict) and options and 0 <= index < len(options):
         resolved["response"] = cast(
-            JsonValue, resolve_or_action(dict(response), options[index])
+            JsonValue, resolve_action_for_prompt(dict(response), options[index])
         )
     return resolved
 
 
-def wrap_action_for_prompt(
+def prepare_action(
     action: dict[str, object],
     waiting_for: ApiWaitingForInputModel | None,
 ) -> dict[str, object]:
-    """Wrap a raw InputResponse in an `or` envelope if the current prompt is an `or`.
-
-    The server only accepts an OrOptionsResponse when `waitingFor.type == "or"`.
-    If the caller supplies a raw inner-type action (e.g. `projectCard`, `space`,
-    `card`), locate the matching outer option and wrap accordingly. For
-    projectCard actions the card name disambiguates between hand-card and
-    standard-project branches. Actions already shaped as `or` or submitted
-    against a non-`or` prompt pass through.
-    """
-    if waiting_for is None or waiting_for.type != InputType.OR_OPTIONS.value:
-        return action
-    action_type = action.get("type")
-    if not isinstance(action_type, str) or action_type == InputType.OR_OPTIONS.value:
-        return action
-    card_name = action.get("card")
-    option_index = find_or_option_index(
-        waiting_for,
-        action_type,
-        card_name=card_name if isinstance(card_name, str) else None,
-    )
-    return {
-        "type": "or",
-        "index": option_index,
-        "response": cast(JsonValue, action),
-    }
+    """Full submission prep: fill payment defaults, then resolve to the prompt."""
+    return resolve_action_for_prompt(normalize_raw_input_entity(action), waiting_for)
 
 
 def normalize_waiting_for(
@@ -336,33 +351,8 @@ def normalize_waiting_for(
                             continue
                         option_payload[key] = value
 
-                option_warnings: list[str] | None = None
-                if option_detail is not None:
-                    raw_warnings = option_detail.get("warnings")
-                    if isinstance(raw_warnings, list):
-                        option_warnings = [
-                            w for w in raw_warnings if isinstance(w, str)
-                        ]
-                if _is_undo_option(
-                    input_type=input_type,
-                    title=option.title,
-                    warnings=option_warnings,
-                ):
+                if _should_hide_option(option, option_detail, input_type):
                     continue
-
-                # Skip learner-mode-only options (e.g. all-disabled standard projects).
-                if option_detail is not None:
-                    card_sel = option_detail.get("card_selection")
-                    if isinstance(card_sel, dict) and card_sel.get(
-                        "show_only_in_learner_mode"
-                    ):
-                        continue
-
-                # Skip options whose cards are all empty after disabled filtering.
-                if option_detail is not None:
-                    option_cards = option_detail.get("cards")
-                    if isinstance(option_cards, list) and len(option_cards) == 0:
-                        continue
 
                 if _is_sell_patents(option.title):
                     option_payload.pop("cards", None)

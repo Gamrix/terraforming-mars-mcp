@@ -9,7 +9,6 @@ from ._models import (
     InitialCardsSelectionModel,
     PaymentPayloadModel,
     UnitsPayloadModel,
-    normalize_raw_input_entity,
 )
 from .api_response_models import JsonValue
 from .card_info import extract_played_cards
@@ -23,7 +22,7 @@ from .turn_flow import (
     submit_and_return_state,
     wait_for_turn_from_player_model,
 )
-from .waiting_for import resolve_or_action, wrap_action_for_prompt
+from .waiting_for import prepare_action
 
 
 @mcp.tool()
@@ -107,14 +106,13 @@ async def wait_for_turn() -> dict[str, Any]:
 async def submit_raw_entity(entity: dict[str, object]) -> dict[str, object]:
     """Submit any raw /player/input payload as an object with `type`.
 
-    `or` entities may address options with `"name"` instead of `"index"`;
-    names are resolved against the live prompt (nested `or` included).
+    `or` entities address their option with `"name"` (the option title or a
+    card it offers); names are resolved against the live prompt, nested `or`
+    responses included.
     """
     if "type" not in entity:
         raise ValueError("entity must include a 'type' field")
-    normalized = normalize_raw_input_entity(entity)
-    normalized = resolve_or_action(normalized, get_player().waitingFor)
-    return await submit_and_return_state(normalized)
+    return await submit_and_return_state(entity)
 
 
 @mcp.tool()
@@ -167,10 +165,8 @@ async def submit_multi_actions(
         if "type" not in action:
             raise ValueError(f"Action at index {i} must include a 'type' field")
 
-        normalized = normalize_raw_input_entity(action)
-        normalized = resolve_or_action(normalized, player_model.waitingFor)
-        normalized = wrap_action_for_prompt(normalized, player_model.waitingFor)
         try:
+            normalized = prepare_action(action, player_model.waitingFor)
             player_model = _post_input(cast(dict[str, JsonValue], normalized))
         except RuntimeError as exc:
             error_info = {
