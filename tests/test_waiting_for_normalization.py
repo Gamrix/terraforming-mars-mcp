@@ -211,10 +211,10 @@ def test_waiting_for_surfaces_warnings_and_branch_metadata() -> None:
     normalized = _normalize_waiting_for(waiting_for)
 
     assert normalized["warning"] == "Some context warning"
-    assert normalized["initial_index"] == 1
-    assert "is_initial" not in normalized["options"][0]
-    assert "is_initial" not in normalized["options"][1]
-    assert normalized["initial_index"] == 1
+    # Options are addressed by title, so no index metadata is surfaced.
+    assert "initial_index" not in normalized
+    assert "index" not in normalized["options"][0]
+    assert "index" not in normalized["options"][1]
     assert normalized["options"][1]["warnings"] == ["pass"]
 
 

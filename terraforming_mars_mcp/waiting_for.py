@@ -3,12 +3,14 @@ from __future__ import annotations
 import re
 from typing import cast
 
+from ._enums import DetailLevel, InputType, strip_empty
 from .api_response_models import (
     JsonValue,
     MessageModel,
+)
+from .api_response_models import (
     WaitingForInputModel as ApiWaitingForInputModel,
 )
-from ._enums import DetailLevel, InputType, strip_empty
 from .card_info import compact_cards
 
 
@@ -244,7 +246,6 @@ def normalize_waiting_for(
             "title": title_to_text(wf.title),
             "warning": title_to_text(wf.warning) if wf.warning is not None else None,
             "warnings": wf.warnings,
-            "initial_index": wf.initialIdx or None,
             "amount": wf.amount,
             "count": wf.count,
             "include": wf.include,
@@ -316,7 +317,7 @@ def normalize_waiting_for(
             normalized["options_count"] = len(wf.options)
         else:
             normalized_options: list[dict[str, object]] = []
-            for idx, option in enumerate(wf.options):
+            for option in wf.options:
                 option_detail = normalize_waiting_for(
                     option,
                     depth + 1,
@@ -326,7 +327,6 @@ def normalize_waiting_for(
                 )
                 input_type = input_type_name(option)
                 option_payload: dict[str, object] = {
-                    "index": idx,
                     "title": title_to_text(option.title),
                     "input_type": input_type,
                 }
