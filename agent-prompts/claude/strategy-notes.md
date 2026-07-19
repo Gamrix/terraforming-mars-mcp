@@ -329,6 +329,18 @@ More cards seen = more VP cards found and played. John's 57 card VP vs my 15 is 
 37. **Heat mega-engine (GHG Factories + Lunar Beam + Soletta) = TR 44 in 10 gens — keep it.** Soletta (35 MC, +7 heat prod) paid ~3x. Pair with Caretaker Contract for post-max-temp TR, and with cheap immediate VP (Mangrove, Release of Inert Gases) rather than slow accumulators when the game is fast. Mangrove on an ocean slot next to my own city ≈ 4 VP for 12 MC.
 38. **Toll Station when opponent has 5+ space tags is elite** (+6 MC prod for 10 MC in Game 8) — space-heavy opponents make it better than most engine cards, and it denies them the same.
 
+39. **MILESTONE SWEEP RECIPE (Game 9, worked): Tharsis Republic + city prelude + cheap city card = Mayor gen 1.** Corporate Stronghold needs energy prod ≥1 — budget +11 MC for Power Plant SP first. Builder follows from building tags by gen 5. **Planner claims itself when the hand is bloated (17 cards) — check Planner eligibility EVERY generation.** Sweeping all 3 also closes the cap: opponent's TR 37+ gets nothing for Terraformer.
+
+40. **Fund the LAST open award slot whenever you lead any category, even at 20 MC.** Only 3 awards can ever be funded. Game 9: funding Banker took the final slot, winning me 5 VP AND making John's dominant Thermalist unfundable — a 10 VP swing in one action. Then DEFEND it with production plays (Capital, Space Hotels, Kelp) — John closed 22-12 to 32-40.
+
+41. **TR gap is now the #1 loss driver (41 vs 57 in Game 9).** Milestones+awards+cities cannot cover –16 TR. Target ~2 TR/gen from gen 4: heat-convert cadence, Caretaker, and PLAY cheap TR events immediately (Release of Inert Gases died in my hand = 2 wasted VP). An opponent with 15 plant prod generates ~2 TR/gen from oxygen alone.
+
+42. **Hate-draft Insects vs plant-tag decks** (+1 plant prod per plant tag: gave John +6 for 9 MC). Also Terraforming Ganymede whenever opponent has 3+ Jovians (again +5 TR in Game 9 — 4th game running).
+
+43. **Special tiles are placement weapons.** John blocked 3 of my shared greenery slots with Restricted Area / Industrial Center / Commercial District (CD even scored 2 VP off MY cities). Place my own special tiles (Mohole etc.) in HIS expansion zones, and don't leave prime shared slots open for gens.
+
+44. **End the game on your terms.** Holding Lake Marineris to place the final 2 oceans denied John extra greenery generations. Cheap denial finishers: Virus (–2 animals for 1 MC), Deimos Down (wipe 8 plants + 3 TR).
+
 ---
 
 ## Game Log
@@ -343,3 +355,4 @@ More cards seen = more VP cards found and played. John's 57 card VP vs my 15 is 
 | Game 6 vs John (2p, Tharsis, Prelude)   | Lost 110–162 | Awards: 0 vs 15 (funded Scientist, lost to late Adaptation Tech), 3-milestone cap blocked Mayor, City adj 8 vs 20 | Card VP 38 (best!), Terraformer, TR 52, PhoboLog+Satellites engine, Ants 7 VP |
 | Game 7 vs John (2p, Tharsis, Prelude)   | Lost 96–162  | Awards: 0 vs 15 (funded Banker+Thermalist, lost BOTH to late MC/heat engine), Terraforming Ganymede +8 TR, Gen 13 mega-turn +38 VP | Mayor, TR 51, QE+EM chain (+5 TR), ICS 4 VP, Ants 6 VP, CS+RW +6 MC prod combo |
 | Game 8 vs Codex (2p, Tharsis, Prelude)  | Lost 66–102  | Milestones: 0 vs 15 (swept by gen 8; wasted 25 MC on dead Mayor rush), 27 MC of never-played card buys, plants attacked to 0, 10-gen game vs 12-gen planning | **First award win (Thermalist)**, TR 44 via heat mega-engine (Soletta 15 heat prod), Toll Station +6 MC prod, closest margin since Game 4 |
+| Game 9 vs John (2p, Tharsis, Prelude)   | Lost 108–134 | TR 41 vs 57 (John's 15 plant prod + RE oxygen + TG +5), card VP 24 vs 32 (draw-engine gap), ~40 MC unplayed cards | **FIRST MILESTONE SWEEP (Mayor g1 + Builder g5 + Planner g7 = 15 VP)**, **first self-funded award win (Banker)** + last-slot denial of Thermalist, city VP 15 (best ever), Livestock 7 VP via Large Convoy, game-end control with Lake Marineris |

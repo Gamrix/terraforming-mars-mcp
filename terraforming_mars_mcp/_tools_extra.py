@@ -23,7 +23,7 @@ from .turn_flow import (
     submit_and_return_state,
     wait_for_turn_from_player_model,
 )
-from .waiting_for import wrap_action_for_prompt
+from .waiting_for import resolve_or_action, wrap_action_for_prompt
 
 
 @mcp.tool()
@@ -105,10 +105,16 @@ async def wait_for_turn() -> dict[str, Any]:
 
 @mcp.tool()
 async def submit_raw_entity(entity: dict[str, object]) -> dict[str, object]:
-    """Submit any raw /player/input payload as an object with `type`."""
+    """Submit any raw /player/input payload as an object with `type`.
+
+    `or` entities may address options with `"name"` instead of `"index"`;
+    names are resolved against the live prompt (nested `or` included).
+    """
     if "type" not in entity:
         raise ValueError("entity must include a 'type' field")
-    return await submit_and_return_state(normalize_raw_input_entity(entity))
+    normalized = normalize_raw_input_entity(entity)
+    normalized = resolve_or_action(normalized, get_player().waitingFor)
+    return await submit_and_return_state(normalized)
 
 
 @mcp.tool()
@@ -138,11 +144,17 @@ async def submit_multi_actions(
     actions are auto-wrapped into the matching outer option — you do not
     need to wrap them yourself.
 
+    For explicit `or` actions, prefer `"name"` over `"index"`: menu indices
+    shift as options appear/disappear between submissions, but names are
+    resolved against the live prompt right before each submission. The name
+    matches the option title (case-insensitive, `${n}` placeholders stripped)
+    or a card the option offers; nested `or` responses may also use `"name"`.
+
     Example — play a card that needs space selection, then pass:
     [
         {"type": "projectCard", "card": "Noctis City", "payment": {"megacredits": 20}},
         {"type": "space", "spaceId": "35"},
-        {"type": "or", "index": 5, "response": {"type": "option"}}
+        {"type": "or", "name": "Pass for this generation", "response": {"type": "option"}}
     ]
     """
     if len(actions) == 0:
@@ -156,6 +168,7 @@ async def submit_multi_actions(
             raise ValueError(f"Action at index {i} must include a 'type' field")
 
         normalized = normalize_raw_input_entity(action)
+        normalized = resolve_or_action(normalized, player_model.waitingFor)
         normalized = wrap_action_for_prompt(normalized, player_model.waitingFor)
         try:
             player_model = _post_input(cast(dict[str, JsonValue], normalized))

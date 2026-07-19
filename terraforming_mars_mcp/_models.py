@@ -31,7 +31,9 @@ CardListField = Annotated[
 
 
 class PaymentPayloadModel(BaseModel):
-    model_config = ConfigDict(extra="ignore", populate_by_name=True)
+    # extra="forbid" so a stale key (e.g. the game server's old `megaCredits`
+    # spelling) fails loudly here instead of as an opaque HTTP 400.
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     megacredits: int = 0
     steel: int = 0
@@ -67,16 +69,28 @@ class InitialCardsSelectionModel(BaseModel):
 def normalize_raw_input_entity(
     entity: dict[str, object],
 ) -> dict[str, object]:
+    """Fill and validate payment payloads, recursing into or/and envelopes.
+
+    The game server rejects partial payment objects, so every nested
+    `projectCard`/`payment` response must carry the full payment shape.
+    """
     normalized = dict(entity)
     entity_type = normalized.get("type")
 
     if isinstance(entity_type, str) and entity_type in {"payment", "projectCard"}:
-        if "payment" not in normalized:
-            normalized["payment"] = PaymentPayloadModel().model_dump(by_alias=True)
-        else:
-            payment = normalized["payment"]
-            if isinstance(payment, dict):
-                normalized["payment"] = PaymentPayloadModel.model_validate(
-                    payment
-                ).model_dump(by_alias=True)
+        payment = normalized.get("payment")
+        normalized["payment"] = PaymentPayloadModel.model_validate(
+            payment if isinstance(payment, dict) else {}
+        ).model_dump(by_alias=True)
+    elif entity_type == "or":
+        response = normalized.get("response")
+        if isinstance(response, dict):
+            normalized["response"] = normalize_raw_input_entity(response)
+    elif entity_type in {"and", "initialCards"}:
+        responses = normalized.get("responses")
+        if isinstance(responses, list):
+            normalized["responses"] = [
+                normalize_raw_input_entity(item) if isinstance(item, dict) else item
+                for item in responses
+            ]
     return normalized

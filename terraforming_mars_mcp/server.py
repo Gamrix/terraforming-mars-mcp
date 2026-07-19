@@ -19,7 +19,7 @@ from typing import cast
 
 from ._app import mcp
 from ._enums import DetailLevel, InputType
-from ._models import PaymentPayloadModel
+from ._models import PaymentPayloadModel, normalize_raw_input_entity
 from .api_response_models import JsonValue
 from .card_info import compact_cards
 from .game_state import build_agent_state
@@ -33,6 +33,7 @@ from .turn_flow import (
 from .waiting_for import (
     find_pass_option_index,
     normalize_or_sub_response,
+    resolve_or_action,
     wrap_action_for_prompt,
 )
 
@@ -128,17 +129,25 @@ def get_my_hand_cards() -> dict[str, object]:
 
 @mcp.tool()
 async def choose_or_option(
-    option_index: int,
+    option_name: str,
     sub_response: dict[str, object] | None = None,
 ) -> dict[str, object]:
-    """Respond to `type: or` with selected index and nested response object."""
-    return await submit_and_return_state(
-        {
-            "type": "or",
-            "index": option_index,
-            "response": normalize_or_sub_response(sub_response),
-        }
-    )
+    """Respond to `type: or` by option name.
+
+    `option_name` matches the option's title case-insensitively with `${n}`
+    placeholders stripped (e.g. "Standard projects", "Fund an award"), or a
+    card the option offers. Names are resolved against the live prompt, so
+    they are immune to menu reordering. A nested `or` in `sub_response` uses
+    `"name"` the same way (e.g. a milestone or award title).
+    """
+    action: dict[str, object] = {
+        "type": "or",
+        "name": option_name,
+        "response": normalize_or_sub_response(sub_response),
+    }
+    action = normalize_raw_input_entity(action)
+    action = resolve_or_action(action, get_player().waitingFor)
+    return await submit_and_return_state(action)
 
 
 @mcp.tool()
@@ -166,10 +175,11 @@ async def confirm_option() -> dict[str, object]:
 
 @mcp.tool()
 async def pass_turn() -> dict[str, object]:
-    """Pass for the generation or end your turn.
+    """Pass for the generation.
 
-    Shortcut that finds the "Pass for this generation" or "End Turn" option
-    in the current `or` prompt and submits it automatically.
+    Shortcut that finds the "Pass for this generation" option in the current
+    `or` prompt and submits it. To merely end the turn, use
+    `choose_or_option(option_name="End Turn")`.
     """
     player_model = get_player()
     waiting_for = player_model.waitingFor
@@ -182,7 +192,7 @@ async def pass_turn() -> dict[str, object]:
             return await submit_and_return_state(
                 {"type": "or", "index": pass_index, "response": {"type": "option"}}
             )
-        raise RuntimeError("No pass or end-turn option available in the current prompt")
+        raise RuntimeError("No pass option available in the current prompt")
 
     raise RuntimeError(
         f"pass_turn requires an 'or' prompt, but current prompt is '{waiting_for.type}'"

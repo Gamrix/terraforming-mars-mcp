@@ -42,6 +42,7 @@ Use `submit_multi_actions` to send multiple actions in one call. Pass a list of 
 The server submits them **one at a time, in the order given**. Each response is the answer to whatever `waitingFor` the previous submission produced.
 Dependent actions are fine: each step uses the game state produced by the previous step, exactly as if you had called the tools sequentially yourself.
 Always use this whenever you know the sequence of responses ahead of time, including multi-step flows like play a card → select space → follow-up action.
+For `or` actions, address the option with `"name"` (the option title, or a card the option offers) — names are resolved against the live prompt right before each submission, so menu reordering between actions cannot break the batch.
 The response `actions_executed` is the count of actions that were actually executed.
 
 #### Example
@@ -52,7 +53,7 @@ play a card needing space selection, then pass:
 [
   {"type": "projectCard", "card": "Noctis City", "payment": {"megacredits": 20}},
   {"type": "space", "spaceId": "35"},
-  {"type": "or", "index": 5, "response": {"type": "option"}}
+  {"type": "or", "name": "Pass for this generation", "response": {"type": "option"}}
 ]
 ```
 
@@ -65,7 +66,7 @@ play a card needing space selection, then pass:
 
 | MCP tool | Response type | What it does | Typical prompt |
 |---|---|---|---|
-| `choose_or_option` | `or` | Selects one option index and submits nested response. | Main action menu / mixed choice prompt |
+| `choose_or_option` | `or` | Selects one option by name (`option_name`) and submits nested response. | Main action menu / mixed choice prompt |
 | `submit_and_options` | `and` | Submits responses for all required sub-prompts. | Multi-part prompt (Rare) |
 | `confirm_option` | `option` | Click/confirm style action with no extra data. | convert resources, trigger optional action |
 | `select_amount` | `amount` | Chooses a numeric amount. | Spend/remove/select X |
@@ -79,7 +80,7 @@ play a card needing space selection, then pass:
 | `select_initial_cards` | `initialCards` | Submits corp/prelude/(optional CEO)/project selections in server option order. | Game setup |
 | `select_production_to_lose` | `productionToLose` | Chooses which production units to reduce. | Production-loss effects |
 | `select_resources` | `resource` / `resources` |  payload for both single-resource choice and multi-resource allocation prompts. | Resource-type distribution |
-| `pass_turn` | *(shortcut)* | Submits the "Pass for this generation" / "End Turn" option in the current `or` prompt. | End-of-turn or end-of-generation `or` prompt |
+| `pass_turn` | *(shortcut)* | Submits the "Pass for this generation" option in the current `or` prompt (never "End Turn" — use `choose_or_option(option_name="End Turn")` for that). | End-of-generation `or` prompt |
 | `submit_multi_actions` | *(sequence)* | Submits multiple actions in one call. | Any prompt |
 
 ## Important Action Details
@@ -94,8 +95,9 @@ play a card needing space selection, then pass:
 - Example: `{"type":"space","spaceId":"04"}`
 
 - `or`:
+- Address options by `"name"` — the option title matched case-insensitively with `${n}` placeholders stripped (e.g. "Fund an award"), or a card the option offers (e.g. "Power Plant:SP" selects the Standard projects branch).
 - Nested response must match the selected branch's expected type (e.g. a `projectCard` branch requires a `projectCard` payload, not `{"type":"option"}`).
-- If the selected branch is itself another `or` (e.g. milestone/award sub-menu), the nested payload must also be an `or` response, not `option`.
+- If the selected branch is itself another `or` (e.g. milestone/award sub-menu), the nested payload must also be an `or` response using `"name"` (e.g. the milestone title), not `option`.
 
 - `initialCards`:
 - The helper reads the server’s current setup option order and maps your corp/prelude/CEO/project picks into `responses`.
@@ -120,7 +122,7 @@ Use these exact shapes when you are unsure about setup or nested prompts.
 - `choose_or_option` with nested `space` response:
 ```json
 {
-  "option_index": 1,
+  "option_name": "Convert plants into greenery",
   "sub_response": {"type": "space", "spaceId": "04"}
 }
 ```
@@ -128,16 +130,16 @@ Use these exact shapes when you are unsure about setup or nested prompts.
 - `choose_or_option` with nested `projectCard` response:
 ```json
 {
-  "option_index": 0,
+  "option_name": "Play project card",
   "sub_response": {"type": "projectCard", "card": "Noctis City", "payment": {"megacredits": 18}}
 }
 ```
 
-- `choose_or_option` for nested `or` (example: claim Mayor milestone — outer `or` branch contains a second `or` with milestone choices):
+- `choose_or_option` for nested `or` (example: claim Mayor milestone — outer `or` branch contains a second `or` with milestone choices, addressed by name):
 ```json
 {
-  "option_index": 0,
-  "sub_response": {"type": "or", "index": 0, "response": {"type": "option"}}
+  "option_name": "Claim a milestone",
+  "sub_response": {"type": "or", "name": "Mayor", "response": {"type": "option"}}
 }
 ```
 
