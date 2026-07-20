@@ -39,6 +39,17 @@ Record the best in-game forecast you had by Gen 6 to 8.
 - What did the forecast miss?
 - Did we think we were ahead because of TR while actually behind on VP ceiling?
 
+### Forecast Confidence Split
+
+| Side | Locked card VP | Budgeted card VP | Contingent card VP | Hidden multiplier reserve |
+|---|---:|---:|---:|---:|
+| Self |  |  |  |  |
+| Opponent |  |  |  |  |
+
+- Earliest feasible finish generation at forecast time:
+- Did every remaining global step have a funded source?:
+- If the finish was Gen 11+, what locked VP/denial plan made that finish winning?:
+
 ## 3) Timeline by Generation
 
 - Gen 1:
@@ -76,6 +87,12 @@ Record the best in-game forecast you had by Gen 6 to 8.
 |  |  |  |  |
 |  |  |  |  |
 |  |  |  |  |
+
+### Award Stress Tests
+
+| Award | Current lead when funded | Opponent plausible two-card swing | Durable? | Final result |
+|---|---:|---:|---|---|
+|  |  |  | yes/no |  |
 
 ## 6) Counterfactuals
 
@@ -118,6 +135,7 @@ List 1 to 3 hypotheses that were being tested in this game.
 ## 11) Endgame Conversion Review
 
 - Did we write a liquidation plan by Gen 10+?:
+- Did the plan include exact play actions and payments for every Gen 10+ card purchase?:
 - Did we check whether actions continued after terraforming completed?:
 - Which resources were stranded at pass or game end?:
 - Best missed `MC -> VP` conversion:

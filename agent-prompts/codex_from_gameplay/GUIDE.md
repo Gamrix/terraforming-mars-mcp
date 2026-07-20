@@ -146,6 +146,8 @@ Awards:
 Critical discipline:
 - Do not fund awards you cannot realistically hold.
 - Treat each funded award as a commitment to lock first place by game end.
+- Stress-test the current lead against the opponent's best plausible two-card burst before funding.
+- Dynamic awards such as Banker are not locked by a large current lead when the opponent has card velocity and many Earth/building tags.
 
 ## 6. Standard Projects and When to Use Them
 
@@ -253,6 +255,13 @@ Use explicit alarms:
 - If opponent projected `card_vp >= 35` by Gen 8 or `>= 40` by Gen 9, stop generic setup.
 - Spend actions on closure, city/greenery pressure, or specific denial.
 
+- `Jovian multiplier alarm`:
+- If the opponent has four or more effective Jovian tags plus strong draw or space discounts, add 10-20 hidden VP to the value of one extra generation.
+- Treat unseen `Ganymede Colony`, `Water Import From Europa`, and similar multipliers as part of the ceiling, not as unforeseeable variance.
+
+- `Accumulator feeding alarm`:
+- If the opponent has an unused stealing action such as `Ants`, do not add a vulnerable resource unless it can be converted before the opponent's next action.
+
 - `Award lock alarm`:
 - If an award you funded is no longer favored by Gen 9 to 10, stop treating it as committed value.
 - Re-plan from the new scoreboard, not from sunk-cost pride.
@@ -268,6 +277,8 @@ At minimum, write these checkpoints every game:
 - Gen 6:
 - Expected final score by category for both players.
 - Whether one extra generation helps you or the opponent more.
+- Card VP divided into `locked`, `budgeted`, and `contingent` value.
+- Earliest feasible finish generation if the current call is `hard close`.
 
 - Gen 8:
 - Updated card-VP projection.
@@ -317,6 +328,7 @@ At minimum, write these checkpoints every game:
 6. Resource liquidation planning
 - In final generations, cards in hand are often MC reservoirs via sell patents.
 - Plan this one generation ahead, not at the last second.
+- Include production-phase income when deciding what must be sold; do not liquidate direct-VP cards merely because current cash is low.
 
 7. Post-terraform action verification
 - If Mars is completed mid-generation, poll the live prompt before assuming only cleanup remains.
@@ -325,6 +337,12 @@ At minimum, write these checkpoints every game:
 8. Category-first action choice
 - When multiple actions are good, prefer the one that improves your losing category rather than the one that merely looks efficient in isolation.
 - Against John specifically, this usually means prioritizing `card_vp`, `city`, award denial, or hard closure over more generic TR.
+
+9. Locked-VP accounting
+- `Locked VP` is already in play or guaranteed public scoring.
+- `Budgeted VP` has a legal action window and reserved payment.
+- `Contingent VP` is held, requirement-gated, undrawn, or dependent on the opponent.
+- Decide whether a finish is winning using only locked plus budgeted VP.
 
 ## 12. Structural Lessons From Repeated Losses
 
@@ -459,12 +477,18 @@ Never choose a lower-priority action unless it is required for legality sequenci
 
 3. Award funding gate:
 - Fund an award only if first-place hold is durable under reasonable opponent lines.
+- Measure durability with a two-card burst test based on visible tags, discounts, and card velocity, not the current scoreboard alone.
 - If lock is not durable, convert the same action/economy into direct VP or denial.
 
 4. Endgame protocol gate (Gen 10+ or when all globals are within ~3 steps):
 - Before first action, write a concrete 3-action finish plan.
 - Recompute after each opponent action.
 - Prefer guaranteed VP swing over setup value.
+- Do not buy a card unless its exact play action and payment are already in the script.
+
+5. Hard-close schedule gate:
+- A `hard close` label is incomplete until it names the earliest feasible finish generation and assigns a funded source to every remaining global step.
+- If the earliest finish is Gen 11 or later against a live John engine, closure alone is not a win condition; add a locked VP floor and direct denial plan.
 
 ## 16. Final Strategic Principle
 

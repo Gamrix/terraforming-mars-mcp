@@ -12,6 +12,8 @@ Before the first meaningful action, commit to these rules:
 - I will not use `hybrid` as a vague default.
 - I will forecast final scoring categories by midgame.
 - I will react to opponent engine alarms immediately, not one generation later.
+- I will separate locked VP from contingent VP in hand.
+- A `hard close` call will include an earliest finish generation and a funded source for every remaining global step.
 - I will run a scripted Gen 10+ liquidation plan.
 - If Mars becomes fully terraformed mid-generation, I will verify whether actions continue before passing.
 
@@ -46,6 +48,8 @@ Then answer:
 - If the game lasts one extra generation, who benefits more?
 - Am I ahead only because of TR?
 - Does my current line actually beat John's projected `card_vp + city` total?
+- How much of my projected card VP is locked, how much is fully budgeted, and how much is merely contingent on cards in hand?
+- What is the earliest generation my current closure capacity can actually finish Mars?
 
 If the answer is "no" or "unclear", revise the plan immediately.
 
@@ -56,6 +60,8 @@ These are hard alarms, not vague warnings.
 - If John has `AI Central + Mass Converter`, assume his engine is live.
 - If John adds `Quantum Extractor`, `Anti-Gravity Technology`, `Shuttles`, `Earth Office`, or another discount on top of that, treat it as a closure emergency.
 - If projected opponent `card_vp >= 35` by Gen 8 or `>= 40` by Gen 9, stop generic setup and move to closure or direct VP denial.
+- If John has four or more effective Jovian tags plus strong draw or space discounts, add `10-20 VP` to the value of one extra generation for unseen Jovian multipliers.
+- If John has a stealing accumulator such as `Ants` with its action unused, do not add a vulnerable resource unless it can be converted before his next action.
 - If a funded award flips against me by Gen 9 to 10, stop defending it emotionally and reallocate actions.
 
 ## 5. Gen 8 Recommit
@@ -66,6 +72,8 @@ At the start of Gen 8, rewrite:
 - Current final-score forecast.
 - Award contest-or-concede decision.
 - Exact estimate of remaining generations.
+- Earliest feasible finish generation, with one card/action/resource source assigned to every remaining global step.
+- Minimum locked VP floor required if the earliest finish is still Gen 11 or later.
 - Which two actions I most likely want this generation.
 
 If this is not written, the game is drifting.
@@ -80,6 +88,7 @@ At the start of every late generation:
 - Best direct closure line:
 - Best denial line:
 - Which resources will strand if I pass now?
+- Which purchased cards are actually scripted to be played this generation?
 
 Then answer:
 
@@ -88,6 +97,28 @@ Then answer:
 - If Mars ends now, does the action phase still continue?
 
 Do not pass until these are answered.
+
+Do not buy a Gen 10+ card unless its exact play action and payment already appear in this script.
+
+## 6A. Locked-VP Forecast Rule
+
+Classify projected VP as:
+
+- `locked`: already in play or guaranteed public points.
+- `budgeted`: a legal card/board conversion with both cost and action window reserved.
+- `contingent`: held, undrawn, requirement-gated, or dependent on opponent cooperation.
+
+Use only `locked + budgeted` VP when deciding whether a close is winning. Report contingent VP separately; never use it to justify a losing finish date.
+
+## 6B. Award Burst Test
+
+Before funding any award, write:
+
+- Current lead.
+- Opponent's best plausible two-card swing from visible tags, production, discounts, and card velocity.
+- My reserved response, if that swing occurs.
+
+For `Banker`, explicitly test Earth-tag, building-tag, and heat-to-MC production cards. Against a live draw/discount engine, do not fund Banker early merely because the current lead is large.
 
 ## 7. Post-Terraform Rule
 

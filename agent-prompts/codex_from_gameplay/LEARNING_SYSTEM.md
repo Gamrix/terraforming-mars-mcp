@@ -64,6 +64,9 @@ python3 scripts/tm_learning.py rollup
 - Keep breakdown values consistent with final score.
 - Record the macro plan clearly enough that `hybrid` is not a content-free label.
 - Include the midgame score forecast quality: did the in-game projection match the actual final category results?
+- Split forecast card VP into `locked`, `budgeted`, and `contingent` value; note when held-card VP was overcounted.
+- For a hard-close call, record the earliest feasible finish generation and whether every remaining global step had a funded source.
+- For every funded award, record whether the lead was stress-tested against a plausible two-card opponent burst.
 - Include whether the endgame plan was scripted before execution or improvised in the moment.
 
 ## Structural Improvement Rules
@@ -102,10 +105,13 @@ Every postmortem and summary should explicitly reflect whether these were done i
 - self expected `card_vp`
 - opponent expected `card_vp`
 - award expectation
+- locked versus contingent card-VP expectation
+- earliest feasible finish generation and remaining-global action map
 
 - Gen 8 revision:
 - whether the forecast changed
 - whether the opponent hit a discount-stack or VP-ceiling alarm
+- whether a Jovian-multiplier reserve or award-production burst reserve was included
 
 - Gen 10+ liquidation plan:
 - best board placement

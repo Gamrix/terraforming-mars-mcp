@@ -1,0 +1,162 @@
+{
+  "game_date": "2026-07-19",
+  "game_url": "http://localhost:8080/player?id=p828080340352",
+  "game_id": "p828080340352",
+  "board": "tharsis",
+  "self_player": "Codex",
+  "opponent_player": "John",
+  "self_corp": "Valley Trust",
+  "opponent_corp": "Ecoline",
+  "planned_strategy": "rush",
+  "pivot_generation": 3,
+  "macro_call_specific": true,
+  "finish_generation": 11,
+  "score": {
+    "self": 90,
+    "opponent": 119
+  },
+  "breakdown": {
+    "self": {
+      "tr": 50,
+      "milestones": 10,
+      "awards": 5,
+      "greenery": 9,
+      "city": 6,
+      "card_vp": 10
+    },
+    "opponent": {
+      "tr": 45,
+      "milestones": 5,
+      "awards": 10,
+      "greenery": 6,
+      "city": 9,
+      "card_vp": 44
+    }
+  },
+  "opponent_engine_tags": [
+    "science",
+    "earth",
+    "space",
+    "jovian",
+    "titanium",
+    "animal",
+    "microbe",
+    "city",
+    "discount-stack",
+    "card-velocity"
+  ],
+  "forecast": {
+    "generation": 6,
+    "self": {
+      "tr": 48,
+      "awards": 8,
+      "greenery": 9,
+      "city": 8,
+      "card_vp": 18
+    },
+    "opponent": {
+      "tr": 45,
+      "awards": 8,
+      "greenery": 8,
+      "city": 8,
+      "card_vp": 35
+    },
+    "miss_summary": "The explicit range forecast got TR and board direction broadly right, but overcounted Codex's contingent hand VP, understated John's card-VP upper tail, and failed to stress-test Banker against late Earth/building production bursts."
+  },
+  "mistake_tags": [
+    "rush_without_closure",
+    "insufficient_card_vp_scaling",
+    "forecasting_failure",
+    "award_funding_mislock",
+    "vp_ceiling_miscalculated"
+  ],
+  "key_turning_points": [
+    {
+      "generation": 6,
+      "title": "Funded Banker from a large current lead without stress-testing John's plausible production burst",
+      "impact_vp_est": 5
+    },
+    {
+      "generation": 6,
+      "title": "Called hard close without proving the earliest feasible finish generation or required VP floor",
+      "impact_vp_est": 8
+    },
+    {
+      "generation": 9,
+      "title": "Counted held and conditional card VP inside the expected scoring floor",
+      "impact_vp_est": 7
+    },
+    {
+      "generation": 11,
+      "title": "John converted the unavoidable final action phase into Jovian multipliers and accumulator VP",
+      "impact_vp_est": 18
+    }
+  ],
+  "counterfactuals": [
+    {
+      "change": "Do not fund Banker unless the lead survives a two-card production burst based on John's visible Earth and building tags",
+      "swing_vp_est": 5,
+      "confidence": "high"
+    },
+    {
+      "change": "Split the Generation 6 card forecast into locked and contingent VP and require a 15-point locked card/city floor for a Generation 11 close",
+      "swing_vp_est": 7,
+      "confidence": "high"
+    },
+    {
+      "change": "By Generation 8, assign a funded source to every remaining global step and build one additional early oxygen conversion to make a Generation 10 finish credible",
+      "swing_vp_est": 15,
+      "confidence": "low"
+    },
+    {
+      "change": "Add a 10-20 VP hidden-multiplier reserve once John has four effective Jovian tags plus strong card velocity",
+      "swing_vp_est": 10,
+      "confidence": "med"
+    }
+  ],
+  "rule_updates": [
+    "If the macro call is hard close, then write the earliest feasible finish generation and assign a source to every remaining global step; if the finish remains Generation 11 or later against John, add a locked VP and denial plan.",
+    "If forecasting card VP, then separate locked VP already played or fully funded from contingent VP in hand and use only locked plus budgeted VP to judge the position.",
+    "If funding Banker against a draw and discount engine, then stress-test the lead against the opponent's best plausible two-card production burst from visible tags.",
+    "If the opponent has four effective Jovian tags plus strong draw or space discounts, then add 10-20 hidden VP to the value of one extra generation.",
+    "If the opponent has an unused stealing accumulator, then do not add a vulnerable resource unless it can be converted before the opponent's next action.",
+    "If buying a card in Generation 10 or later, then include its exact play action and payment in the liquidation script or do not buy it."
+  ],
+  "active_hypotheses": [
+    {
+      "hypothesis": "Hard-close commitment by Generation 8 performs better than hybrid drift against John's science engine.",
+      "result": "Codex pivoted in Generation 3 and finished in Generation 11, but hard close without a proven finish date and locked VP floor still lost the card-VP race 10-44.",
+      "status": "weakened"
+    },
+    {
+      "hypothesis": "Early city anchors can offset or prevent a card-VP deficit.",
+      "result": "Two cities produced 6 VP and kept total board VP even, but could not offset a 34-point card-VP deficit.",
+      "status": "strengthened"
+    },
+    {
+      "hypothesis": "Continuing actions after terraforming completion materially changes outcomes.",
+      "result": "Codex correctly continued, added Security Fleet VP, exhausted useful actions, and placed a final greenery.",
+      "status": "strengthened"
+    }
+  ],
+  "endgame_review": {
+    "liquidation_plan_written": true,
+    "post_terraform_actions_checked": true,
+    "stranded_resources": [
+      "post-production MC",
+      "post-production steel",
+      "post-production titanium",
+      "post-production heat"
+    ],
+    "best_missed_conversion": "No material final-action conversion was missed; the measurable late inefficiency was buying Solar Power for 3 MC and later selling it for 1 MC without playing it."
+  },
+  "tool_mismatches": [
+    {
+      "tool": "mutating MCP calls with opponent polling",
+      "expected": "Return promptly after a successful mutation.",
+      "actual": "Several calls remained open while John resolved actions, although the mutations had committed.",
+      "mitigation": "Inspect live state before retrying any timed-out or long-running mutation; this caused no VP loss."
+    }
+  ],
+  "postmortem_path": "agent-prompts/codex_from_gameplay/agent_game_notes/2026_07_19/postmortem-localhost-p828080340352.md"
+}

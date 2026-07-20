@@ -39,12 +39,19 @@
   ],
   "forecast": {
     "generation": 6,
+    "earliest_finish_generation": 0,
+    "remaining_global_steps_funded": false,
     "self": {
       "tr": 0,
       "awards": 0,
       "greenery": 0,
       "city": 0,
       "card_vp": 0
+    },
+    "self_card_vp_confidence": {
+      "locked": 0,
+      "budgeted": 0,
+      "contingent": 0
     },
     "opponent": {
       "tr": 0,
@@ -53,8 +60,18 @@
       "city": 0,
       "card_vp": 0
     },
+    "opponent_hidden_multiplier_reserve": 0,
     "miss_summary": "short summary"
   },
+  "award_stress_tests": [
+    {
+      "award": "Banker",
+      "current_lead": 0,
+      "opponent_two_card_swing": 0,
+      "durable_when_funded": false,
+      "final_result": "short summary"
+    }
+  ],
   "mistake_tags": [
     "insufficient_card_vp_scaling"
   ],
