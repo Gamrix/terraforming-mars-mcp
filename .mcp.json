@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "terraforming-mars": {
+      "command": "c:/Users/johnw/Documents/Repos/terraforming-mars-mcp/.venv/Scripts/python.exe",
+      "args": ["-m", "terraforming_mars_mcp.server"],
+      "env": {
+        "TM_SERVER_URL": "http://localhost:8080",
+        "TM_MCP_LOG_FILE": "${TEMP}/terraforming-mars-mcp.log",
+        "PYTHONPATH": "."
+      }
+    }
+  }
+}
