@@ -8,6 +8,15 @@ that are not correct, and correct them in your personal strategy guide.
 
 The core tension in Terraforming Mars is tempo versus engine: spend resources now to terraform (raising your Terraforming Rating and shortening the game) or invest in production that compounds over many generations. Every decision flows from this tension. **The best players don't commit to one approach—they read the table and adapt.**
 
+## The clock: commit to a game plan by Generation 3
+
+The single most costly failure mode (verified across 8 logged games) is the **half-rush**: accelerating the game with terraforming conversions while simultaneously buying slow accumulator cards that need the game to run long. Every purchase must be consistent with one committed plan:
+
+- **FAST**: you have early terraforming tempo. Push parameters hard, take milestones as byproducts of that tempo, buy only cards that pay back before your estimated game end, prefer immediate VP (events, tiles, TR) over accumulators. The goal is to strand the opponent's engine undeployed.
+- **SLOW**: you have the superior draw engine or production base. Do not convert heat/plants beyond requirement unlocks, decelerate the parameters, buy accumulators early so they mature.
+
+Estimate generations remaining every generation: `(temperature steps left + oxygen steps left + oceans left) ÷ (total steps placed by all players last generation)`. Cards whose requirements (oxygen 9–11%, +4°C) or payback periods land beyond that horizon are wasted money — a 3 MC buy plus attention. TR itself is a *byproduct* metric: a finite, roughly shared pool of 43 steps. A pure TR engine caps around 2–3 VP/generation and loses to compounding card/tile engines that reach 8–10 VP/generation late; TR-maximizing feels productive while losing every other scoring category.
+
 ---
 
 ## How the game actually works, generation by generation
@@ -55,9 +64,7 @@ Your corporation determines starting resources, ongoing abilities, and which car
 
 **D-Tier:** **Inventrix** (marginal flexibility, mediocre economy), **UNMI** (weakest base corp—the 3 MC → 1 TR action requires having already raised TR that generation, and it starts with no production or resources).
 
-### Expansion corporations that warp the game
-
-From expansions, several corporations are considered a tier above the base game's best. **Poseidon** (Colonies) has the highest competitive win rates—a free colony placement plus +1 MC production whenever any colony is placed creates compound economic growth. **Manutech** (Venus Next) effectively doubles every production increase by granting that resource when you gain production—some consider it overpowered. **Terralabs Research** (Turmoil) pays only **1 MC per card** instead of 3, creating staggering card advantage over a full game despite starting at just 14 MC and -1 TR. **Polyphemos** (Colonies) starts with 50 MC, 5 MC production, and 5 titanium but pays 5 MC per card—a raw economic powerhouse.
+(Expansion corporations beyond Prelude do not appear in our games and are omitted.)
 
 ---
 
@@ -81,6 +88,8 @@ Remember to include the **3 MC draft cost** in every calculation. A card with a 
 ### Production cards have a shelf life
 
 For production-boosting cards, the math is straightforward: **total cost ÷ production increase = generations to break even**. A card costing 13 MC (10 + 3 draft) that provides +3 MC production breaks even in roughly 4.3 generations. If fewer than 5 generations remain, skip it. This "remaining generations" calculation is the single most important heuristic for card buying decisions. Each MC of production gained in Generation 1 of a 10-generation game yields 10 MC total. The same production gained in Generation 8 yields only 3 MC—an 70% reduction in value.
+
+The same clock discipline applies to **requirement-gated cards**: before buying, name the generation the requirement will actually be met, using the parameter-velocity estimate — and then the further generations the card needs to pay off. Oxygen-9%+ or +4°C-requirement cards bought in the early game routinely die in hand (nine never-played cards ≈ 27 MC wasted in one logged 10-generation game). Every card in hand should carry a named target generation; a card with no plausible slot under the committed clock is a card to not buy — or to sell.
 
 ### When to buy versus pass
 
@@ -132,13 +141,15 @@ Temperature track bonuses at **-24°C and -20°C** (each granting +1 heat produc
 
 ## Milestones and awards: the most efficient VP in the game
 
-### Milestones are non-negotiable
+### Milestones are won by archetype, not intention
 
-At **5 VP for just 8 MC**, milestones cost roughly **1.6 MC per VP**—approximately seven times more efficient than standard project VP sources. Only 3 of the 5 can be claimed per game, and each is exclusive to one player. In competitive play, claiming a milestone is almost always correct when eligible.
+At **5 VP for just 8 MC**, milestones cost roughly **1.6 MC per VP**—approximately seven times more efficient than standard project VP sources. But eight logged games show a hard truth: milestones are claimed by whoever's *opening archetype* naturally produces the requirement, not by whoever decides mid-game to want one. Builder falls out of a steel/building opening, Gardener out of plant production, Terraformer out of broad terraforming tempo, Mayor out of city cards or preludes already in hand. Paying retail mid-game (e.g., standard-project cities at 25 MC) to chase a milestone loses the race to the player who gets it as a side effect. **Choose the milestone plan at corporation/prelude selection, or consciously punt milestones and budget ~15 VP of compensation elsewhere.**
 
-The five base game milestones ranked by achievability: **Builder** (8 building tags—easiest since building is the most common tag), **Gardener** (3 greenery tiles—straightforward with plant production), **Mayor** (3 city tiles—requires significant investment), **Terraformer** (TR 35—demands 15 TR increases, achievable mid-to-late game), and **Planner** (16 cards in hand—widely considered the hardest and least worthwhile, since hoarding unplayed cards contradicts good strategy).
+The five base game milestones ranked by achievability: **Builder** (8 building tags), **Gardener** (3 greenery tiles), **Mayor** (3 city tiles), **Terraformer** (TR 35), **Planner** (16 cards in hand—conflicts with good play; skip).
 
-**Timing is critical.** Don't wait until you've met the requirement—by then an opponent may have claimed it first. Start positioning 1-2 generations before you'll qualify. If you see two opponents racing for Mayor, pivot to Builder or Gardener where competition is lighter. Getting even one milestone in a competitive game is significant; claiming two is a major advantage.
+**The 3-claim cap is a tombstone.** Only 3 of the 5 milestones can be claimed per game, total. Once the third is claimed, the remaining two are permanently dead — `get_game_state` collapses the whole section to `milestones: "all 3 claimed"`, which means the race is over. Track "milestones claimed: X/3" every generation. At 2 claimed, only continue a milestone path completable *this generation*; at 3, stop all milestone spending instantly (a 25 MC city toward a dead Mayor is the canonical logged mistake, made twice).
+
+**Timing**: don't wait until you've met the requirement—claim the moment you qualify, and position 1-2 generations ahead. An opponent with tempo can sweep all three by generation 8.
 
 ### Awards demand careful calculation
 
@@ -146,7 +157,7 @@ Awards use an escalating cost structure: **8 MC** for the first funded, **14 MC*
 
 The five base game awards: **Landlord** (most tiles owned on the board), **Banker** (highest MC production), **Scientist** (most science tags in play), **Thermalist** (most heat cubes at game end), and **Miner** (most steel + titanium cubes at game end). Note that Thermalist and Miner count *resource cubes*, not production—players can stockpile these resources deliberately in the final generations.
 
-Fund awards strategically: the first award at 8 MC is excellent efficiency if you're likely to win. The third at 20 MC is marginal and should only be funded with high confidence or as a denial play. **Defensive funding**—funding an award where multiple opponents compete—forces them to fight each other instead of focusing on you.
+**The one funding rule that survived eight games**: fund an award only with a **structural production lock** — the opponent has approximately zero production in the category and no cheap way to build it (e.g., Thermalist with 15-vs-0 heat production: won). A large *current-count* lead without the production lock is bait: MC production can swing 10+ in 2-3 generations (Medical Lab, Cartel, Miranda Resort), science tags keep arriving off draws, and Miner stockpiles drain as you spend. Six separate fundings at 7-16 count leads were all overturned; each cost ~8-14 MC *and* handed the opponent 5 VP. If no lock exists, fund nothing — an unfunded award is 0 VP for everyone, which beats a −10 VP swing. Expect a strong opponent to fund the awards *they* have locked; contest only with a lock of your own.
 
 ---
 
@@ -190,10 +201,12 @@ Average game length varies dramatically by player count:
 
 | Player Count | Typical Generations | Strategic Implication |
 |-------------|-------------------|----------------------|
-| 2 players | 12-15 | Deep engine building; economy dominates |
+| 2 players (agents) | **10-13 observed** | Opponent's engine sets the clock; plan for the faster estimate |
 | 3 players | 10-13 | Balanced engine/tempo tension |
 | 4 players | 8-10 | Faster pace; mid-game pivot earlier |
 | 5 players | 5-8 | Shortest games; immediate value dominates |
+
+**Correction from play**: the commonly cited "12–15 generations for 2-player" is wrong against competent agent opponents. All eight logged 2-player games ended in 10–13 generations. An opponent running an oxygen engine (Regolith Eaters, Water Splitting Plant) or 3+ plant production adds 2–4 parameter steps per generation on their own and can end the game two generations before a book-length plan expects.
 
 ### Accelerating versus decelerating
 
@@ -207,7 +220,13 @@ The strongest players monitor this constantly. When you see an opponent stockpil
 
 ## Player count transforms the strategic landscape
 
-**Two-player games** last longest (12-15 generations) and reward pure engine efficiency. Board space is abundant, so interaction is minimal. Income disparity is devastating—falling 10-20 MC production behind with no other opponents to balance the gap is often unrecoverable. Ecoline is borderline overpowered with only one opponent's attacks to worry about, and Protected Habitats (preventing resource removal) becomes one of the game's best cards. Card draw engines are extremely powerful since you see far more of the deck.
+**Two-player games** are not the placid engine-fests the multiplayer literature describes. Observed realities from eight agent games:
+
+- **Every removal card targets you.** Virus, Asteroid, Biomass Combustors, Hired Raiders — with one opponent there is no other target. Plant-based strategies died to removal in three consecutive games. Either draft Protected Habitats early or abandon plant strategies at draft time; heat and microbe engines are rarely attacked and are the safe accumulators.
+- **Card draw engines are the master variable.** Every blowout loss featured a 15–20 played-card deficit. Take Mars University / Olympus Conference / Inventors' Guild / Development Center over individually stronger engine cards; card advantage compounds into every scoring category, and denying the engine to the only opponent doubles the swing.
+- **Income disparity is unrecoverable** — falling 10-20 MC production behind cannot be balanced by other players' interference.
+- **Milestone and award races are zero-sum knife fights.** One tempo player can sweep all three milestones by generation 8 (observed). See the milestone-cap and award-lock rules above.
+- The draft gives full information: everything you pass, the opponent may keep. Hate-drafting scalers (Toll Station, Miranda Resort, Jovian VP stacks, Ecological Zone/Herbivores) is worth the tempo when the opponent qualifies for them.
 
 **Three-player games** are widely considered the most strategically balanced. All corporation tiers remain viable, tile placement becomes meaningfully interactive, and the tension between engine building and tempo is at its peak.
 
@@ -292,15 +311,9 @@ Tracking who's winning during play is notoriously difficult, but competitive pla
 
 ---
 
-## How each expansion reshapes the game
+## Prelude (the only expansion in our games)
 
-**Prelude** is the consensus must-have expansion. It adds 35 prelude cards—each player receives 4, keeps 2, and plays them before Generation 1. These provide production boosts, resources, and TR increases that compress the "boring" early economy-building phase. Games shorten by 2-3 generations. Corporation + prelude synergy becomes a crucial opening decision. Once you play with Prelude, the base game feels slow. Most competitive formats mandate it.
-
-**Colonies** adds colony tiles representing distant moons and asteroids, with trade fleets and escalating resource tracks. It creates a meaningful secondary economy that integrates naturally with engine building—trading at colonies provides steady resource income, and building colonies on locations matching your strategy (titanium from Io, plants from Europa) amplifies your engine. **Poseidon** has the highest competitive win rate of any corporation across all expansions thanks to its free colony and snowballing MC production. Games end somewhat faster with more resources flowing.
-
-**Turmoil** is the expert expansion, adding a political layer with 6 parties, delegates, global events visible 3 generations in advance, and a per-generation TR tax. It rewards forward planning and adds significant player interaction through political maneuvering. The complexity increase is substantial—many tournaments allow players to veto it. **Terralabs Research** (1 MC per card instead of 3) is game-warpingly powerful in skilled hands.
-
-**Venus Next** adds a fourth terraforming track (Venus) that does *not* need to be maxed for the game to end—making it optional VP. It introduces 49 new cards and the World Government rule (one free parameter bump per generation for pacing). The main criticism is deck dilution—more cards means less chance of finding the specific cards your engine needs. **Manutech** (gaining resources equal to production increases) is considered one of the strongest corporations across all expansions. Venus is the lowest-priority expansion in competitive rankings.
+**Prelude** adds 35 prelude cards—each player receives 4, keeps 2, and plays them before Generation 1. These provide production boosts, resources, and TR increases that compress the early economy-building phase and shorten games by 2-3 generations. **Corporation + prelude synergy is the opening decision**: the pair should constitute a milestone plan and a clock commitment (see "The clock" above), not just an economy boost. Economy preludes (Allied Bank, Metals Company) are solid but milestone-blind; city, steel, or plant preludes convert directly into a milestone race.
 
 ---
 
@@ -308,6 +321,6 @@ Tracking who's winning during play is notoriously difficult, but competitive pla
 
 Terraforming Mars rewards compound thinking—small efficiency advantages in early generations cascade into decisive leads by game end. The players who win consistently don't memorize card lists or follow rigid strategies. They internalize a handful of principles and apply them flexibly.
 
-**Build economy before buying points.** Every MC of production gained early compounds across remaining generations. **Claim milestones the moment you can.** Nothing in the game matches 1.6 MC/VP efficiency. **Count remaining terraforming steps every generation** to know when to pivot from engine to scoring. **Evaluate every card against the 14 MC/VP standard project baseline**—anything worse than an Asteroid isn't worth playing. **Adapt to what the game gives you.** The strongest players have no style—only efficiency and flexibility.
+**Commit to a clock by Generation 3** — fast or slow, and make every buy consistent with it; the half-rush loses both ways. **Build economy before buying points.** Every MC of production gained early compounds across remaining generations. **Pick the milestone plan at corporation selection** and claim the moment you qualify; track the 3-claim cap every generation. **Count remaining terraforming steps every generation** to know when to pivot from engine to scoring. **Prioritize card throughput in 2-player drafts** — draw engines compound into every category. **Evaluate every card against the 14 MC/VP standard project baseline** and against the clock—anything worse than an Asteroid, or that comes online after game end, isn't worth playing. **Fund awards only with a structural production lock.**
 
 The final insight: Terraforming Mars is not a solitaire optimization puzzle. It's a race with shared resources and contested board space. The player who best reads the table—knowing when to accelerate the game against engine-builders, when to grab contested milestones, when to hate-draft a critical card, and when to convert their remaining resources into the last few VP—will win far more often than the player with the theoretically optimal engine.

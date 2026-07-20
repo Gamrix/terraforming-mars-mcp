@@ -171,3 +171,28 @@ Use these exact shapes when you are unsure about setup or nested prompts.
 - `thisPlayer`: your full private player model,
 - `waitingFor`: the raw current input prompt model (if any),
 - plus player-view fields such as hand and draft/dealt card groups.
+
+## Game Rule Clarifications
+
+- **Milestone cap**: only 3 milestones total can be claimed per game (same for awards funded).
+  Once the cap is hit, the remaining ones are permanently dead and the claim option simply
+  never appears in the action menu. `get_game_state` then reports `milestones: "all 3 claimed"`
+  instead of listing them, and drops the unfundable awards from the award list (the 3 funded
+  ones stay, since their score races are still live). Treat either as "stop spending toward it".
+- **Milestone claiming** costs 8 MC and appears as its own option in the action `or` menu only
+  when you currently qualify; it does not refresh mid-turn after you meet the requirement.
+- **Blue-card actions can be used the same generation the card is played** (once per generation
+  per card).
+- **City placement**: a city cannot be placed adjacent to another city (any owner). Special
+  city cards override this (Noctis City goes on reserved space 31; Lava Tube Settlement on a
+  volcanic space; Urbanized Area *requires* adjacency to 2 existing cities).
+- **City scoring**: 1 VP per adjacent greenery *regardless of who owns the greenery*.
+- **Global-parameter bonuses**: reaching -24°C and -20°C grants +1 heat production; 0°C grants
+  a free ocean placement to the player who takes that step; 8% oxygen grants a bonus
+  temperature step. Time your own conversions to capture these.
+- **Game end**: when temperature (+8°C), oxygen (14%), and oceans (9) are all maxed, the game
+  ends at the end of that generation — production still happens, followed by one final round
+  of plant-to-greenery conversions in player order. Cards in hand and MC are worth nothing
+  (MC is only the tiebreaker).
+- **Awards**: funding costs escalate 8/14/20 MC across the three funding slots; the funder
+  gets no scoring priority; Thermalist/Miner count resource *cubes* at game end, not production.
