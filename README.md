@@ -8,7 +8,6 @@ submit legal actions.
 
 Status: beta / work in progress.
 
-
 ## Quick start
 
 ### Prerequisites
@@ -16,6 +15,43 @@ Status: beta / work in progress.
 - Python 3.11+
 - `uv`
 - Node.js 16-22 and `npm` (if you run TM OSS locally)
+
+### 0. Windows - Add Symlink support
+If you want to use the prebuilt agent prompt folders, and you are on windows,
+you need to add symlink support.
+
+1. Enable Windows Developer Mode
+
+This allows ordinary, non-elevated applications such as Git to create symlinks.
+On current Windows 11:
+
+Settings → System → Advanced → For developers → Developer Mode
+
+On older Windows versions, search Settings for Developer Mode. Enabling it requires administrator access.
+
+1. Enable symlinks in Git
+
+Run in Git Bash, PowerShell, or Command Prompt:
+
+```ps
+git config --global core.symlinks true
+```
+
+If you already checked out the repo, you will need to run the following:
+
+```ps
+git config core.symlinks true
+git checkout-index --force --all
+```
+
+Then verify settings through:
+
+```ps
+# The last location listed should show `true`
+git config --show-origin --get-all core.symlinks
+# This shows the symlinks in the repo, it should show many files.
+git ls-files --stage | Select-String '^120000 '
+```
 
 ### 1. Install dependencies
 
@@ -29,7 +65,6 @@ cd submodules/tm-oss-server/
 npm install
 npm run build
 ```
-
 
 ## Add to MCP clients
 
@@ -185,7 +220,7 @@ Note: this is an active WIP repository; static-check output can change between c
 
 ## References
 
-- Upstream TM OSS project: https://github.com/terraforming-mars/terraforming-mars
+- Upstream TM OSS project: <https://github.com/terraforming-mars/terraforming-mars>
 
 ## License
 
