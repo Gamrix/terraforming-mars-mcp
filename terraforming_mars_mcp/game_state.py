@@ -33,6 +33,11 @@ END_OF_GENERATION_PHASES = {"production", "solar", "intergeneration", "end"}
 
 _FULL_STATE_INTERVAL = 10
 
+# Server-side caps (common/constants.ts): past these the remaining milestones and
+# awards can never be claimed/funded.
+_MAX_MILESTONES = 3
+_MAX_AWARDS = 3
+
 
 @dataclass(frozen=True)
 class _MilestonesAwardsSnapshot:
@@ -281,7 +286,23 @@ def summarize_board(game: ApiGameModel) -> dict[str, Any]:
     }
 
 
-def _summarize_milestones(game: ApiGameModel) -> list[_MilestonePayload]:
+def _claimed_milestones(game: ApiGameModel) -> frozenset[str]:
+    return frozenset(m.name for m in game.milestones if m.color or m.playerName)
+
+
+def _funded_awards(game: ApiGameModel) -> frozenset[str]:
+    return frozenset(a.name for a in game.awards if a.color or a.playerName)
+
+
+def _summarize_milestones(game: ApiGameModel) -> list[_MilestonePayload] | str:
+    """Milestones, or a terse marker once the per-game claim cap is reached.
+
+    Past the cap the unclaimed milestones are permanently dead, so listing them
+    (as "available") only invites the agent to spend on an impossible claim.
+    """
+    if len(_claimed_milestones(game)) >= _MAX_MILESTONES:
+        return f"all {_MAX_MILESTONES} claimed"
+
     summarized: list[_MilestonePayload] = []
     for milestone in game.milestones:
         owner_color = milestone.color
@@ -316,8 +337,18 @@ def _summarize_milestones(game: ApiGameModel) -> list[_MilestonePayload]:
 
 
 def _summarize_awards(game: ApiGameModel) -> list[_AwardPayload]:
+    """Awards, dropping the unfunded ones once the funding cap is reached.
+
+    Past the cap nothing more can be funded, but the funded awards are still
+    live 5/2 VP races, so their relative scores stay worth tracking.
+    """
+    funded = _funded_awards(game)
+    capped = len(funded) >= _MAX_AWARDS
+
     summarized: list[_AwardPayload] = []
     for award in game.awards:
+        if capped and award.name not in funded:
+            continue
         funder_color = award.color
         funder_name = award.playerName
         status: Literal["funded", "unfunded"] = (
@@ -340,8 +371,7 @@ def _summarize_awards(game: ApiGameModel) -> list[_AwardPayload]:
 
 
 def _should_include_milestones_awards(
-    milestones: list[_MilestonePayload],
-    awards: list[_AwardPayload],
+    game: ApiGameModel,
     generation: int,
     cache: _SessionCache,
 ) -> bool:
@@ -356,10 +386,13 @@ def _should_include_milestones_awards(
     """
     current = _MilestonesAwardsSnapshot(
         generation=generation,
-        claimed=frozenset(m["name"] for m in milestones if m["status"] == "claimed"),
-        funded=frozenset(a["name"] for a in awards if a["status"] == "funded"),
+        claimed=_claimed_milestones(game),
+        funded=_funded_awards(game),
         claimable=frozenset(
-            (m["name"], c) for m in milestones for c in m.get("claimable_by", [])
+            (m.name, s.color)
+            for m in game.milestones
+            for s in m.scores
+            if s.claimable is True
         ),
     )
     include = cache.last_ma_snapshot != current
@@ -672,11 +705,9 @@ def _build_game_state_section(
         game_state["generation"] = generation
 
     if detail_level == DetailLevel.FULL:
-        milestones = _summarize_milestones(game)
-        awards = _summarize_awards(game)
-        if _should_include_milestones_awards(milestones, awards, generation, cache):
-            game_state["milestones"] = milestones
-            game_state["awards"] = awards
+        if _should_include_milestones_awards(game, generation, cache):
+            game_state["milestones"] = _summarize_milestones(game)
+            game_state["awards"] = _summarize_awards(game)
         else:
             game_state["milestones_changed"] = False
     if show_board:

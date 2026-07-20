@@ -100,6 +100,68 @@ def test_get_game_state_surfaces_milestones_and_awards() -> None:
     assert state["game"]["awards"][1]["status"] == "unfunded"
 
 
+def test_capped_milestones_and_awards_are_pruned() -> None:
+    server = _reload_server()
+    owners = [("Alice", "red"), ("Bob", "blue"), ("Alice", "red")]
+    player_model: dict[str, Any] = {
+        "id": "player-1",
+        "game": {
+            "id": "game-capped",
+            "phase": "action",
+            "generation": 7,
+            "temperature": -20,
+            "oxygenLevel": 6,
+            "oceans": 3,
+            "venusScaleLevel": 2,
+            "isTerraformed": False,
+            "spaces": [],
+            "milestones": [
+                {"name": name, "playerName": owner, "color": color, "scores": []}
+                for name, (owner, color) in zip(
+                    ["Builder", "Mayor", "Gardener", "Planner", "Terraformer"],
+                    owners + [(None, None), (None, None)],
+                )
+            ],
+            "awards": [
+                {"name": name, "playerName": owner, "color": color, "scores": []}
+                for name, (owner, color) in zip(
+                    ["Banker", "Scientist", "Thermalist", "Landlord", "Miner"],
+                    owners + [(None, None), (None, None)],
+                )
+            ],
+        },
+        "players": [
+            {"name": "Alice", "color": "red", "isActive": True},
+            {"name": "Bob", "color": "blue", "isActive": False},
+        ],
+        "thisPlayer": {"name": "Alice", "color": "red", "isActive": True},
+    }
+
+    player_view = PlayerViewModel.model_validate(player_model)
+    server.get_player = lambda player_id=None: player_view
+    state = asyncio.run(server.get_game_state())
+
+    assert state["game"]["milestones"] == "all 3 claimed"
+    # Funded awards stay visible (their score races are still live); the two
+    # unfundable ones are dropped.
+    assert [a["name"] for a in state["game"]["awards"]] == [
+        "Banker",
+        "Scientist",
+        "Thermalist",
+    ]
+
+    # Unchanged state is suppressed, but the marker returns each new generation.
+    repeat = asyncio.run(server.get_game_state())
+    assert "milestones" not in repeat["game"]
+
+    player_model["game"]["generation"] = 8
+    server.get_player = lambda player_id=None: PlayerViewModel.model_validate(
+        player_model
+    )
+    next_gen = asyncio.run(server.get_game_state())
+    assert next_gen["game"]["milestones"] == "all 3 claimed"
+
+
 def test_get_my_hand_cards_returns_cards_in_hand() -> None:
     server = _reload_server()
     player_model: dict[str, Any] = {
