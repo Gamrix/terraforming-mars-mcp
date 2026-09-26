@@ -95,7 +95,7 @@ play a card needing space selection, then pass:
 - Example: `{"type":"space","spaceId":"04"}`
 
 - `or`:
-- Address options by `"name"` — the option title matched case-insensitively with `${n}` placeholders stripped (e.g. "Fund an award"), or a card the option offers (e.g. "Power Plant:SP" selects the Standard projects branch).
+- Address options by `"name"`. The name can be the rendered title shown in `waiting_for` (e.g. "Remove 3 plants from blue"; players render as their color), the template with `${n}` placeholders stripped (e.g. "Fund an award"), or a card the option offers (e.g. "Power Plant:SP" selects the Standard projects branch). Matching is case-insensitive. When several options share a template (e.g. removing plants from yourself vs. the opponent), use the rendered title.
 - Nested response must match the selected branch's expected type (e.g. a `projectCard` branch requires a `projectCard` payload, not `{"type":"option"}`).
 - If the selected branch is itself another `or` (e.g. milestone/award sub-menu), the nested payload must also be an `or` response using `"name"` (e.g. the milestone title), not `option`.
 

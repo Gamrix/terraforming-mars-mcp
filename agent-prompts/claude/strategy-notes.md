@@ -5,7 +5,7 @@ flat lesson list into a decision framework. Consult the relevant phase section d
 
 ---
 
-## Why I Am 0–9: The Structural Failures (updated after Game 9)
+## Why I Was 0–9: The Structural Failures (updated after Game 9; first win came in Game 10)
 
 1. **The half-rush.** My signature heat→TR engine accelerates the game clock while I
    simultaneously buy slow accumulator cards (animal/microbe VP, high-oxygen requirements)
@@ -75,6 +75,8 @@ Priority order, top first. Deviate only with a written reason:
    vs plant-tag decks (+1 plant prod per plant tag — gave John +6 for 9 MC in G9), Io Mining
    Industries / Ganymede Colony / Terraforming Ganymede (track opponent Jovian count from
    Gen 5; 3+ Jovians = hate-draft on sight — TG has hit for +5 to +8 TR in four straight games).
+   Also deny **energy sinks vs energy-heavy opponents** (Equatorial Magnetizer, Magnetic
+   Field Generators, Steelworks, Ironworks). In G10 this left John's 6–11 energy prod mostly wasted.
 4. Toll Station is a first-pick FOR ME when opponent has 5+ space tags (+6 MC prod for
    10 MC in G8).
 5. Never draft cards requiring oxygen ≥9% / temp ≥ −4°C after the midpoint of the estimated
@@ -108,6 +110,11 @@ Run this before the first action:
    Banker won 5 VP AND made John's dominant Thermalist unfundable — a ~10 VP swing). Then
    **defend the funded award with production plays** (Capital, Space Hotels, Kelp Farming),
    not hope — John closed a 22–12 Banker lead to 32–40.
+   **Game 10 confirmed both rules (awards 10 vs 5)**: Thermalist funded Gen 7 on a 12-vs-1 heat
+   production lock (Soletta + Mohole Area), and Landlord taken as the 3rd slot (20 MC) in Gen 10
+   with an 11–3 tile lead and ≤2 gens left. Before final production the server scores Thermalist
+   as **heat + energy + heat production** (heat only afterwards). Stop converting heat for the
+   last 1–2 gens, and watch opponent energy prod (leftover energy becomes heat) and Optimal Aerobraking.
 4. **Blue-card action order**: ECF feeds 2 microbes → GHG Producing Bacteria (temp+TR every
    gen) or NRB (TR per 3) or Ants (VP per 2, steals from opponent microbe engines).
    Feed the highest-value target; GHG PB while temperature is short of max, Ants when VP
@@ -129,7 +136,11 @@ Run this before the first action:
   off MY cities). Place my own special tiles in the opponent's expansion zones, and don't
   leave prime shared slots open across generations.
 - **Game-end control**: holding an ocean card (Lake Marineris in G9) to cap the last
-  parameter on MY schedule denies the opponent extra greenery generations.
+  parameter on MY schedule denies the opponent extra greenery generations. In G10, 2 Asteroid
+  SPs (28 MC) maxed temperature in Gen 11 while I led, which denied John's growing engine
+  (29 MC prod, Power Grid, Olympus Conference) a Gen 12. That won the game.
+- **Last-milestone snipe** (G10): John sat on a claimable Builder for 3+ gens. As first player
+  I placed my 3rd city (Immigrant City) and claimed Mayor in the same turn, closing the cap on him.
 - Sell dead cards only for tiebreak MC; otherwise ignore.
 
 ## 2-Player Realities (vs. the multiplayer book advice)
@@ -153,6 +164,12 @@ Run this before the first action:
   post-max-temp TR). TR 44 in 10 gens. Pay Soletta with titanium. Only under a FAST plan.
 - **ECF → GHG Producing Bacteria**: +1 temperature step (=TR) every generation for 8 MC.
 - **Quantum Extractor + Equatorial Magnetizer** (G7): +1 TR/gen if 4+ science tags.
+- **PhoboLog + Io Mining Industries Gen 1** (G10): 10 starting Ti pays 40 of 41 MC. Stack Jovians
+  (Water Import From Europa, Miranda Resort, Callisto Penal Mines) for VP-per-Jovian. Add Space
+  Station, Immigration Shuttles, Space Hotels and Toll Station for a 19–24 MC prod economy.
+- **Soletta + Mohole Area** (G10): 12 heat prod = TR tempo + an uncatchable Thermalist.
+- Place cities BEFORE greeneries: G10's first greeneries (30/38) got 2 Tharsis cities placed
+  next to them. Hold Birds until the opponent has plant production, or the -2 hits me.
 - **0°C bonus ocean / 8% oxygen bonus temp**: time my own conversions to capture these
   (captured the 0°C ocean in G8 — placed it adjacent to my city for later bonuses).
 
@@ -169,3 +186,4 @@ Run this before the first action:
 | Game 7 vs John | Lost 96–162 | Awards 0 vs 15 (lost both fundings), Jovian +8 TR, gen-13 mega-turn | Mayor, TR 51, QE+EM |
 | Game 8 vs Codex | Lost 66–102 | Milestones 0 vs 15 (swept gen 8; dead Mayor rush −25 MC), 27 MC never-played buys, plants zeroed | **First award win (Thermalist)**, TR 44 heat engine, Toll Station |
 | Game 9 vs John | Lost 108–134 | TR 41 vs 57 (John's 15 plant prod + RE oxygen + TG +5), card VP 24 vs 32 (draw-engine gap), ~40 MC unplayed cards | **FIRST MILESTONE SWEEP (Mayor g1 + Builder g5 + Planner g7 = 15 VP)**, **first self-funded award win (Banker)** + last-slot denial of Thermalist, city VP 15 (best ever), Livestock 7 VP via Large Convoy, game-end control with Lake Marineris |
+| Game 10 vs John | **WON 111–96** (started +4 TR) | Card VP 28 vs 29, 10 plants destroyed by asteroids | Awards 10 vs 5 (Thermalist lock + late Landlord), Gardener + Mayor (last-slot snipe), TR 46 tie, ended game Gen 11 via 2 Asteroid SPs, PhoboLog + Io MI Gen 1 |

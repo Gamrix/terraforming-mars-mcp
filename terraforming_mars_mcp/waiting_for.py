@@ -35,10 +35,24 @@ def normalize_or_sub_response(
     return value
 
 
+_TEMPLATE_PLACEHOLDER = re.compile(r"\$\{(\d+)\}")
+
+
 def title_to_text(title: str | MessageModel) -> str:
+    """Render a title, substituting ``${n}`` placeholders with the message data
+    (players render as their color, e.g. "Remove 3 plants from blue")."""
     if isinstance(title, str):
         return title
-    return title.message
+    data = title.data
+
+    def replace(match: re.Match[str]) -> str:
+        idx = int(match.group(1))
+        if idx >= len(data):
+            return match.group(0)
+        value = data[idx].value
+        return "" if value is None else str(value)
+
+    return _TEMPLATE_PLACEHOLDER.sub(replace, title.message)
 
 
 def _is_undo_option(
@@ -105,9 +119,6 @@ def _option_card_names(option: ApiWaitingForInputModel) -> list[str]:
     return [card if isinstance(card, str) else card.name for card in option.cards or []]
 
 
-_TEMPLATE_PLACEHOLDER = re.compile(r"\$\{\d+\}")
-
-
 def _normalize_title(text: str) -> str:
     return " ".join(_TEMPLATE_PLACEHOLDER.sub(" ", text).lower().split())
 
@@ -117,8 +128,10 @@ def find_or_option_index_by_name(
 ) -> int:
     """Resolve an 'or' option by its title (or a card it offers), not index.
 
-    Titles are matched case-insensitively with ``${n}`` template placeholders
-    stripped (e.g. "Fund an award (${0} M€)" matches "fund an award").
+    Titles are matched case-insensitively against both the rendered title
+    ("Remove 3 plants from blue") and the template with ``${n}`` placeholders
+    stripped ("remove plants from"), so options sharing a template can be told
+    apart by their rendered data.
     """
     options = waiting_for.options
     if options is None:
@@ -127,15 +140,22 @@ def find_or_option_index_by_name(
     query = _normalize_title(name)
     if not query:
         raise ValueError("Option name must be non-empty")
-    titles = [_normalize_title(title_to_text(option.title)) for option in options]
+    rendered = [_normalize_title(title_to_text(option.title)) for option in options]
+    templates = [
+        _normalize_title(
+            option.title if isinstance(option.title, str) else option.title.message
+        )
+        for option in options
+    ]
+    candidates = list(zip(rendered, templates, strict=True))
 
-    exact = [idx for idx, title in enumerate(titles) if title == query]
+    exact = [idx for idx, titles in enumerate(candidates) if query in titles]
     if len(exact) == 1:
         return exact[0]
     partial = [
         idx
-        for idx, title in enumerate(titles)
-        if title and (query in title or title in query)
+        for idx, titles in enumerate(candidates)
+        if any(title and (query in title or title in query) for title in titles)
     ]
     if len(partial) == 1:
         return partial[0]
@@ -147,7 +167,8 @@ def find_or_option_index_by_name(
     if len(by_card) == 1:
         return by_card[0]
     raise RuntimeError(
-        f"Cannot uniquely resolve or-option named '{name}'. Available options: {titles}"
+        f"Cannot uniquely resolve or-option named '{name}'. "
+        f"Available options: {[title_to_text(option.title) for option in options]}"
     )
 
 

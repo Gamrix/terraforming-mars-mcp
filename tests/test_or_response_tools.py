@@ -151,6 +151,100 @@ def test_prepare_action_rejects_ambiguous_name() -> None:
         assert "Cannot uniquely resolve" in str(exc)
 
 
+_REMOVE_PLANTS_MENU = WaitingForInputModel.model_validate(
+    {
+        "type": "or",
+        "title": "Select player to remove up to ${0} plants",
+        "buttonLabel": "OK",
+        "options": [
+            {
+                "type": "option",
+                "title": {
+                    "message": "Remove ${0} plants from ${1}",
+                    "data": [{"type": 1, "value": "3"}, {"type": 2, "value": "blue"}],
+                },
+                "buttonLabel": "OK",
+            },
+            {"type": "option", "title": "Skip removing plants", "buttonLabel": "OK"},
+            {
+                "type": "option",
+                "title": {
+                    "message": "Remove ${0} plants from ${1}",
+                    "data": [{"type": 1, "value": "3"}, {"type": 2, "value": "red"}],
+                },
+                "buttonLabel": "OK",
+                "warnings": ["removeOwnPlants"],
+            },
+        ],
+    }
+)
+
+
+def test_prepare_action_disambiguates_shared_template_by_rendered_title() -> None:
+    prepared = prepare_action(
+        {
+            "type": "or",
+            "name": "Remove 3 plants from red",
+            "response": {"type": "option"},
+        },
+        _REMOVE_PLANTS_MENU,
+    )
+    assert prepared == {"type": "or", "index": 2, "response": {"type": "option"}}
+
+
+def test_prepare_action_shared_template_name_lists_rendered_titles() -> None:
+    try:
+        prepare_action(
+            {
+                "type": "or",
+                "name": "Remove ${0} plants from ${1}",
+                "response": {"type": "option"},
+            },
+            _REMOVE_PLANTS_MENU,
+        )
+        assert False, "Expected RuntimeError for shared template name"
+    except RuntimeError as exc:
+        assert str(exc) == (
+            "Cannot uniquely resolve or-option named 'Remove ${0} plants from ${1}'. "
+            "Available options: ['Remove 3 plants from blue', "
+            "'Skip removing plants', 'Remove 3 plants from red']"
+        )
+
+
+def test_prepare_action_still_matches_unique_template_name() -> None:
+    menu = WaitingForInputModel.model_validate(
+        {
+            "type": "or",
+            "title": "Take your next action",
+            "buttonLabel": "OK",
+            "options": [
+                {
+                    "type": "space",
+                    "title": {
+                        "message": "Convert ${0} plants into greenery",
+                        "data": [{"type": 1, "value": "8"}],
+                    },
+                    "buttonLabel": "OK",
+                },
+                {"type": "option", "title": "End Turn", "buttonLabel": "OK"},
+            ],
+        }
+    )
+    prepared = prepare_action(
+        {
+            "type": "or",
+            "name": "Convert ${0} plants into greenery",
+            "response": {"type": "space", "spaceId": "48"},
+        },
+        menu,
+    )
+    assert prepared == {
+        "type": "or",
+        "index": 0,
+        "response": {"type": "space", "spaceId": "48"},
+    }
+
+
 def test_prepare_action_rejects_index_addressed_or() -> None:
     try:
         prepare_action(

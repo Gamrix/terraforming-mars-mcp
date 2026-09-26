@@ -73,3 +73,16 @@ def test_game_log_entry_accepts_list_value_payloads() -> None:
     )
 
     assert entry.data[1].value == ["Livestock"]
+
+
+def test_game_log_entry_accepts_notice_type() -> None:
+    entry = turn_flow.ApiGameLogEntryModel.model_validate(
+        {"timestamp": 1, "message": "Final greenery placement", "data": [], "type": 2}
+    )
+
+    assert entry.model_dump(exclude_none=True) == {
+        "timestamp": 1,
+        "message": "Final greenery placement",
+        "data": [],
+        "type": 2,
+    }

@@ -300,3 +300,32 @@ def test_undo_option_is_omitted_from_options() -> None:
     options = normalized["options"]
     assert len(options) == 1
     assert options[0]["title"] == "Play something"
+
+
+def test_templated_option_titles_render_their_data() -> None:
+    waiting_for = {
+        "type": "or",
+        "title": "Select player to remove up to ${0} plants",
+        "buttonLabel": "OK",
+        "options": [
+            {
+                "type": "option",
+                "title": {
+                    "message": "Remove ${0} plants from ${1}",
+                    "data": [
+                        {"type": 1, "value": "3"},
+                        {"type": 2, "value": "blue"},
+                    ],
+                },
+                "buttonLabel": "OK",
+            },
+            {"type": "option", "title": "Skip removing plants", "buttonLabel": "OK"},
+        ],
+    }
+
+    normalized = _normalize_waiting_for(waiting_for)
+
+    assert [option["title"] for option in normalized["options"]] == [
+        "Remove 3 plants from blue",
+        "Skip removing plants",
+    ]

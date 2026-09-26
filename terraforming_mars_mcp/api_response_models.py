@@ -82,7 +82,8 @@ UndergroundResourceTokenLiteral: TypeAlias = Literal[
     "anyresource1",
 ]
 
-LogMessageTypeLiteral: TypeAlias = Literal[0, 1]
+# Mirrors server `LogMessageType`: DEFAULT, NEW_GENERATION, NOTICE.
+LogMessageTypeLiteral: TypeAlias = Literal[0, 1, 2]
 
 
 class LogMessageDataAttrsModel(TMBaseModel):
