@@ -4,11 +4,6 @@ from enum import StrEnum
 from typing import Any
 
 
-class DetailLevel(StrEnum):
-    FULL = "full"
-    MINIMAL = "minimal"
-
-
 class InputType(StrEnum):
     AND_OPTIONS = "and"
     OR_OPTIONS = "or"

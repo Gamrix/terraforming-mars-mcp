@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from typing import cast
 
-from ._enums import DetailLevel, InputType, strip_empty
+from ._enums import InputType, strip_empty
 from ._models import normalize_raw_input_entity
 from .api_response_models import (
     JsonValue,
@@ -38,11 +38,9 @@ def normalize_or_sub_response(
 _TEMPLATE_PLACEHOLDER = re.compile(r"\$\{(\d+)\}")
 
 
-def title_to_text(title: str | MessageModel) -> str:
+def title_to_text(title: MessageModel) -> str:
     """Render a title, substituting ``${n}`` placeholders with the message data
     (players render as their color, e.g. "Remove 3 plants from blue")."""
-    if isinstance(title, str):
-        return title
     data = title.data
 
     def replace(match: re.Match[str]) -> str:
@@ -55,40 +53,18 @@ def title_to_text(title: str | MessageModel) -> str:
     return _TEMPLATE_PLACEHOLDER.sub(replace, title.message)
 
 
-def _is_undo_option(
-    *,
-    input_type: str | None,
-    title: str | MessageModel,
-    warnings: list[str] | None,
-) -> bool:
-    if warnings and "undoBestEffort" in warnings:
-        return True
-    title_text = title_to_text(title).lower()
-    return input_type == InputType.SELECT_OPTION.value and "undo" in title_text
-
-
-def _is_sell_patents(title: str | MessageModel) -> bool:
-    """The sell-patents card list duplicates the hand, so it is omitted."""
-    return "sell patents" in title_to_text(title).lower()
-
-
 def _should_hide_option(
-    option: ApiWaitingForInputModel,
-    option_detail: dict[str, object] | None,
-    input_type: str | None,
+    option: ApiWaitingForInputModel, option_detail: dict[str, object] | None
 ) -> bool:
     """Hide options that are noise for agents: undo, learner-mode-only
     standard projects, and options whose cards all got filtered as disabled."""
-    if option_detail is None:
-        return _is_undo_option(input_type=input_type, title=option.title, warnings=None)
-    raw_warnings = option_detail.get("warnings")
-    warnings = (
-        [w for w in raw_warnings if isinstance(w, str)]
-        if isinstance(raw_warnings, list)
-        else None
-    )
-    if _is_undo_option(input_type=input_type, title=option.title, warnings=warnings):
+    if option.warnings and "undoBestEffort" in option.warnings:
         return True
+    title = title_to_text(option.title).lower()
+    if option.type == InputType.SELECT_OPTION.value and "undo" in title:
+        return True
+    if option_detail is None:
+        return False
     card_sel = option_detail.get("card_selection")
     if isinstance(card_sel, dict) and card_sel.get("show_only_in_learner_mode"):
         return True
@@ -141,12 +117,7 @@ def find_or_option_index_by_name(
     if not query:
         raise ValueError("Option name must be non-empty")
     rendered = [_normalize_title(title_to_text(option.title)) for option in options]
-    templates = [
-        _normalize_title(
-            option.title if isinstance(option.title, str) else option.title.message
-        )
-        for option in options
-    ]
+    templates = [_normalize_title(option.title.message) for option in options]
     candidates = list(zip(rendered, templates, strict=True))
 
     exact = [idx for idx, titles in enumerate(candidates) if query in titles]
@@ -267,7 +238,6 @@ def prepare_action(
 def normalize_waiting_for(
     waiting_for: ApiWaitingForInputModel | None,
     depth: int = 0,
-    detail_level: DetailLevel = DetailLevel.FULL,
     generation: int | None = None,
     auto_response: bool = False,
 ) -> dict[str, object] | None:
@@ -296,9 +266,9 @@ def normalize_waiting_for(
         is_blue_action = wf.selectBlueCardAction is True
         cards_list = compact_cards(
             wf.cards,
-            detail_level=DetailLevel.MINIMAL if is_blue_action else detail_level,
             generation=generation,
             auto_response=auto_response,
+            for_blue_action=is_blue_action,
         )
         # Filter out disabled cards; only include ones the player can use.
         cards_list = [c for c in cards_list if not c.get("disabled")]
@@ -317,7 +287,8 @@ def normalize_waiting_for(
         )
         if card_selection:
             normalized["card_selection"] = card_selection
-        if _is_sell_patents(wf.title):
+        # The sell-patents card list duplicates the hand, so it is omitted.
+        if "sell patents" in title_to_text(wf.title).lower():
             normalized.pop("cards", None)
     elif wf.min is not None or wf.max is not None:
         normalized["amount_range"] = strip_empty(
@@ -357,7 +328,6 @@ def normalize_waiting_for(
                 option_detail = normalize_waiting_for(
                     option,
                     depth + 1,
-                    detail_level=detail_level,
                     generation=generation,
                     auto_response=auto_response,
                 )
@@ -372,11 +342,8 @@ def normalize_waiting_for(
                             continue
                         option_payload[key] = value
 
-                if _should_hide_option(option, option_detail, input_type):
+                if _should_hide_option(option, option_detail):
                     continue
-
-                if _is_sell_patents(option.title):
-                    option_payload.pop("cards", None)
 
                 normalized_options.append(option_payload)
 

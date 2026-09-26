@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import importlib
+import re
+from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, cast
 
@@ -686,6 +688,26 @@ def test_payment_model_rejects_old_camelcase_key() -> None:
         assert False, "Expected validation error for old megaCredits spelling"
     except Exception as exc:
         assert "megaCredits" in str(exc)
+
+
+def test_payment_model_keys_match_server_spendable_resources() -> None:
+    """The server rejects payments missing any SPENDABLE_RESOURCES key, so the
+    model must mirror the submodule's list exactly."""
+    spendable_ts = (
+        Path(__file__).resolve().parents[1]
+        / "submodules/tm-oss-server/src/common/inputs/Spendable.ts"
+    ).read_text()
+    server_keys = {
+        key
+        for block in re.findall(
+            r"export const SPENDABLE_(?:STANDARD|CARD)_RESOURCES = \[(.*?)\]",
+            spendable_ts,
+            re.DOTALL,
+        )
+        for key in re.findall(r"^\s*'(\w+)',", block, re.MULTILINE)
+    }
+
+    assert set(PaymentPayloadModel().model_dump(by_alias=True)) == server_keys
 
 
 def test_submit_multi_actions_returns_state_on_http_error() -> None:

@@ -17,7 +17,6 @@ import os
 from pathlib import Path
 
 from ._app import mcp
-from ._enums import DetailLevel
 from ._models import PaymentPayloadModel
 from .card_info import compact_cards
 from .game_state import build_agent_state
@@ -78,7 +77,6 @@ def configure_session(
 async def get_game_state(
     include_full_model: bool = False,
     include_board_state: bool = False,
-    detail_level: DetailLevel = DetailLevel.FULL,
 ) -> dict[str, object]:
     """Fetch current player state plus compact, agent-friendly action/game summary."""
     player_model = get_player()
@@ -96,7 +94,6 @@ async def get_game_state(
         player_model,
         include_full_model=include_full_model,
         include_board_state=include_board_state,
-        detail_level=detail_level,
         base_url=CFG.base_url,
         player_id_fallback=CFG.player_id,
         between_turns_actions=between_turns_actions,
@@ -127,11 +124,13 @@ async def choose_or_option(
 ) -> dict[str, object]:
     """Respond to `type: or` by option name.
 
-    `option_name` matches the option's title case-insensitively with `${n}`
-    placeholders stripped (e.g. "Standard projects", "Fund an award"), or a
-    card the option offers. Names are resolved against the live prompt, so
-    they are immune to menu reordering. A nested `or` in `sub_response` uses
-    `"name"` the same way (e.g. a milestone or award title).
+    `option_name` matches case-insensitively against the rendered title shown
+    in `waiting_for` (e.g. "Remove 3 plants from blue"), the title template
+    with `${n}` placeholders stripped (e.g. "Fund an award"), or a card the
+    option offers. Use the rendered title when options share a template.
+    Names are resolved against the live prompt, so they are immune to menu
+    reordering. A nested `or` in `sub_response` uses `"name"` the same way
+    (e.g. a milestone or award title).
     """
     return await submit_and_return_state(
         {

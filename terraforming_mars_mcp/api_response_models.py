@@ -1,8 +1,14 @@
 from __future__ import annotations
 
-from typing import Literal, TypeAlias
+from typing import Annotated, Literal, TypeAlias
 
-from pydantic import BaseModel, ConfigDict, Field, JsonValue as PydanticJsonValue
+from pydantic import (
+    BaseModel,
+    BeforeValidator,
+    ConfigDict,
+    Field,
+    JsonValue as PydanticJsonValue,
+)
 
 
 class TMBaseModel(BaseModel):
@@ -102,6 +108,16 @@ class MessageModel(TMBaseModel):
     data: list[LogMessageDataModel] = Field(default_factory=list)
 
 
+# The server sends prompt titles/warnings either as plain strings or as
+# templated messages; parse both into MessageModel so callers see one shape.
+MessageField: TypeAlias = Annotated[
+    MessageModel,
+    BeforeValidator(
+        lambda value: {"message": value} if isinstance(value, str) else value
+    ),
+]
+
+
 class UnitsModel(TMBaseModel):
     megacredits: int = 0
     steel: int = 0
@@ -173,8 +189,8 @@ class ClaimedTokenModel(TMBaseModel):
 
 class WaitingForInputModel(TMBaseModel):
     type: str
-    title: str | MessageModel
-    warning: str | MessageModel | None = None
+    title: MessageField
+    warning: MessageField | None = None
     warnings: list[WarningLiteral] | None = None
     buttonLabel: str
 

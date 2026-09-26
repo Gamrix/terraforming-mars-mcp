@@ -373,31 +373,55 @@ def test_game_constants_resent_on_value_change_within_generation() -> None:
     assert state["game"]["terraforming"]["temperature"] == -18
 
 
-def test_you_and_opponents_omitted_between_intervals() -> None:
-    """you/opponents are included at gen start and every N responses, omitted otherwise."""
+def test_you_and_opponents_omitted_between_intervals_on_auto_response() -> None:
+    """Auto-responses include you/opponents at gen start and every N responses."""
+    importlib.reload(game_state_mod)
+
+    def auto_state(generation: int, game_age: int) -> dict[str, Any]:
+        raw = _make_player_model(generation=generation, game_age=game_age)
+        return game_state_mod.build_agent_state(
+            PlayerViewModel.model_validate(raw), auto_response=True
+        )
+
+    # First response in a new generation → included
+    assert "you" in auto_state(4, 100)
+    # Same generation, not yet at interval → omitted
+    assert "you" not in auto_state(4, 101)
+    # Advance to next generation → included again
+    assert "you" in auto_state(5, 120)
+
+
+def test_explicit_get_game_state_always_includes_you_and_opponents() -> None:
     server = _reload_server()
     importlib.reload(game_state_mod)
 
-    raw = _make_player_model(generation=4, game_age=100)
-    player_view = PlayerViewModel.model_validate(raw)
-    server.get_player = lambda player_id=None: player_view
-    first = asyncio.run(server.get_game_state())
-    # First call in a new generation → included
-    assert "you" in first
-
-    raw2 = _make_player_model(generation=4, game_age=101)
-    player_view2 = PlayerViewModel.model_validate(raw2)
-    server.get_player = lambda player_id=None: player_view2
-    second = asyncio.run(server.get_game_state())
-    # Same generation, not yet at interval → omitted
-    assert "you" not in second
-
-    # Advance to next generation → included again
-    raw3 = _make_player_model(generation=5, game_age=120)
-    player_view3 = PlayerViewModel.model_validate(raw3)
-    server.get_player = lambda player_id=None: player_view3
-    third = asyncio.run(server.get_game_state())
-    assert "you" in third
+    you = {
+        "name": "Alice",
+        "color": "red",
+        "tr": 0,
+        "mc": 0,
+        "steel": 0,
+        "titanium": 0,
+        "plants": 0,
+        "energy": 0,
+        "heat": 0,
+        "prod": {
+            "mc": 0,
+            "steel": 0,
+            "titanium": 0,
+            "plants": 0,
+            "energy": 0,
+            "heat": 0,
+        },
+        "cards_in_hand_count": 0,
+        "active": True,
+    }
+    # Repeated same-generation fetches, which auto-responses would throttle.
+    for game_age in (100, 101, 102):
+        raw = _make_player_model(generation=4, game_age=game_age)
+        player_view = PlayerViewModel.model_validate(raw)
+        server.get_player = lambda player_id=None, view=player_view: view
+        assert asyncio.run(server.get_game_state())["you"] == you
 
 
 def test_proactive_calls_always_return_full_card_details() -> None:

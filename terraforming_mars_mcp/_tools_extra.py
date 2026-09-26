@@ -256,10 +256,7 @@ async def select_initial_cards(
 
     responses: list[dict[str, JsonValue]] = []
     for option in options:
-        title_text = (
-            option.title if isinstance(option.title, str) else option.title.message
-        )
-        title = title_text.lower()
+        title = option.title.message.lower()
         if "corporation" in title:
             cards = [request.corporation_card] if request.corporation_card else []
         elif "prelude" in title:

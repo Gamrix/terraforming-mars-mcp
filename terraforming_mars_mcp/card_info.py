@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 from typing import Any, Sequence
 
-from ._enums import DetailLevel, strip_empty
+from ._enums import strip_empty
 from .api_response_models import (
     CardModel as ApiCardModel,
     PublicPlayerModel as ApiPublicPlayerModel,
@@ -234,9 +234,9 @@ def _all_effect_texts(info: dict[str, object]) -> list[str]:
 
 def _compact_card(
     card: str | ApiCardModel,
-    detail_level: DetailLevel = DetailLevel.FULL,
     generation: int | None = None,
     auto_response: bool = False,
+    for_blue_action: bool = False,
 ) -> dict[str, object]:
     card_model: ApiCardModel | None = None
     if isinstance(card, str):
@@ -299,54 +299,52 @@ def _compact_card(
         }
     )
 
-    # Minimal detail (e.g. blue card actions): name + dynamic fields only.
-    # Cost is irrelevant for already-played cards being selected for their actions.
-    if detail_level == DetailLevel.MINIMAL:
+    # Blue card actions: name + dynamic fields only. Cost is irrelevant for
+    # already-played cards being selected for their actions.
+    if for_blue_action:
         payload.pop("cost", None)
         payload.pop("discounted_cost", None)
         return payload
 
-    # Full detail: include tags, requirements, and effect text.
-    if detail_level == DetailLevel.FULL:
-        tags = info.get("tags")
-        if isinstance(tags, list) and tags:
-            payload["tags"] = tags
+    tags = info.get("tags")
+    if isinstance(tags, list) and tags:
+        payload["tags"] = tags
 
-        play_requirements_text = info.get("play_requirements_text")
-        if isinstance(play_requirements_text, str) and play_requirements_text.strip():
-            payload["play_requirements_text"] = play_requirements_text
+    play_requirements_text = info.get("play_requirements_text")
+    if isinstance(play_requirements_text, str) and play_requirements_text.strip():
+        payload["play_requirements_text"] = play_requirements_text
 
-        effect_texts = _all_effect_texts(info)
-        # Strip duplicate requirement text from effect_texts[0].
-        if (
-            isinstance(play_requirements_text, str)
-            and play_requirements_text.strip()
-            and effect_texts
-        ):
-            req = play_requirements_text.strip()
-            first = effect_texts[0]
-            if first.startswith(req):
-                stripped = first[len(req) :].strip()
-                if stripped:
-                    effect_texts[0] = stripped
-                else:
-                    effect_texts = effect_texts[1:]
-        if effect_texts:
-            payload["effect_texts"] = effect_texts
+    effect_texts = _all_effect_texts(info)
+    # Strip duplicate requirement text from effect_texts[0].
+    if (
+        isinstance(play_requirements_text, str)
+        and play_requirements_text.strip()
+        and effect_texts
+    ):
+        req = play_requirements_text.strip()
+        first = effect_texts[0]
+        if first.startswith(req):
+            stripped = first[len(req) :].strip()
+            if stripped:
+                effect_texts[0] = stripped
+            else:
+                effect_texts = effect_texts[1:]
+    if effect_texts:
+        payload["effect_texts"] = effect_texts
 
     return payload
 
 
 def compact_cards(
     cards: Sequence[ApiCardModel | str],
-    detail_level: DetailLevel = DetailLevel.FULL,
     generation: int | None = None,
     auto_response: bool = False,
+    for_blue_action: bool = False,
 ) -> list[dict[str, object]]:
     """Compact a list of cards with detail level appropriate to the call context.
 
-    Proactive requests (auto_response=False): always return full detail per
-    detail_level — the agent explicitly asked for this data.
+    Proactive requests (auto_response=False): always return full detail —
+    the agent explicitly asked for this data.
 
     Auto-returned responses (auto_response=True): after submitting an action,
     the server returns game state automatically. To reduce noise:
@@ -360,9 +358,9 @@ def compact_cards(
     return [
         _compact_card(
             card,
-            detail_level=detail_level,
             generation=generation,
             auto_response=auto_response,
+            for_blue_action=for_blue_action,
         )
         for card in cards
     ]
@@ -371,10 +369,7 @@ def compact_cards(
 def extract_played_cards(
     player: ApiPublicPlayerModel,
 ) -> list[dict[str, object]]:
-    return [
-        _compact_card(card, detail_level=DetailLevel.FULL, auto_response=False)
-        for card in player.tableau
-    ]
+    return [_compact_card(card) for card in player.tableau]
 
 
 def extract_played_card_effects_and_actions(

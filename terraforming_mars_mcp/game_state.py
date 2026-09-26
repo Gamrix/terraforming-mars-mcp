@@ -5,7 +5,6 @@ from dataclasses import asdict, dataclass, field
 from typing import Any, Literal, NotRequired, TypedDict
 
 from ._enums import (
-    DetailLevel,
     InputType,
     ToolName,
     action_tools_for_input_type,
@@ -58,8 +57,8 @@ class _SessionCache:
     opponent_tableau: dict[str, Counter[str]] = field(default_factory=dict)
     last_generation: int | None = None
     last_game_constants: dict[str, Any] | None = None
-    # Responses since full player state was last included, keyed by detail level.
-    responses_since_full_state: dict[str, int] = field(default_factory=dict)
+    # Auto-responses since player state was last included.
+    responses_since_player_state: int = _FULL_STATE_INTERVAL
     last_session: dict[str, Any] | None = None
     last_ma_snapshot: _MilestonesAwardsSnapshot | None = None
 
@@ -97,20 +96,9 @@ class _PlayerSummary:
     cards_in_hand_count: int
     actions_this_generation: list[str]
 
-    def to_full_payload(self) -> dict[str, Any]:
+    def to_payload(self) -> dict[str, Any]:
         payload = asdict(self)
         payload.pop("active", None)
-        if self.active:
-            payload["active"] = True
-        return payload
-
-    def to_minimal_payload(self) -> dict[str, Any]:
-        payload: dict[str, Any] = {
-            "name": self.name,
-            "color": self.color,
-            "tr": self.tr,
-            "cards_in_hand_count": self.cards_in_hand_count,
-        }
         if self.active:
             payload["active"] = True
         return payload
@@ -675,7 +663,6 @@ def _build_game_constants(game: ApiGameModel) -> dict[str, Any]:
 def _build_game_state_section(
     game: ApiGameModel,
     cache: _SessionCache,
-    detail_level: DetailLevel,
     show_board: bool,
 ) -> tuple[dict[str, Any], bool]:
     """Build the `game` payload; returns it plus whether a new generation started."""
@@ -704,12 +691,11 @@ def _build_game_state_section(
         # Only include generation (always useful context) when constants unchanged.
         game_state["generation"] = generation
 
-    if detail_level == DetailLevel.FULL:
-        if _should_include_milestones_awards(game, generation, cache):
-            game_state["milestones"] = _summarize_milestones(game)
-            game_state["awards"] = _summarize_awards(game)
-        else:
-            game_state["milestones_changed"] = False
+    if _should_include_milestones_awards(game, generation, cache):
+        game_state["milestones"] = _summarize_milestones(game)
+        game_state["awards"] = _summarize_awards(game)
+    else:
+        game_state["milestones_changed"] = False
     if show_board:
         game_state["board"] = summarize_board(game)
         game_state["board_visible"] = True
@@ -718,13 +704,15 @@ def _build_game_state_section(
 
 
 def _should_include_player_state(
-    cache: _SessionCache, detail_level: DetailLevel, is_gen_start: bool
+    cache: _SessionCache, is_gen_start: bool, auto_response: bool
 ) -> bool:
-    """Include you/opponents at generation start or every N responses."""
-    key = str(detail_level)
-    responses_since = cache.responses_since_full_state.get(key, _FULL_STATE_INTERVAL)
-    include = is_gen_start or responses_since >= _FULL_STATE_INTERVAL
-    cache.responses_since_full_state[key] = 0 if include else responses_since + 1
+    """Include you/opponents on explicit fetches; throttle auto-responses to
+    generation start or every N responses."""
+    responses_since = cache.responses_since_player_state
+    include = (
+        not auto_response or is_gen_start or responses_since >= _FULL_STATE_INTERVAL
+    )
+    cache.responses_since_player_state = 0 if include else responses_since + 1
     return include
 
 
@@ -733,7 +721,6 @@ def _build_generation_start(
 ) -> dict[str, Any]:
     gen_start_cards = compact_cards(
         player_model.cardsInHand,
-        detail_level=DetailLevel.FULL,
         generation=generation,
         auto_response=False,
     )
@@ -761,7 +748,6 @@ def build_agent_state(
     player_model: ApiPlayerViewModel,
     include_full_model: bool = False,
     include_board_state: bool = False,
-    detail_level: DetailLevel = DetailLevel.FULL,
     base_url: str | None = None,
     player_id_fallback: str | None = None,
     auto_response: bool = False,
@@ -772,46 +758,33 @@ def build_agent_state(
     input_type = input_type_name(waiting_for)
     you, opponents = _summarize_players(player_model)
 
-    show_board = include_board_state or (
-        detail_level == DetailLevel.FULL and game.phase in END_OF_GENERATION_PHASES
-    )
+    show_board = include_board_state or game.phase in END_OF_GENERATION_PHASES
 
     generation = game.generation
     player_id = player_model.id or player_id_fallback or ""
     cache = _session_cache(game.id or "", player_id)
 
     session: dict[str, Any] = {"player_id": player_id}
-    if detail_level == DetailLevel.FULL and base_url is not None:
+    if base_url is not None:
         session["base_url"] = base_url
 
-    game_state, is_gen_start = _build_game_state_section(
-        game, cache, detail_level, show_board
-    )
-
-    if detail_level == DetailLevel.FULL:
-        you_state = you.to_full_payload()
-        opponents_state = [summary.to_full_payload() for summary in opponents]
-        opponent_new_cards = _detect_new_opponent_cards(player_model, cache)
-    else:
-        you_state = you.to_minimal_payload()
-        opponents_state = [summary.to_minimal_payload() for summary in opponents]
-        opponent_new_cards = []
+    game_state, is_gen_start = _build_game_state_section(game, cache, show_board)
+    opponent_new_cards = _detect_new_opponent_cards(player_model, cache)
 
     result: dict[str, Any] = {}
     if cache.last_session != session:
         cache.last_session = session
         result["session"] = session
     result["game"] = game_state
-    if _should_include_player_state(cache, detail_level, is_gen_start):
-        result["you"] = you_state
-        result["opponents"] = opponents_state
+    if _should_include_player_state(cache, is_gen_start, auto_response):
+        result["you"] = you.to_payload()
+        result["opponents"] = [summary.to_payload() for summary in opponents]
     result["waiting_for"] = normalize_waiting_for(
         waiting_for,
-        detail_level=detail_level,
         generation=generation,
         auto_response=auto_response,
     )
-    if auto_response and detail_level == DetailLevel.FULL and is_gen_start:
+    if auto_response and is_gen_start:
         result["generation_start"] = _build_generation_start(player_model, generation)
     result["suggested_tools"] = _suggested_tools(input_type, waiting_for)
     result["opponent_new_cards"] = opponent_new_cards
