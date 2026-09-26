@@ -5,16 +5,12 @@ from dataclasses import asdict, dataclass, field
 from typing import Any, Literal, NotRequired, TypedDict
 
 from ._enums import (
-    InputType,
-    ToolName,
-    action_tools_for_input_type,
     strip_empty,
 )
 from .api_response_models import (
     GameModel as ApiGameModel,
     PlayerViewModel as ApiPlayerViewModel,
     PublicPlayerModel as ApiPublicPlayerModel,
-    WaitingForInputModel as ApiWaitingForInputModel,
 )
 from .card_info import (
     card_info,
@@ -22,15 +18,13 @@ from .card_info import (
     extract_played_card_effects_and_actions,
 )
 from .waiting_for import (
-    find_pass_option_index,
-    input_type_name,
     normalize_waiting_for,
 )
 
 END_OF_GENERATION_PHASES = {"production", "solar", "intergeneration", "end"}
 
 
-_FULL_STATE_INTERVAL = 10
+_FULL_STATE_INTERVAL = 4
 
 # Server-side caps (common/constants.ts): past these the remaining milestones and
 # awards can never be claimed/funded.
@@ -59,7 +53,6 @@ class _SessionCache:
     last_game_constants: dict[str, Any] | None = None
     # Auto-responses since player state was last included.
     responses_since_player_state: int = _FULL_STATE_INTERVAL
-    last_session: dict[str, Any] | None = None
     last_ma_snapshot: _MilestonesAwardsSnapshot | None = None
 
 
@@ -462,7 +455,6 @@ def _new_opponent_cards_from_counts(
                 info = card_info(card_name, include_play_details=True)
                 event: dict[str, Any] = {
                     "player_name": player.name,
-                    "player_color": color,
                     "card_name": card_name,
                     "tags": info.get("tags", []),
                     "ongoing_effects": info.get("ongoing_effects", []),
@@ -733,29 +725,16 @@ def _build_generation_start(
     }
 
 
-def _suggested_tools(
-    input_type: str | None, waiting_for: ApiWaitingForInputModel | None
-) -> list[str]:
-    suggested = action_tools_for_input_type(input_type)
-    if input_type == InputType.OR_OPTIONS.value:
-        suggested.append(ToolName.SUBMIT_MULTI_ACTIONS.value)
-        if waiting_for is not None and find_pass_option_index(waiting_for) is not None:
-            suggested.append(ToolName.PASS_TURN.value)
-    return suggested
-
-
 def build_agent_state(
     player_model: ApiPlayerViewModel,
     include_full_model: bool = False,
     include_board_state: bool = False,
-    base_url: str | None = None,
     player_id_fallback: str | None = None,
     auto_response: bool = False,
     between_turns_actions: list[str] | None = None,
 ) -> dict[str, Any]:
     game = player_model.game
     waiting_for = player_model.waitingFor
-    input_type = input_type_name(waiting_for)
     you, opponents = _summarize_players(player_model)
 
     show_board = include_board_state or game.phase in END_OF_GENERATION_PHASES
@@ -764,17 +743,10 @@ def build_agent_state(
     player_id = player_model.id or player_id_fallback or ""
     cache = _session_cache(game.id or "", player_id)
 
-    session: dict[str, Any] = {"player_id": player_id}
-    if base_url is not None:
-        session["base_url"] = base_url
-
     game_state, is_gen_start = _build_game_state_section(game, cache, show_board)
     opponent_new_cards = _detect_new_opponent_cards(player_model, cache)
 
     result: dict[str, Any] = {}
-    if cache.last_session != session:
-        cache.last_session = session
-        result["session"] = session
     result["game"] = game_state
     if _should_include_player_state(cache, is_gen_start, auto_response):
         result["you"] = you.to_payload()
@@ -786,7 +758,6 @@ def build_agent_state(
     )
     if auto_response and is_gen_start:
         result["generation_start"] = _build_generation_start(player_model, generation)
-    result["suggested_tools"] = _suggested_tools(input_type, waiting_for)
     result["opponent_new_cards"] = opponent_new_cards
     if between_turns_actions:
         result["opponent_actions_between_turns"] = between_turns_actions

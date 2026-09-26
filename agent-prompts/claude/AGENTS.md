@@ -159,8 +159,7 @@ Use these exact shapes when you are unsure about setup or nested prompts.
 - board occupancy summary only during end-of-generation phases (`production`, `solar`, `intergeneration`, `end`) unless `include_board_state=true`,
 - normalized `waiting_for` details (cards/options/spaces/etc.),
 - card-rich prompt details for selectable cards (tags, ongoing effects/actions, play requirements, cost, and on-play effect text),
-- `opponent_new_cards` with newly observed opponent-played cards and their relevant card details,
-- suggested tool names for the current input type.
+- `opponent_new_cards` with newly observed opponent-played cards and their relevant card details.
 
 ### `include_full_model`
 

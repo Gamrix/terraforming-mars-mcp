@@ -301,7 +301,6 @@ async def state_after_submission(player_model: ApiPlayerViewModel) -> dict[str, 
         )
     return build_agent_state(
         player_model,
-        base_url=CFG.base_url,
         player_id_fallback=CFG.player_id,
         auto_response=True,
         between_turns_actions=between_turns_actions,
@@ -322,7 +321,6 @@ async def submit_and_return_state(response: Mapping[str, object]) -> dict[str, A
         refreshed = get_player()
         state = build_agent_state(
             refreshed,
-            base_url=CFG.base_url,
             player_id_fallback=CFG.player_id,
             auto_response=True,
         )

@@ -7,10 +7,9 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, cast
 
-import terraforming_mars_mcp._tools_extra as extra_mod
 import terraforming_mars_mcp.server as server_mod
 import terraforming_mars_mcp.turn_flow as turn_flow
-from terraforming_mars_mcp._models import PaymentPayloadModel
+from terraforming_mars_mcp._models import PaymentPayloadModel, UnitsPayloadModel
 from terraforming_mars_mcp.api_response_models import WaitingForInputModel
 from terraforming_mars_mcp.waiting_for import find_pass_option_index, prepare_action
 
@@ -412,10 +411,6 @@ def test_pay_for_project_card_submits_project_card_payload() -> None:
 # --- submit_multi_actions tests ---
 
 
-def _reload_extra() -> Any:
-    return importlib.reload(extra_mod)
-
-
 def _stub_get_player(extra: Any, waiting_for: Any) -> None:
     extra.get_player = lambda player_id=None: SimpleNamespace(waitingFor=waiting_for)
 
@@ -428,7 +423,7 @@ def _stub_state_after_submission(extra: Any) -> None:
 
 
 def test_submit_multi_actions_chains_all_actions() -> None:
-    extra = _reload_extra()
+    extra = _reload_server()
     calls: list[dict[str, Any]] = []
     # Sequence the prompts so the second action answers a `space` prompt
     # and the third answers an `or` prompt — matching the action types.
@@ -463,7 +458,7 @@ def test_submit_multi_actions_chains_all_actions() -> None:
 
 
 def test_submit_multi_actions_stops_when_turn_ends_early() -> None:
-    extra = _reload_extra()
+    extra = _reload_server()
     calls: list[dict[str, Any]] = []
 
     def fake_post_input(response: Any, player_id: Any = None) -> Any:
@@ -488,7 +483,7 @@ def test_submit_multi_actions_stops_when_turn_ends_early() -> None:
 
 
 def test_submit_multi_actions_validates_input() -> None:
-    extra = _reload_extra()
+    extra = _reload_server()
     _stub_get_player(extra, None)
 
     try:
@@ -505,7 +500,7 @@ def test_submit_multi_actions_validates_input() -> None:
 
 
 def test_submit_multi_actions_normalizes_payment() -> None:
-    extra = _reload_extra()
+    extra = _reload_server()
     calls: list[dict[str, Any]] = []
 
     def fake_post_input(response: Any, player_id: Any = None) -> Any:
@@ -528,7 +523,7 @@ def test_submit_multi_actions_normalizes_payment() -> None:
 
 
 def test_submit_multi_actions_chains_from_project_card() -> None:
-    extra = _reload_extra()
+    extra = _reload_server()
     calls: list[dict[str, Any]] = []
 
     def fake_post_input(response: Any, player_id: Any = None) -> Any:
@@ -556,7 +551,7 @@ def test_submit_multi_actions_chains_from_project_card() -> None:
 
 
 def test_submit_multi_actions_auto_wraps_raw_action_for_or_prompt() -> None:
-    extra = _reload_extra()
+    extra = _reload_server()
     calls: list[dict[str, Any]] = []
 
     def fake_post_input(response: Any, player_id: Any = None) -> Any:
@@ -603,7 +598,7 @@ def test_submit_multi_actions_auto_wraps_raw_action_for_or_prompt() -> None:
 
 
 def test_submit_multi_actions_resolves_or_names_against_live_prompt() -> None:
-    extra = _reload_extra()
+    extra = _reload_server()
     calls: list[dict[str, Any]] = []
 
     first_menu = WaitingForInputModel.model_validate(_ACTION_MENU)
@@ -651,7 +646,7 @@ def test_submit_multi_actions_resolves_or_names_against_live_prompt() -> None:
 
 
 def test_submit_multi_actions_normalizes_nested_payment_in_or_envelope() -> None:
-    extra = _reload_extra()
+    extra = _reload_server()
     calls: list[dict[str, Any]] = []
 
     def fake_post_input(response: Any, player_id: Any = None) -> Any:
@@ -707,11 +702,11 @@ def test_payment_model_keys_match_server_spendable_resources() -> None:
         for key in re.findall(r"^\s*'(\w+)',", block, re.MULTILINE)
     }
 
-    assert set(PaymentPayloadModel().model_dump(by_alias=True)) == server_keys
+    assert set(PaymentPayloadModel().model_dump()) == server_keys
 
 
 def test_submit_multi_actions_returns_state_on_http_error() -> None:
-    extra = _reload_extra()
+    extra = _reload_server()
     calls: list[dict[str, Any]] = []
 
     def fake_post_input(response: Any, player_id: Any = None) -> Any:
@@ -747,7 +742,7 @@ def test_submit_multi_actions_returns_state_on_http_error() -> None:
 
 
 def test_submit_multi_actions_rejects_index_addressed_or() -> None:
-    extra = _reload_extra()
+    extra = _reload_server()
     _stub_state_after_submission(extra)
     _stub_get_player(extra, _or_menu("First", "Second"))
 
@@ -787,7 +782,7 @@ def test_submit_and_return_state_returns_state_on_http_error(monkeypatch) -> Non
 
 
 def test_select_resources_submits_single_resource_payload() -> None:
-    extra = _reload_extra()
+    extra = _reload_server()
     captured: dict[str, Any] = {}
 
     async def _submit(payload: dict[str, Any]) -> dict[str, Any]:
@@ -799,14 +794,14 @@ def test_select_resources_submits_single_resource_payload() -> None:
     )
     extra.submit_and_return_state = _submit
 
-    result = _run(extra.select_resources(units=extra_mod.UnitsPayloadModel(steel=1)))
+    result = _run(extra.select_resources(units=UnitsPayloadModel(steel=1)))
 
     assert result == {"ok": True}
     assert captured == {"type": "resource", "resource": "steel"}
 
 
 def test_select_resources_submits_units_payload() -> None:
-    extra = _reload_extra()
+    extra = _reload_server()
     captured: dict[str, Any] = {}
 
     async def _submit(payload: dict[str, Any]) -> dict[str, Any]:
@@ -820,7 +815,7 @@ def test_select_resources_submits_units_payload() -> None:
 
     result = _run(
         extra.select_resources(
-            units=extra_mod.UnitsPayloadModel(megacredits=2, heat=1),
+            units=UnitsPayloadModel(megacredits=2, heat=1),
         )
     )
 
@@ -839,7 +834,7 @@ def test_select_resources_submits_units_payload() -> None:
 
 
 def test_select_resources_validates_single_resource_selection() -> None:
-    extra = _reload_extra()
+    extra = _reload_server()
     extra.get_player = lambda player_id=None: SimpleNamespace(
         waitingFor=_wf("resource")
     )
@@ -847,7 +842,7 @@ def test_select_resources_validates_single_resource_selection() -> None:
     try:
         _run(
             extra.select_resources(
-                units=extra_mod.UnitsPayloadModel(steel=1, heat=1),
+                units=UnitsPayloadModel(steel=1, heat=1),
             )
         )
         assert False, "Expected ValueError for ambiguous resource choice"
