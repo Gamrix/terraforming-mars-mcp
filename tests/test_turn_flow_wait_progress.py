@@ -2,10 +2,14 @@ from __future__ import annotations
 
 import asyncio
 import importlib
+from types import SimpleNamespace
+from typing import cast
 
-from terraforming_mars_mcp.api_response_models import GameLogEntryModel, PlayerViewModel
+from mcp.server.mcpserver import Context
+
 import terraforming_mars_mcp.game_state as game_state_mod
-import terraforming_mars_mcp.turn_flow as turn_flow
+from terraforming_mars_mcp import turn_flow
+from terraforming_mars_mcp.api_response_models import GameLogEntryModel, PlayerViewModel
 
 
 def test_wait_for_turn_reports_progress_every_30_seconds(
@@ -52,7 +56,6 @@ def test_wait_for_turn_reports_progress_every_30_seconds(
         }
     )
 
-    monkeypatch.setattr(turn_flow.mcp, "get_context", lambda: FakeContext())
     monkeypatch.setattr(turn_flow.time, "monotonic", lambda: clock["now"])
 
     async def fake_sleep(seconds: float) -> None:
@@ -67,10 +70,12 @@ def test_wait_for_turn_reports_progress_every_30_seconds(
 
     monkeypatch.setattr(turn_flow, "_get_waiting_for_state", fake_waiting_for_state)
     monkeypatch.setattr(turn_flow, "get_player", lambda: player_model)
-    monkeypatch.setattr(turn_flow, "_get_game_logs", lambda: [])
+    monkeypatch.setattr(turn_flow, "_get_game_logs", list)
 
     refreshed, opponent_actions = asyncio.run(
-        turn_flow.wait_for_turn_from_player_model(player_model, initial_logs=[])
+        turn_flow.wait_for_turn_from_player_model(
+            cast(Context, FakeContext()), player_model, initial_logs=[]
+        )
     )
 
     assert refreshed is player_model
@@ -175,7 +180,7 @@ def test_submit_and_return_state_surfaces_between_turn_opponent_new_cards(
     monkeypatch.setattr(turn_flow, "get_player", lambda: post_input_model)
 
     async def fake_wait_for_turn_from_player_model(
-        player_model, initial_logs=None, committed_summary=""
+        ctx, player_model, initial_logs=None, committed_summary=""
     ):
         assert player_model == post_input_model
         assert initial_logs == logs
@@ -190,7 +195,11 @@ def test_submit_and_return_state_surfaces_between_turn_opponent_new_cards(
         fake_wait_for_turn_from_player_model,
     )
 
-    result = asyncio.run(turn_flow.submit_and_return_state({"type": "option"}))
+    result = asyncio.run(
+        turn_flow.submit_and_return_state(
+            cast(Context, SimpleNamespace()), {"type": "option"}
+        )
+    )
 
     assert result["opponent_actions_between_turns"] == [
         "John played Trans-Neptune Probe",
@@ -302,7 +311,6 @@ def test_wait_for_turn_skips_revisable_prompt_until_real_prompt(
         "Select a card to keep and pass the rest to ${0}"
     )
 
-    monkeypatch.setattr(turn_flow.mcp, "get_context", lambda: FakeContext())
     monkeypatch.setattr(turn_flow.time, "monotonic", lambda: clock["now"])
 
     async def fake_sleep(seconds: float) -> None:
@@ -321,10 +329,12 @@ def test_wait_for_turn_skips_revisable_prompt_until_real_prompt(
         lambda game_age, undo_count: FakeWaitingFor(next(states)),
     )
     monkeypatch.setattr(turn_flow, "get_player", lambda: next(players))
-    monkeypatch.setattr(turn_flow, "_get_game_logs", lambda: [])
+    monkeypatch.setattr(turn_flow, "_get_game_logs", list)
 
     refreshed, _ = asyncio.run(
-        turn_flow.wait_for_turn_from_player_model(revisable, initial_logs=[])
+        turn_flow.wait_for_turn_from_player_model(
+            cast(Context, FakeContext()), revisable, initial_logs=[]
+        )
     )
 
     assert refreshed is real_prompt

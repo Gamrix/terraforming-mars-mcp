@@ -71,7 +71,7 @@ def _write_dataset(path: Path, records: list[dict[str, Any]]) -> None:
 def _infer_game_id(game_url: str) -> str:
     parsed = urlparse(game_url)
     query = parse_qs(parsed.query)
-    if "id" in query and query["id"]:
+    if query.get("id"):
         return query["id"][0]
     # Fallback to path tail if there is no query id.
     tail = parsed.path.rstrip("/").split("/")[-1]
@@ -281,16 +281,7 @@ def _build_rollup(records: list[dict[str, Any]]) -> str:
         avg_group_self = statistics.fmean(r["score"]["self"] for r in group)
         avg_group_opp = statistics.fmean(r["score"]["opponent"] for r in group)
         lines.append(
-            "| {opponent} | {games} | {wins}-{losses}-{draws} | {margin:+.1f} | {self_score:.1f}-{opp_score:.1f} |".format(
-                opponent=opponent,
-                games=len(group),
-                wins=group_wins,
-                losses=group_losses,
-                draws=group_draws,
-                margin=avg_group_margin,
-                self_score=avg_group_self,
-                opp_score=avg_group_opp,
-            )
+            f"| {opponent} | {len(group)} | {group_wins}-{group_losses}-{group_draws} | {avg_group_margin:+.1f} | {avg_group_self:.1f}-{avg_group_opp:.1f} |"
         )
     lines.append("")
 

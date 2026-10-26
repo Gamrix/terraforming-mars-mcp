@@ -7,11 +7,18 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, cast
 
+import pytest
+from mcp.server.mcpserver import Context
+from pydantic import ValidationError
+
 import terraforming_mars_mcp.server as server_mod
-import terraforming_mars_mcp.turn_flow as turn_flow
+from terraforming_mars_mcp import turn_flow
 from terraforming_mars_mcp._models import PaymentPayloadModel, UnitsPayloadModel
 from terraforming_mars_mcp.api_response_models import WaitingForInputModel
 from terraforming_mars_mcp.waiting_for import find_pass_option_index, prepare_action
+
+# Tools receive their MCP request context as an argument; tests never use it.
+_CTX = cast(Context, SimpleNamespace())
 
 
 def _wf(input_type: str) -> WaitingForInputModel:
@@ -49,7 +56,7 @@ def _set_submit_capture(
 ) -> None:
     response = {"ok": True} if result is None else result
 
-    async def _submit(payload: dict[str, Any]) -> dict[str, Any]:
+    async def _submit(ctx: Context, payload: dict[str, Any]) -> dict[str, Any]:
         captured.update(payload)
         return response
 
@@ -322,7 +329,9 @@ def test_choose_or_option_submits_name_envelope() -> None:
     _set_submit_capture(server, captured)
     result = _run(
         server.choose_or_option(
-            option_name="End Turn", sub_response={"type": "space", "spaceId": "35"}
+            _CTX,
+            option_name="End Turn",
+            sub_response={"type": "space", "spaceId": "35"},
         )
     )
 
@@ -338,7 +347,7 @@ def test_confirm_option_submits_plain_option() -> None:
     server = _reload_server()
     captured: dict[str, Any] = {}
     _set_submit_capture(server, captured)
-    result = _run(server.confirm_option())
+    result = _run(server.confirm_option(_CTX))
 
     assert result == {"ok": True}
     assert captured == {"type": "option"}
@@ -348,7 +357,7 @@ def test_pass_turn_submits_static_pass_name() -> None:
     server = _reload_server()
     captured: dict[str, Any] = {}
     _set_submit_capture(server, captured)
-    result = _run(server.pass_turn())
+    result = _run(server.pass_turn(_CTX))
 
     assert result == {"ok": True}
     assert captured == {
@@ -398,7 +407,7 @@ def test_pay_for_project_card_submits_project_card_payload() -> None:
     _set_submit_capture(server, captured)
     result = _run(
         server.pay_for_project_card(
-            card_name="Noctis City", payment=PaymentPayloadModel(megacredits=18)
+            _CTX, card_name="Noctis City", payment=PaymentPayloadModel(megacredits=18)
         )
     )
 
@@ -416,7 +425,7 @@ def _stub_get_player(extra: Any, waiting_for: Any) -> None:
 
 
 def _stub_state_after_submission(extra: Any) -> None:
-    async def fake_state(player_model: Any) -> dict[str, Any]:
+    async def fake_state(ctx: Context, player_model: Any) -> dict[str, Any]:
         return {"ok": True}
 
     extra.state_after_submission = fake_state
@@ -448,7 +457,7 @@ def test_submit_multi_actions_chains_all_actions() -> None:
         {"type": "space", "spaceId": "35"},
         {"type": "or", "name": "Second", "response": {"type": "option"}},
     ]
-    result = _run(extra.submit_multi_actions(actions=actions))
+    result = _run(extra.submit_multi_actions(_CTX, actions=actions))
 
     assert len(calls) == 3
     assert calls[0] == {"type": "or", "index": 0, "response": {"type": "option"}}
@@ -476,7 +485,7 @@ def test_submit_multi_actions_stops_when_turn_ends_early() -> None:
         {"type": "space", "spaceId": "35"},
         {"type": "or", "name": "Second", "response": {"type": "option"}},
     ]
-    result = _run(extra.submit_multi_actions(actions=actions))
+    result = _run(extra.submit_multi_actions(_CTX, actions=actions))
 
     assert len(calls) == 2
     assert result["actions_executed"] == 2
@@ -487,13 +496,13 @@ def test_submit_multi_actions_validates_input() -> None:
     _stub_get_player(extra, None)
 
     try:
-        _run(extra.submit_multi_actions(actions=[]))
+        _run(extra.submit_multi_actions(_CTX, actions=[]))
         assert False, "Expected ValueError"
     except ValueError as exc:
         assert "at least one" in str(exc).lower()
 
     try:
-        _run(extra.submit_multi_actions(actions=[{"no_type": True}]))
+        _run(extra.submit_multi_actions(_CTX, actions=[{"no_type": True}]))
         assert False, "Expected ValueError"
     except ValueError as exc:
         assert "type" in str(exc).lower()
@@ -514,7 +523,7 @@ def test_submit_multi_actions_normalizes_payment() -> None:
     actions = [
         {"type": "projectCard", "card": "Test Card"},
     ]
-    _run(extra.submit_multi_actions(actions=actions))
+    _run(extra.submit_multi_actions(_CTX, actions=actions))
 
     assert len(calls) == 1
     assert calls[0]["type"] == "projectCard"
@@ -540,7 +549,7 @@ def test_submit_multi_actions_chains_from_project_card() -> None:
         {"type": "projectCard", "card": "Noctis City", "payment": {"megacredits": 20}},
         {"type": "space", "spaceId": "35"},
     ]
-    result = _run(extra.submit_multi_actions(actions=actions))
+    result = _run(extra.submit_multi_actions(_CTX, actions=actions))
 
     assert len(calls) == 2
     assert calls[0]["type"] == "projectCard"
@@ -583,7 +592,7 @@ def test_submit_multi_actions_auto_wraps_raw_action_for_or_prompt() -> None:
         {"type": "projectCard", "card": "Noctis City", "payment": {"megacredits": 20}},
         {"type": "space", "spaceId": "35"},
     ]
-    result = _run(extra.submit_multi_actions(actions=actions))
+    result = _run(extra.submit_multi_actions(_CTX, actions=actions))
 
     assert len(calls) == 2
     # The raw projectCard was wrapped in the matching outer `or` option.
@@ -636,7 +645,7 @@ def test_submit_multi_actions_resolves_or_names_against_live_prompt() -> None:
             "response": {"type": "option"},
         },
     ]
-    result = _run(extra.submit_multi_actions(actions=actions))
+    result = _run(extra.submit_multi_actions(_CTX, actions=actions))
 
     assert len(calls) == 2
     assert calls[0] == {"type": "or", "index": 1, "response": {"type": "option"}}
@@ -668,7 +677,7 @@ def test_submit_multi_actions_normalizes_nested_payment_in_or_envelope() -> None
             },
         },
     ]
-    _run(extra.submit_multi_actions(actions=actions))
+    _run(extra.submit_multi_actions(_CTX, actions=actions))
 
     assert len(calls) == 1
     assert calls[0]["index"] == 3
@@ -678,11 +687,8 @@ def test_submit_multi_actions_normalizes_nested_payment_in_or_envelope() -> None
 
 
 def test_payment_model_rejects_old_camelcase_key() -> None:
-    try:
+    with pytest.raises(ValidationError, match="megaCredits"):
         PaymentPayloadModel.model_validate({"megaCredits": 5})
-        assert False, "Expected validation error for old megaCredits spelling"
-    except Exception as exc:
-        assert "megaCredits" in str(exc)
 
 
 def test_payment_model_keys_match_server_spendable_resources() -> None:
@@ -727,7 +733,7 @@ def test_submit_multi_actions_returns_state_on_http_error() -> None:
         {"type": "card", "cards": ["Ants"]},
         {"type": "card", "cards": ["Next"]},
     ]
-    result = _run(extra.submit_multi_actions(actions=actions))
+    result = _run(extra.submit_multi_actions(_CTX, actions=actions))
 
     assert len(calls) == 2
     assert result == {
@@ -749,7 +755,8 @@ def test_submit_multi_actions_rejects_index_addressed_or() -> None:
     try:
         _run(
             extra.submit_multi_actions(
-                actions=[{"type": "or", "index": 1, "response": {"type": "option"}}]
+                _CTX,
+                actions=[{"type": "or", "index": 1, "response": {"type": "option"}}],
             )
         )
         assert False, "Expected ValueError for index-addressed or action"
@@ -773,7 +780,9 @@ def test_submit_and_return_state_returns_state_on_http_error(monkeypatch) -> Non
         turn_flow, "build_agent_state", lambda pm, **kw: {"state": "current"}
     )
 
-    result = _run(turn_flow.submit_and_return_state({"type": "card", "cards": ["X"]}))
+    result = _run(
+        turn_flow.submit_and_return_state(_CTX, {"type": "card", "cards": ["X"]})
+    )
 
     assert result == {
         "state": "current",
@@ -785,7 +794,7 @@ def test_select_resources_submits_single_resource_payload() -> None:
     extra = _reload_server()
     captured: dict[str, Any] = {}
 
-    async def _submit(payload: dict[str, Any]) -> dict[str, Any]:
+    async def _submit(ctx: Context, payload: dict[str, Any]) -> dict[str, Any]:
         captured.update(payload)
         return {"ok": True}
 
@@ -794,7 +803,7 @@ def test_select_resources_submits_single_resource_payload() -> None:
     )
     extra.submit_and_return_state = _submit
 
-    result = _run(extra.select_resources(units=UnitsPayloadModel(steel=1)))
+    result = _run(extra.select_resources(_CTX, units=UnitsPayloadModel(steel=1)))
 
     assert result == {"ok": True}
     assert captured == {"type": "resource", "resource": "steel"}
@@ -804,7 +813,7 @@ def test_select_resources_submits_units_payload() -> None:
     extra = _reload_server()
     captured: dict[str, Any] = {}
 
-    async def _submit(payload: dict[str, Any]) -> dict[str, Any]:
+    async def _submit(ctx: Context, payload: dict[str, Any]) -> dict[str, Any]:
         captured.update(payload)
         return {"ok": True}
 
@@ -815,6 +824,7 @@ def test_select_resources_submits_units_payload() -> None:
 
     result = _run(
         extra.select_resources(
+            _CTX,
             units=UnitsPayloadModel(megacredits=2, heat=1),
         )
     )
@@ -842,6 +852,7 @@ def test_select_resources_validates_single_resource_selection() -> None:
     try:
         _run(
             extra.select_resources(
+                _CTX,
                 units=UnitsPayloadModel(steel=1, heat=1),
             )
         )

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import terraforming_mars_mcp.turn_flow as turn_flow
+from terraforming_mars_mcp import turn_flow
 
 
 def test_extract_opponent_actions_accepts_numeric_player_data_type() -> None:

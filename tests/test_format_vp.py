@@ -4,11 +4,10 @@ from typing import Any
 
 import pytest
 
-import terraforming_mars_mcp.card_info as card_info
-
+from terraforming_mars_mcp import card_info
 
 # fmt: off
-@pytest.mark.parametrize("vp,expected", [
+_VP_CASES: list[tuple[Any, Any]] = [
     # Fixed integer VP
     (1,  1),
     (2,  2),
@@ -40,7 +39,10 @@ import terraforming_mars_mcp.card_info as card_info
     ({"moon": {"road": {}}, "all": True},  "1 per road tile on Moon"),
     ({"moon": {"road": {}}, "per": 2},     "1 per 2 road tiles on Moon"),
     ({"moon": {}},                         "1 per tile tile on Moon"),
-])
+]
 # fmt: on
+
+
+@pytest.mark.parametrize("vp,expected", _VP_CASES)
 def test_format_vp(vp: Any, expected: Any) -> None:
     assert card_info.format_vp(vp) == expected

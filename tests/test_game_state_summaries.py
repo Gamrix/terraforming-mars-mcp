@@ -2,12 +2,18 @@ from __future__ import annotations
 
 import asyncio
 import importlib
-from typing import Any
+from types import SimpleNamespace
+from typing import Any, cast
+
+from mcp.server.mcpserver import Context
 
 import terraforming_mars_mcp.card_info as card_info_mod
 import terraforming_mars_mcp.game_state as game_state_mod
 import terraforming_mars_mcp.server as server_mod
 from terraforming_mars_mcp.api_response_models import PlayerViewModel
+
+# Tools receive their MCP request context as an argument; tests never use it.
+_CTX = cast(Context, SimpleNamespace())
 
 
 def _reload_server() -> Any:
@@ -85,7 +91,7 @@ def test_get_game_state_surfaces_milestones_and_awards() -> None:
 
     player_view = PlayerViewModel.model_validate(player_model)
     server.get_player = lambda player_id=None: player_view
-    state = asyncio.run(server.get_game_state())
+    state = asyncio.run(server.get_game_state(_CTX))
 
     assert state["game"]["milestones"][0]["name"] == "Builder"
     assert state["game"]["milestones"][0]["status"] == "claimed"
@@ -139,7 +145,7 @@ def test_capped_milestones_and_awards_are_pruned() -> None:
 
     player_view = PlayerViewModel.model_validate(player_model)
     server.get_player = lambda player_id=None: player_view
-    state = asyncio.run(server.get_game_state())
+    state = asyncio.run(server.get_game_state(_CTX))
 
     assert state["game"]["milestones"] == "all 3 claimed"
     # Funded awards stay visible (their score races are still live); the two
@@ -151,14 +157,14 @@ def test_capped_milestones_and_awards_are_pruned() -> None:
     ]
 
     # Unchanged state is suppressed, but the marker returns each new generation.
-    repeat = asyncio.run(server.get_game_state())
+    repeat = asyncio.run(server.get_game_state(_CTX))
     assert "milestones" not in repeat["game"]
 
     player_model["game"]["generation"] = 8
     server.get_player = lambda player_id=None: PlayerViewModel.model_validate(
         player_model
     )
-    next_gen = asyncio.run(server.get_game_state())
+    next_gen = asyncio.run(server.get_game_state(_CTX))
     assert next_gen["game"]["milestones"] == "all 3 claimed"
 
 
@@ -284,7 +290,7 @@ def test_game_constants_sent_on_first_call_and_omitted_on_repeat() -> None:
     server.get_player = lambda player_id=None: player_view
 
     # First call: constants are included.
-    state1 = asyncio.run(server.get_game_state())
+    state1 = asyncio.run(server.get_game_state(_CTX))
     assert "phase" in state1["game"]
     assert "terraforming" in state1["game"]
 
@@ -293,7 +299,7 @@ def test_game_constants_sent_on_first_call_and_omitted_on_repeat() -> None:
     player_view2 = PlayerViewModel.model_validate(raw2)
     server.get_player = lambda player_id=None: player_view2
 
-    state2 = asyncio.run(server.get_game_state())
+    state2 = asyncio.run(server.get_game_state(_CTX))
     assert "phase" not in state2["game"]
     assert "terraforming" not in state2["game"]
     # Generation is always present for context.
@@ -335,14 +341,14 @@ def test_game_constants_resent_on_generation_change() -> None:
     server.get_player = lambda player_id=None: player_view4
 
     # Prime the tracker.
-    asyncio.run(server.get_game_state())
+    asyncio.run(server.get_game_state(_CTX))
 
     # New generation: constants should reappear.
     raw_gen5 = _make_player_model(generation=5, game_age=200)
     player_view5 = PlayerViewModel.model_validate(raw_gen5)
     server.get_player = lambda player_id=None: player_view5
 
-    state = asyncio.run(server.get_game_state())
+    state = asyncio.run(server.get_game_state(_CTX))
     assert "phase" in state["game"]
     assert "terraforming" in state["game"]
     assert state["game"]["generation"] == 5
@@ -357,14 +363,14 @@ def test_game_constants_resent_on_value_change_within_generation() -> None:
     player_view = PlayerViewModel.model_validate(raw)
     server.get_player = lambda player_id=None: player_view
 
-    asyncio.run(server.get_game_state())
+    asyncio.run(server.get_game_state(_CTX))
 
     # Temperature changed within same generation.
     raw2 = _make_player_model(generation=4, temperature=-18, game_age=101)
     player_view2 = PlayerViewModel.model_validate(raw2)
     server.get_player = lambda player_id=None: player_view2
 
-    state = asyncio.run(server.get_game_state())
+    state = asyncio.run(server.get_game_state(_CTX))
     assert "terraforming" in state["game"]
     assert state["game"]["terraforming"]["temperature"] == -18
 
@@ -417,7 +423,7 @@ def test_explicit_get_game_state_always_includes_you_and_opponents() -> None:
         raw = _make_player_model(generation=4, game_age=game_age)
         player_view = PlayerViewModel.model_validate(raw)
         server.get_player = lambda player_id=None, view=player_view: view
-        assert asyncio.run(server.get_game_state())["you"] == you
+        assert asyncio.run(server.get_game_state(_CTX))["you"] == you
 
 
 def test_proactive_calls_always_return_full_card_details() -> None:
@@ -440,7 +446,7 @@ def test_proactive_calls_always_return_full_card_details() -> None:
     server.get_player = lambda player_id=None: player_view
 
     # First proactive call: full details.
-    state1 = asyncio.run(server.get_game_state())
+    state1 = asyncio.run(server.get_game_state(_CTX))
     card1 = state1["waiting_for"]["cards"][0]
     assert card1["name"] == "Comet"
     assert "tags" in card1
@@ -451,7 +457,7 @@ def test_proactive_calls_always_return_full_card_details() -> None:
     player_view2 = PlayerViewModel.model_validate(raw2)
     server.get_player = lambda player_id=None: player_view2
 
-    state2 = asyncio.run(server.get_game_state())
+    state2 = asyncio.run(server.get_game_state(_CTX))
     card2 = state2["waiting_for"]["cards"][0]
     assert card2["name"] == "Comet"
     assert "tags" in card2
@@ -707,7 +713,7 @@ def test_disabled_cards_are_filtered_out() -> None:
     player_view = PlayerViewModel.model_validate(raw)
     server.get_player = lambda player_id=None: player_view
 
-    state = asyncio.run(server.get_game_state())
+    state = asyncio.run(server.get_game_state(_CTX))
     cards = state["waiting_for"]["cards"]
 
     # Only enabled cards remain after filtering.

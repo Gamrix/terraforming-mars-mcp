@@ -2,7 +2,7 @@
 # /// script
 # requires-python = ">=3.11"
 # dependencies = [
-#   "mcp",
+#   "mcp>=2.3.0",
 #   "pydantic",
 # ]
 # ///
@@ -15,8 +15,9 @@ import argparse
 import logging
 import os
 from pathlib import Path
-
 from typing import Any, cast
+
+from mcp.server.mcpserver import Context
 
 from ._app import mcp
 from ._models import (
@@ -84,6 +85,7 @@ def configure_session(
 
 @mcp.tool()
 async def get_game_state(
+    ctx: Context,
     include_full_model: bool = False,
     include_board_state: bool = False,
 ) -> dict[str, object]:
@@ -94,6 +96,7 @@ async def get_game_state(
         # A submitted draft pick is still revisable until the opponent picks;
         # never surface that prompt — wait for the next real one instead.
         player_model, between_turns_actions = await wait_for_turn_from_player_model(
+            ctx,
             player_model,
             committed_summary=(
                 "This was a read-only state fetch; no input was submitted."
@@ -127,6 +130,7 @@ def get_my_hand_cards() -> dict[str, object]:
 
 @mcp.tool()
 async def choose_or_option(
+    ctx: Context,
     option_name: str,
     sub_response: dict[str, object] | None = None,
 ) -> dict[str, object]:
@@ -141,38 +145,41 @@ async def choose_or_option(
     (e.g. a milestone or award title).
     """
     return await submit_and_return_state(
+        ctx,
         {
             "type": "or",
             "name": option_name,
             "response": normalize_or_sub_response(sub_response),
-        }
+        },
     )
 
 
 @mcp.tool()
-async def confirm_option() -> dict[str, object]:
+async def confirm_option(ctx: Context) -> dict[str, object]:
     """Respond to `type: option`."""
-    return await submit_and_return_state({"type": "option"})
+    return await submit_and_return_state(ctx, {"type": "option"})
 
 
 @mcp.tool()
-async def pass_turn() -> dict[str, object]:
+async def pass_turn(ctx: Context) -> dict[str, object]:
     """Pass for the generation.
 
     Submits the "Pass for this generation" option of the current `or` prompt.
     To merely end the turn, use `choose_or_option(option_name="End Turn")`.
     """
     return await submit_and_return_state(
+        ctx,
         {
             "type": "or",
             "name": "Pass for this generation",
             "response": {"type": "option"},
-        }
+        },
     )
 
 
 @mcp.tool()
 async def pay_for_project_card(
+    ctx: Context,
     card_name: str,
     payment: PaymentPayloadModel | None = None,
 ) -> dict[str, object]:
@@ -184,11 +191,12 @@ async def pay_for_project_card(
     if not card_name:
         raise ValueError("card_name is required")
     return await submit_and_return_state(
+        ctx,
         {
             "type": "projectCard",
             "card": card_name,
             "payment": (payment or PaymentPayloadModel()).model_dump(),
-        }
+        },
     )
 
 
@@ -247,7 +255,7 @@ def get_mars_board_state(include_empty_spaces: bool = False) -> dict[str, object
 
 
 @mcp.tool()
-async def wait_for_turn() -> dict[str, Any]:
+async def wait_for_turn(ctx: Context) -> dict[str, Any]:
     """Poll /api/waitingfor until it's your turn using fixed server defaults."""
     player_model = get_player()
     if player_model.waitingFor is not None and not is_revisable_selection_prompt(
@@ -257,7 +265,9 @@ async def wait_for_turn() -> dict[str, Any]:
             "status": "GO",
             "state": build_agent_state(player_model, player_id_fallback=CFG.player_id),
         }
-    refreshed, opponent_actions = await wait_for_turn_from_player_model(player_model)
+    refreshed, opponent_actions = await wait_for_turn_from_player_model(
+        ctx, player_model
+    )
     state = build_agent_state(
         refreshed,
         player_id_fallback=CFG.player_id,
@@ -267,7 +277,9 @@ async def wait_for_turn() -> dict[str, Any]:
 
 
 @mcp.tool()
-async def submit_raw_entity(entity: dict[str, object]) -> dict[str, object]:
+async def submit_raw_entity(
+    ctx: Context, entity: dict[str, object]
+) -> dict[str, object]:
     """Submit any raw /player/input payload as an object with `type`.
 
     `or` entities address their option with `"name"` (the option title or a
@@ -276,21 +288,23 @@ async def submit_raw_entity(entity: dict[str, object]) -> dict[str, object]:
     """
     if "type" not in entity:
         raise ValueError("entity must include a 'type' field")
-    return await submit_and_return_state(entity)
+    return await submit_and_return_state(ctx, entity)
 
 
 @mcp.tool()
 async def submit_and_options(
+    ctx: Context,
     responses: list[dict[str, object]],
 ) -> dict[str, object]:
     """Respond to `type: and` with a list of InputResponse objects."""
     return await submit_and_return_state(
-        {"type": "and", "responses": cast(JsonValue, responses)}
+        ctx, {"type": "and", "responses": cast(JsonValue, responses)}
     )
 
 
 @mcp.tool()
 async def submit_multi_actions(
+    ctx: Context,
     actions: list[dict[str, object]],
 ) -> dict[str, object]:
     """Submit multiple actions in one call.
@@ -345,7 +359,7 @@ async def submit_multi_actions(
         if player_model.waitingFor is None and actions_executed < len(actions):
             break
 
-    result = await state_after_submission(player_model)
+    result = await state_after_submission(ctx, player_model)
     result["actions_executed"] = actions_executed
     if error_info is not None:
         result["error"] = error_info
@@ -353,69 +367,77 @@ async def submit_multi_actions(
 
 
 @mcp.tool()
-async def select_amount(amount: int) -> dict[str, object]:
+async def select_amount(ctx: Context, amount: int) -> dict[str, object]:
     """Respond to `type: amount`."""
-    return await submit_and_return_state({"type": "amount", "amount": int(amount)})
+    return await submit_and_return_state(ctx, {"type": "amount", "amount": int(amount)})
 
 
 @mcp.tool()
-async def select_cards(card_names: list[str]) -> dict[str, object]:
+async def select_cards(ctx: Context, card_names: list[str]) -> dict[str, object]:
     """Respond to `type: card` with chosen card names."""
     return await submit_and_return_state(
-        {"type": "card", "cards": cast(JsonValue, card_names)}
+        ctx, {"type": "card", "cards": cast(JsonValue, card_names)}
     )
 
 
 @mcp.tool()
-async def select_player(player_color: str) -> dict[str, object]:
+async def select_player(ctx: Context, player_color: str) -> dict[str, object]:
     """Respond to `type: player`."""
     if not player_color:
         raise ValueError("player_color is required")
-    return await submit_and_return_state({"type": "player", "player": player_color})
+    return await submit_and_return_state(
+        ctx, {"type": "player", "player": player_color}
+    )
 
 
 @mcp.tool()
-async def select_space(space_id: str) -> dict[str, object]:
+async def select_space(ctx: Context, space_id: str) -> dict[str, object]:
     """Respond to `type: space` using a board space ID from `waiting_for.spaces`."""
     if not space_id:
         raise ValueError("space_id is required")
-    return await submit_and_return_state({"type": "space", "spaceId": space_id})
+    return await submit_and_return_state(ctx, {"type": "space", "spaceId": space_id})
 
 
 @mcp.tool()
-async def select_party(party_name: str) -> dict[str, object]:
+async def select_party(ctx: Context, party_name: str) -> dict[str, object]:
     """Respond to `type: party`."""
     if not party_name:
         raise ValueError("party_name is required")
-    return await submit_and_return_state({"type": "party", "partyName": party_name})
+    return await submit_and_return_state(
+        ctx, {"type": "party", "partyName": party_name}
+    )
 
 
 @mcp.tool()
-async def select_colony(colony_name: str) -> dict[str, object]:
+async def select_colony(ctx: Context, colony_name: str) -> dict[str, object]:
     """Respond to `type: colony`."""
     if not colony_name:
         raise ValueError("colony_name is required")
-    return await submit_and_return_state({"type": "colony", "colonyName": colony_name})
+    return await submit_and_return_state(
+        ctx, {"type": "colony", "colonyName": colony_name}
+    )
 
 
 @mcp.tool()
 async def pay_for_action(
+    ctx: Context,
     payment: PaymentPayloadModel | None = None,
 ) -> dict[str, object]:
     """Respond to `type: payment`."""
     payload = (payment or PaymentPayloadModel()).model_dump()
-    return await submit_and_return_state({"type": "payment", "payment": payload})
+    return await submit_and_return_state(ctx, {"type": "payment", "payment": payload})
 
 
 @mcp.tool()
 async def select_initial_cards(
+    ctx: Context,
     request: InitialCardsSelectionModel,
 ) -> dict[str, object]:
     """Respond to `type: initialCards` using current waiting-for option order."""
     player_model = get_player()
     waiting_for = player_model.waitingFor
     options = waiting_for.options if waiting_for is not None else None
-    if not isinstance(options, list):
+    if not options:
         raise RuntimeError("Current waitingFor has no options for initialCards")
 
     responses: list[dict[str, JsonValue]] = []
@@ -432,21 +454,25 @@ async def select_initial_cards(
         responses.append({"type": "card", "cards": cast(JsonValue, cards)})
 
     return await submit_and_return_state(
-        {"type": "initialCards", "responses": cast(JsonValue, responses)}
+        ctx, {"type": "initialCards", "responses": cast(JsonValue, responses)}
     )
 
 
 @mcp.tool()
 async def select_production_to_lose(
+    ctx: Context,
     units: UnitsPayloadModel | None = None,
 ) -> dict[str, object]:
     """Respond to `type: productionToLose`."""
     payload = (units or UnitsPayloadModel()).model_dump()
-    return await submit_and_return_state({"type": "productionToLose", "units": payload})
+    return await submit_and_return_state(
+        ctx, {"type": "productionToLose", "units": payload}
+    )
 
 
 @mcp.tool()
 async def select_resources(
+    ctx: Context,
     units: UnitsPayloadModel | None = None,
 ) -> dict[str, object]:
     """Respond to `type: resource` or `type: resources`.
@@ -468,9 +494,9 @@ async def select_resources(
                 "For a resource prompt, set exactly one resource field to a positive value"
             )
         return await submit_and_return_state(
-            {"type": "resource", "resource": selected[0]}
+            ctx, {"type": "resource", "resource": selected[0]}
         )
-    return await submit_and_return_state({"type": "resources", "units": payload})
+    return await submit_and_return_state(ctx, {"type": "resources", "units": payload})
 
 
 def main() -> None:

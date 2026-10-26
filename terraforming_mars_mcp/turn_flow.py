@@ -5,11 +5,13 @@ import json
 import os
 import re
 import time
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, Mapping, Sequence, cast
+from typing import Any, cast
 from urllib import error, parse, request
 
-from ._app import mcp
+from mcp.server.mcpserver import Context
+
 from .api_response_models import (
     GameLogEntryModel as ApiGameLogEntryModel,
 )
@@ -90,7 +92,7 @@ def get_player(player_id: str | None = None) -> ApiPlayerViewModel:
     pid = _ensure_player_id(player_id)
     result = _http_json("GET", "/api/player", {"id": pid})
     if not isinstance(result, dict):
-        raise RuntimeError("Unexpected /api/player response")
+        raise TypeError("Unexpected /api/player response")
     player_model = ApiPlayerViewModel.model_validate(result)
     observe_player_model(player_model)
     return player_model
@@ -102,7 +104,7 @@ def _post_input(
     pid = _ensure_player_id(player_id)
     result = _http_json("POST", "/player/input", {"id": pid}, response)
     if not isinstance(result, dict):
-        raise RuntimeError("Unexpected /player/input response")
+        raise TypeError("Unexpected /player/input response")
     player_model = ApiPlayerViewModel.model_validate(result)
     observe_player_model(player_model)
     return player_model
@@ -118,7 +120,7 @@ def _get_waiting_for_state(
         {"id": pid, "gameAge": str(game_age), "undoCount": str(undo_count)},
     )
     if not isinstance(result, dict):
-        raise RuntimeError("Unexpected /api/waitingfor response")
+        raise TypeError("Unexpected /api/waitingfor response")
     return ApiWaitingForStatusModel.model_validate(result)
 
 
@@ -126,7 +128,7 @@ def _get_game_logs(player_id: str | None = None) -> list[ApiGameLogEntryModel]:
     pid = _ensure_player_id(player_id)
     result = _http_json("GET", "/api/game/logs", {"id": pid})
     if not isinstance(result, list):
-        raise RuntimeError("Unexpected /api/game/logs response")
+        raise TypeError("Unexpected /api/game/logs response")
     normalized_logs: list[ApiGameLogEntryModel] = []
     for item in result:
         if not isinstance(item, dict):
@@ -218,6 +220,7 @@ def is_revisable_selection_prompt(player_model: ApiPlayerViewModel) -> bool:
 
 
 async def wait_for_turn_from_player_model(
+    ctx: Context,
     player_model: ApiPlayerViewModel,
     initial_logs: Sequence[ApiGameLogEntryModel] | None = None,
     committed_summary: str = (
@@ -239,7 +242,6 @@ async def wait_for_turn_from_player_model(
     deadline = wait_started_at + TURN_WAIT_TIMEOUT_SECONDS
     next_progress_report_at = wait_started_at + TURN_WAIT_PROGRESS_INTERVAL_SECONDS
     last_waitingfor: dict[str, JsonValue] | None = None
-    context = mcp.get_context()
 
     while True:
         waiting = _get_waiting_for_state(game_age, undo_count)
@@ -267,7 +269,7 @@ async def wait_for_turn_from_player_model(
         now = time.monotonic()
         while now >= next_progress_report_at:
             elapsed_seconds = int(now - wait_started_at)
-            await context.report_progress(
+            await ctx.report_progress(
                 progress=float(elapsed_seconds),
                 total=float(TURN_WAIT_TIMEOUT_SECONDS),
                 message=(
@@ -286,12 +288,15 @@ async def wait_for_turn_from_player_model(
         await asyncio.sleep(TURN_WAIT_POLL_INTERVAL_SECONDS)
 
 
-async def state_after_submission(player_model: ApiPlayerViewModel) -> dict[str, Any]:
+async def state_after_submission(
+    ctx: Context, player_model: ApiPlayerViewModel
+) -> dict[str, Any]:
     """Build the auto-response agent state, waiting out opponents if the turn ended."""
     between_turns_actions: list[str] | None = None
     if player_model.waitingFor is None or is_revisable_selection_prompt(player_model):
         initial_logs = _get_game_logs()
         player_model, between_turns_actions = await wait_for_turn_from_player_model(
+            ctx,
             player_model,
             initial_logs=initial_logs,
             committed_summary=(
@@ -307,7 +312,9 @@ async def state_after_submission(player_model: ApiPlayerViewModel) -> dict[str, 
     )
 
 
-async def submit_and_return_state(response: Mapping[str, object]) -> dict[str, Any]:
+async def submit_and_return_state(
+    ctx: Context, response: Mapping[str, object]
+) -> dict[str, Any]:
     """Prepare a raw InputResponse against the live prompt and submit it.
 
     This is the single submission pipeline: payment defaults are filled and
@@ -326,4 +333,4 @@ async def submit_and_return_state(response: Mapping[str, object]) -> dict[str, A
         )
         state["error"] = str(exc)
         return state
-    return await state_after_submission(player_model)
+    return await state_after_submission(ctx, player_model)

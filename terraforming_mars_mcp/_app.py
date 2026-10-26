@@ -1,5 +1,5 @@
 from __future__ import annotations
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
-mcp = FastMCP("terraforming-mars", log_level="DEBUG", debug=True)
+mcp = MCPServer("terraforming-mars", log_level="DEBUG", debug=True)

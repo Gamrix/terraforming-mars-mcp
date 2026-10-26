@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-
-import terraforming_mars_mcp.game_state as game_state
+from terraforming_mars_mcp import game_state
 
 
 def test_full_board_state_translates_tile_type_labels() -> None:

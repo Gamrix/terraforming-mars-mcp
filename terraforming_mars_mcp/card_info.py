@@ -2,12 +2,15 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any
 
 from ._enums import strip_empty
 from .api_response_models import (
     CardModel as ApiCardModel,
+)
+from .api_response_models import (
     PublicPlayerModel as ApiPublicPlayerModel,
 )
 
@@ -276,9 +279,12 @@ def _compact_card(
 
     # Auto-response caching: after first appearance in a generation,
     # return name-only unless dynamic fields changed.
-    if auto_response and generation is not None:
-        if not _CARD_TRACKER.should_send_details(card_name, generation, dynamic_fields):
-            return {"name": card_name}
+    if (
+        auto_response
+        and generation is not None
+        and not _CARD_TRACKER.should_send_details(card_name, generation, dynamic_fields)
+    ):
+        return {"name": card_name}
 
     # Build the payload with cost and dynamic fields.
     cost = base_cost if base_cost is not None else discounted_cost

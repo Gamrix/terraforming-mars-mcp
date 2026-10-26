@@ -10,7 +10,7 @@ Code-level orientation for the MCP server package.
 
 | Module | Role |
 |---|---|
-| [`_app.py`](_app.py) | Constructs the single `FastMCP` instance every tool decorates. |
+| [`_app.py`](_app.py) | Constructs the single `MCPServer` instance every tool decorates. |
 | [`server.py`](server.py) | Entrypoint + every `@mcp.tool()` handler (session, state/inspection, action submitters, `submit_multi_actions`, `select_initial_cards`). |
 | [`turn_flow.py`](turn_flow.py) | HTTP layer: `_http_json`, `_post_input`, `get_player`, `submit_and_return_state`, `wait_for_turn_from_player_model`. Also owns the module-global `SessionConfig` (`CFG`) that `configure_session` mutates. |
 | [`waiting_for.py`](waiting_for.py) | Normalizes the server's `waitingFor` prompt into the agent-facing shape; `normalize_or_sub_response` plus option-finding helpers. |
@@ -23,7 +23,7 @@ Code-level orientation for the MCP server package.
 
 ## Data flow for an action
 
-1. Tool builds an `InputResponse` dict and calls `submit_and_return_state(payload)`.
+1. Tool builds an `InputResponse` dict and calls `submit_and_return_state(ctx, payload)`. `ctx: Context` is injected by the MCP SDK and used to report progress while waiting on opponents.
 2. [`submit_and_return_state`](turn_flow.py) POSTs to `/player/input`, gets the updated `PlayerViewModel`, auto-waits via `wait_for_turn_from_player_model` if `waitingFor` is now `None` (turn ended), and calls `build_agent_state(...)` to shape the return.
 3. `build_agent_state` normalizes `waitingFor`, attaches card-rich details via `card_info`, and records observations via `observed_cards`.
 
@@ -33,7 +33,7 @@ Code-level orientation for the MCP server package.
 
 1. If the server exposes a new `InputType`, add it to the enum in [`_enums.py`](_enums.py).
 2. Add the tool to [`server.py`](server.py).
-3. Build the `InputResponse` dict and call `await submit_and_return_state(payload)`.
+3. Take `ctx: Context` as the first parameter, build the `InputResponse` dict, and call `await submit_and_return_state(ctx, payload)`.
 4. Add the tool name to the `Action Reference` table in [`AGENTS.md`](AGENTS.md).
 5. Add a test: monkey-patch `_post_input` / `build_agent_state` rather than hitting a real server. Tests reload modules with `importlib.reload` before patching the module-level HTTP helpers — see [`test_or_response_tools.py`](../tests/test_or_response_tools.py) for the capture-and-assert style.
 

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import importlib
-from typing import Any, Mapping, cast
+from collections.abc import Mapping
+from typing import Any, cast
 
 import terraforming_mars_mcp.card_info as card_info_mod
 from terraforming_mars_mcp.api_response_models import WaitingForInputModel

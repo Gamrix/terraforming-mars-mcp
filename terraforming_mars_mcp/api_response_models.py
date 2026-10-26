@@ -7,6 +7,8 @@ from pydantic import (
     BeforeValidator,
     ConfigDict,
     Field,
+)
+from pydantic import (
     JsonValue as PydanticJsonValue,
 )
 
@@ -206,7 +208,7 @@ class WaitingForInputModel(TMBaseModel):
     selectBlueCardAction: bool | None = None
     showOwner: bool | None = None
 
-    options: list["WaitingForInputModel"] | None = None
+    options: list[WaitingForInputModel] | None = None
 
     players: list[str] | None = None
     spaces: list[str] | None = None
