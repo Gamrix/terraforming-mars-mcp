@@ -6,7 +6,9 @@ This project bridges agent tool calls to the Terraforming Mars Open Source Serve
 (`tm-oss-server`) API, so an MCP-compatible client can inspect game state and
 submit legal actions.
 
-Status: beta / work in progress.
+Status: stable. Over 20 full games have been played through this server. The base
+game and all official expansions are fully supported; fan-made expansions are
+partially supported.
 
 ## Quick start
 
@@ -198,8 +200,6 @@ Run static checks:
 uv run zuban check
 uv run ruff check .
 ```
-
-Note: this is an active WIP repository; static-check output can change between commits.
 
 ## Repository layout
 
