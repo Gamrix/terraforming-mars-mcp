@@ -201,6 +201,68 @@ uv run zuban check
 uv run ruff check .
 ```
 
+### End-to-end test
+
+`scripts/run_e2e.py` checks the whole stack against a real game: it starts the
+TM OSS server, launches this MCP server as an MCP stdio subprocess (exactly how
+Claude Code or Codex would), and plays through MCP tool calls. Run it after
+upgrading dependencies, pulling a new `tm-oss-server`, or changing how tools
+talk to the server — the pytest suite mocks the HTTP layer and catches neither
+SDK behavior changes nor server API changes.
+
+1. Build the TM OSS server (once, and again after updating the submodule):
+
+   ```bash
+   cd submodules/tm-oss-server
+   npm ci
+   npm run build
+   ```
+
+   The e2e only needs the server's API. If the client/CSS steps of `npm run build`
+   fail, `npm run make:json && npm run build:server` is enough.
+
+2. From the repo root, with nothing else listening on port 8080:
+
+   ```bash
+   uv run scripts/run_e2e.py                    # ~10s
+   uv run scripts/run_e2e.py --progress-check   # ~40s
+   uv run scripts/run_e2e.py --port 9090        # if 8080 is taken
+   ```
+
+What it covers:
+
+- **Solo game, one full generation.** Picks the first corporation and preludes,
+  answers whatever prelude prompts come up (card, space, option, or, amount,
+  player), plays the Power Plant standard project, calls every read-only tool,
+  then passes and confirms generation 2 starts with correct production.
+- **Server API compatibility.** Every board space must parse and carry a
+  `map_label`.
+- **Error passthrough.** An invalid tool call must return the tool's own error
+  message to the agent, not a generic one.
+- **Progress notifications** (`--progress-check`). In a 2-player game whose
+  second player never acts, the MCP server must stream a "Waiting for opponent"
+  progress notification after 30s.
+
+Results are checked against the TM server's raw `/api/player` endpoint rather
+than against the MCP's own output. The script prints `E2E PASSED` or
+`E2E FAILED` and the log directory (`$TMPDIR/tm-mcp-e2e/`), which holds:
+
+- `tm-server.log`: TM OSS server output
+- `mcp-server.log`: MCP server log, including tracebacks for tool crashes
+
+Notes:
+
+- Starting hands are random (the server ignores the requested seed), so each
+  run sees different cards. A failure saying `No e2e answer for prompt` means a
+  prelude produced a prompt type the script doesn't answer yet; add a branch
+  to `answer_prompt` in `scripts/run_e2e.py`.
+- Test games are saved to the TM server's own database,
+  `submodules/tm-oss-server/db/game.db`.
+- The TM server and the MCP client must run in the same process tree, which
+  the script already does. In a sandbox where each shell command gets its own
+  network namespace (e.g. Claude Code's Bash sandbox), a TM server started by
+  a separate command is unreachable.
+
 ## Repository layout
 
 - `terraforming_mars_mcp/`: MCP server implementation and tool handlers
@@ -208,6 +270,7 @@ uv run ruff check .
 - `submodules/tm-oss-server/`: upstream Terraforming Mars server source
 - `agent-prompts/`: prompt artifacts and strategy notes
 - `scripts/tm_learning.py`: helper script for gameplay-learning dataset maintenance
+- `scripts/run_e2e.py`: end-to-end test against a real TM OSS server (see [End-to-end test](#end-to-end-test))
 
 ## Troubleshooting
 

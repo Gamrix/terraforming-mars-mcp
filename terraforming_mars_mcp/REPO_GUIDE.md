@@ -37,6 +37,10 @@ Code-level orientation for the MCP server package.
 4. Add the tool name to the `Action Reference` table in [`AGENTS.md`](AGENTS.md).
 5. Add a test: monkey-patch `_post_input` / `build_agent_state` rather than hitting a real server. Tests reload modules with `importlib.reload` before patching the module-level HTTP helpers — see [`test_or_response_tools.py`](../tests/test_or_response_tools.py) for the capture-and-assert style.
 
+## End-to-end test
+
+Unit tests mock the HTTP layer, so they miss MCP SDK behavior changes and TM server API changes. After upgrading dependencies, updating `submodules/tm-oss-server`, or changing how tools talk to the server, also run `uv run scripts/run_e2e.py --progress-check`. It needs a built TM server; setup and coverage are in the README's "End-to-end test" section. If a prelude produces a prompt type the script can't answer, extend `answer_prompt` in [`scripts/run_e2e.py`](../scripts/run_e2e.py).
+
 ## Historical context
 
 [`bug_history/`](bug_history/) — dated bug notes. Worth skimming before re-touching something that looks odd; explains past decisions that the code alone doesn't.
