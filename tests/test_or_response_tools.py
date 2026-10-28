@@ -9,6 +9,7 @@ from typing import Any, cast
 
 import pytest
 from mcp.server.mcpserver import Context
+from mcp.server.mcpserver.exceptions import ToolError
 from pydantic import ValidationError
 
 import terraforming_mars_mcp.server as server_mod
@@ -859,3 +860,14 @@ def test_select_resources_validates_single_resource_selection() -> None:
         assert False, "Expected ValueError for ambiguous resource choice"
     except ValueError as exc:
         assert "exactly one" in str(exc).lower()
+
+
+def test_tool_error_message_reaches_client() -> None:
+    server = _reload_server()
+
+    with pytest.raises(ToolError) as exc_info:
+        _run(server.mcp.call_tool("pay_for_project_card", {"card_name": ""}))
+
+    assert str(exc_info.value) == (
+        "Error executing tool pay_for_project_card: card_name is required"
+    )

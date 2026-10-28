@@ -395,8 +395,7 @@ def full_board_state(
         space_data: dict[str, Any] = strip_empty(
             {
                 "id": space.id,
-                "x": space.x,
-                "y": space.y,
+                "map_label": space.a9,
                 "space_type": space.spaceType,
                 "bonus": [_space_bonus_label(b) for b in space.bonus]
                 if space.bonus

@@ -253,8 +253,7 @@ class FundedAwardModel(TMBaseModel):
 
 class SpaceModel(TMBaseModel):
     id: str
-    x: int
-    y: int
+    a9: str | None = None
     spaceType: str
     bonus: list[int]
     color: str | None = None
